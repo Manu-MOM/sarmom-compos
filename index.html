@@ -1342,30 +1342,38 @@ function _gGetClientId() {
 // ── Connexion ────────────────────────────────────────────────────
 function gConnectDrive() {
   var cid = _gGetClientId();
-  if (!cid) {
-    gShowClientIdPrompt();
-    return;
-  }
-  if (!window.google || !google.accounts) {
-    alert("Google Identity Services non chargé. Vérifiez votre connexion internet.");
-    return;
-  }
-  _gTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: cid,
-    scope: "https://www.googleapis.com/auth/drive.file",
-    callback: function(resp) {
-      if (resp.error) { console.error("GIS error:", resp); gUpdateDriveStatus("error"); return; }
-      _gAccessToken = resp.access_token;
-      window._gtoken = resp.access_token; // compatibilité planification
-      _gDriveReady = true;
-      gUpdateDriveStatus("connected");
-      // Update settings UI
-      var statusEl = document.getElementById("drive-status");
-      if(statusEl) statusEl.innerHTML = '<span style="color:var(--cg)">✅ Connecté — sauvegarde automatique active</span>';
-      _gFindOrCreateFile();
+  if (!cid) { gShowClientIdPrompt(); return; }
+  // Attendre que GSI soit chargé (jusqu'à 5 secondes)
+  var tries = 0;
+  function tryConnect() {
+    if (window.google && google.accounts && google.accounts.oauth2) {
+      _gTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: cid,
+        scope: "https://www.googleapis.com/auth/drive.file",
+        callback: function(resp) {
+          if (resp.error) {
+            console.error("GIS error:", resp);
+            gUpdateDriveStatus("error");
+            var se = document.getElementById("drive-status");
+            if(se) se.innerHTML = '<span style="color:#dc2626">❌ Erreur : '+( resp.error_description||resp.error)+'</span>';
+            return;
+          }
+          _gAccessToken = resp.access_token;
+          _gDriveReady = true;
+          gUpdateDriveStatus("connected");
+          var statusEl = document.getElementById("drive-status");
+          if(statusEl) statusEl.innerHTML = '<span style="color:var(--cg)">✅ Connecté — sauvegarde automatique active</span>';
+          _gFindOrCreateFile();
+        }
+      });
+      _gTokenClient.requestAccessToken({prompt: _gAccessToken ? "none" : ""});
+    } else if (tries++ < 20) {
+      setTimeout(tryConnect, 250);
+    } else {
+      alert("Google Identity Services non chargé.\nVérifiez votre connexion internet et rechargez la page.");
     }
-  });
-  _gTokenClient.requestAccessToken({prompt:""});
+  }
+  tryConnect();
 }
 
 function gDisconnectDrive() {
