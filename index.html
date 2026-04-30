@@ -359,7 +359,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <button class="btn btn-g" onclick="expJSON()" style="width:100%;justify-content:center;margin-bottom:5px">⬇ Exporter JSON</button>
       <button class="btn btn-g" onclick="document.getElementById('imp').click()" style="width:100%;justify-content:center;margin-bottom:5px">⬆ Importer JSON</button>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(event)">
-      <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm6');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
+      <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm7');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
     </div>
   </div>
 </div>
@@ -561,7 +561,7 @@ const INIT_COACHES=[{id:"c1",role:"Entraîneur principal",name:"Vivien RULFO"},{
 
 function load(){
   try{
-    const s=localStorage.getItem("sm6");
+    const s=localStorage.getItem("sm7");
     if(s){
       const d=JSON.parse(s);
       // Si données obsolètes (< 60 joueurs ou < 7 événements), forcer reset
@@ -574,7 +574,7 @@ function load(){
   }catch(e){}
   return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}};
 }
-function sv(){localStorage.setItem("sm6",JSON.stringify(S));}
+function sv(){localStorage.setItem("sm7",JSON.stringify(S));}
 let S=load();
 
 // Lineup helpers
@@ -1276,8 +1276,21 @@ function renderEffectif(){
   el.innerHTML=h;
 }
 
-// INIT
-// Apply stored settings on load
+// INIT — v7
+// Purge toutes les anciennes clés au démarrage
+['sm5','sm6','sm7'].forEach(k=>{
+  try{
+    const d=JSON.parse(localStorage.getItem(k)||'null');
+    if(d&&((d.players||[]).length<60||(d.events||[]).length<7)){
+      localStorage.removeItem(k);
+    }
+  }catch(e){ localStorage.removeItem(k); }
+});
+// Recharger S avec données fraîches si nécessaire
+if(S.players.length<60||(S.events||[]).length<7){
+  S.players=INIT_PL;
+  S.events=INIT_EV;
+}
 (function(){
   const ns=document.getElementById("nav-sub-txt");
   if(ns&&S.settings.season) ns.textContent=`Entente M14 · Saison ${S.settings.season}`;
