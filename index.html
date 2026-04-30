@@ -883,7 +883,7 @@ function renderPick(){
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export"].forEach(v=>document.getElementById("ev-"+v).style.display=v===view?"block":"none");if(view==="terrain")drawField();if(view==="export")drawExport();}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="effectif")renderEffectif();}
 
 // FIELD SVG
 function drawField(){
@@ -1231,7 +1231,7 @@ function exportMatchSheet(evId){
       h+=`</div></div>`;
     });
     if((S.coaches||[]).length){
-      const evCoaches=ev.staff&&ev.staff.length?S.coaches.filter(c=>ev.staff.includes(c.id)):S.coaches;
+      const evCoaches=Array.isArray(ev.staff)&&ev.staff.length?S.coaches.filter(c=>ev.staff.includes(c.id)):Array.isArray(ev.staff)&&ev.staff.length===0?[]:S.coaches;
       if(evCoaches.length)h+=`<div style="padding:4px 10px;background:#f9f9f5;border-top:1px solid #e8e8e0;font-size:8px;color:#555"><b>Staff :</b> ${evCoaches.map(c=>c.role+" : "+c.name).join(" | ")}</div>`;
     }
     h+=`</div>`;
