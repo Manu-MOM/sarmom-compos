@@ -1343,6 +1343,9 @@ function gConnectDrive() {
       window._gtoken = resp.access_token; // compatibilité planification
       _gDriveReady = true;
       gUpdateDriveStatus("connected");
+      // Update settings UI
+      var statusEl = document.getElementById("drive-status");
+      if(statusEl) statusEl.innerHTML = '<span style="color:var(--cg)">✅ Connecté — sauvegarde automatique active</span>';
       _gFindOrCreateFile();
     }
   });
@@ -1440,7 +1443,7 @@ function _gUploadFile(data, cb) {
 
 // ── Interface statut Drive ────────────────────────────────────────
 function gUpdateDriveStatus(status) {
-  var el = document.getElementById("g-drive-status");
+  var el = document.getElementById("g-drive-status") || document.getElementById("drive-status");
   if (!el) return;
   var icons = {
     disconnected: ["⚪","Non connecté","var(--gray5)"],
@@ -1476,7 +1479,7 @@ function gShowClientIdPrompt() {
     + '</div></div>'
     + '<div style="padding:10px 16px 16px;display:flex;gap:8px">'
     + '<button onclick="document.getElementById(\'g-clientid-modal\').remove()" style="flex:1;padding:9px;background:var(--gray1);border:none;border-radius:7px;font-weight:700;cursor:pointer;color:var(--gray5)">Annuler</button>'
-    + '<button onclick="var v=document.getElementById(\'g-cid-inp\').value.trim();if(v){localStorage.setItem(\'mom_gClientId\',v);_G_CLIENT_ID=v;document.getElementById(\'g-clientid-modal\').remove();gConnectDrive();}" style="flex:2;padding:9px;background:var(--g7);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:Barlow Condensed,sans-serif;font-size:14px">🔗 Enregistrer et Connecter</button>'
+    + '<button onclick="var v=document.getElementById(\'g-cid-inp\').value.trim();if(v){localStorage.setItem(\'sarmom_gClientId\',v);_G_CLIENT_ID=v;document.getElementById(\'g-clientid-modal\').remove();gConnectDrive();}" style="flex:2;padding:9px;background:var(--g7);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:Barlow Condensed,sans-serif;font-size:14px">🔗 Enregistrer et Connecter</button>'
     + '</div></div>';
   div.onclick = function(e){ if(e.target===div) div.remove(); };
   document.body.appendChild(div);
