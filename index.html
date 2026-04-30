@@ -1084,14 +1084,16 @@ function impJSON(e){
       if(d.players&&d.players.length>0) S.players=d.players;
       sv();
       // Rafraîchir sans recharger la page (préserve la connexion Drive)
-      // Vérifier si on revient d'un redirect OAuth
-_gCheckRedirectToken();
-rdash();revents();rsettings();
-      alert('✅ Import réussi — '+( S.events.length)+' événements chargés');
+            alert('✅ Import réussi — '+( S.events.length)+' événements chargés');
     }catch(err){alert('Fichier invalide : '+err.message);}
   };
   r.readAsText(f);
 }
+
+// INIT
+// Vérifier si on revient d'un redirect OAuth
+_gCheckRedirectToken();
+rdash();revents();
 
 // MISC
 function cm(id){document.getElementById(id).classList.remove("open");}
@@ -1491,4 +1493,30 @@ function gShowClientIdPrompt() {
   document.body.appendChild(div);
 }
 
->
+// MISC
+function cm(id){document.getElementById(id)?.classList.remove("open");}
+function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`${dd}/${m}/${y}`;}
+function typeLabel(t){const L={"championnat-1":"Champ. L1","championnat-2":"Champ. L2","vie":"Challenge Vié","federal":"Challenge Féd.","tournoi":"Tournoi","amical":"Amical","seven":"Seven"};return L[t]||t;}
+
+// INIT
+// Purge anciennes clés obsolètes
+['sm5','sm6'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+try{
+  const _d=JSON.parse(localStorage.getItem('sm7')||'null');
+  if(_d && (_d.players||[]).length<60){ localStorage.removeItem('sm7'); }
+}catch(e){ localStorage.removeItem('sm7'); }
+
+// Recharger joueurs si manquants
+if(S.players.length<60){ S.players=INIT_PL; }
+
+(function(){
+  const ns=document.getElementById("nav-sub-txt");
+  if(ns&&S.settings&&S.settings.season) ns.textContent=`Entente M14 · Saison ${S.settings.season}`;
+})();
+
+// Vérifier si on revient d'un redirect OAuth
+_gCheckRedirectToken();
+rdash();revents();
+</script>
+</body>
+</html>
