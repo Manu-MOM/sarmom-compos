@@ -559,9 +559,9 @@ const INIT_EV=[
 const INIT_TEAMS=[{id:"t1",label:"SAR/MOM 1"},{id:"t2",label:"SAR/MOM 2"},{id:"t3",label:"SAR/MOM X"}];
 const INIT_COACHES=[{id:"c1",role:"Entraîneur principal",name:"Vivien RULFO"},{id:"c2",role:"Manager",name:"Emmanuel JUNG"},{id:"c3",role:"Entraîneur adjoint",name:"Loïc HELM"}];
 
-function load(){try{const s=localStorage.getItem("sm5");if(s)return JSON.parse(s);}catch(e){}
+function load(){try{const s=localStorage.getItem("sm6");if(s)return JSON.parse(s);}catch(e){}
   return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}}}
-function sv(){localStorage.setItem("sm5",JSON.stringify(S));}
+function sv(){localStorage.setItem("sm6",JSON.stringify(S));}
 let S=load();
 
 // Lineup helpers
