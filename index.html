@@ -574,11 +574,8 @@ function load(){
     const s=localStorage.getItem("sm7");
     if(s){
       const d=JSON.parse(s);
-      // Si données obsolètes (< 60 joueurs ou < 7 événements), forcer reset
-      if((d.players||[]).length>=60 && (d.events||[]).length>=7) return d;
-      // Sinon merger: garder les joueurs/events stockés mais compléter avec INIT
-      d.players=INIT_PL;
-      d.events=INIT_EV;
+      // Seulement réinjecter les joueurs si manquants (pas les événements !)
+      if((d.players||[]).length<60) d.players=INIT_PL;
       return d;
     }
   }catch(e){}
@@ -1497,9 +1494,8 @@ function gShowClientIdPrompt() {
   }catch(e){ localStorage.removeItem(k); }
 });
 // Recharger S avec données fraîches si nécessaire
-if(S.players.length<60||(S.events||[]).length<7){
+if(S.players.length<60){
   S.players=INIT_PL;
-  S.events=INIT_EV;
 }
 (function(){
   const ns=document.getElementById("nav-sub-txt");
