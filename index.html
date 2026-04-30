@@ -209,6 +209,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
 ::-webkit-scrollbar{width:4px}.sc-thumb{background:var(--g200);border-radius:2px}
 ::-webkit-scrollbar-thumb{background:var(--g200);border-radius:2px}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -354,6 +355,14 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <div class="fg"><label class="fl">Couleur principale</label><input type="color" class="fi" id="s-c1" value="#1a3a6b" style="height:34px;padding:2px 5px;cursor:pointer"></div>
       <div class="fg"><label class="fl">Couleur accent</label><input type="color" class="fi" id="s-c2" value="#f0c500" style="height:34px;padding:2px 5px;cursor:pointer"></div>
       <button class="btn btn-y" onclick="applyCol()">Appliquer</button>
+    </div>
+    <div class="card" id="drive-sett-card"><div class="ctitle">Google Drive</div>
+      <div id="drive-status" style="font-size:11px;color:var(--g400);margin-bottom:8px">Non connecté</div>
+      <div class="fg"><label class="fl">Client ID Google</label>
+        <input class="fi" id="drive-client-id" placeholder="xxxx.apps.googleusercontent.com" style="font-size:10px">
+      </div>
+      <button class="btn btn-b" onclick="gConnectDriveUI()" style="width:100%;justify-content:center;margin-bottom:5px">🔗 Connecter Drive</button>
+      <button class="btn btn-g" onclick="gManualSave()" style="width:100%;justify-content:center">💾 Sauvegarder maintenant</button>
     </div>
     <div class="card"><div class="ctitle">Données</div>
       <button class="btn btn-g" onclick="expJSON()" style="width:100%;justify-content:center;margin-bottom:5px">⬇ Exporter JSON</button>
@@ -574,7 +583,10 @@ function load(){
   }catch(e){}
   return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}};
 }
-function sv(){localStorage.setItem("sm7",JSON.stringify(S));}
+function sv(){
+  localStorage.setItem("sm7",JSON.stringify(S));
+  if(window._gDriveReady) _gSaveCompos();
+}
 let S=load();
 
 // Lineup helpers
@@ -842,7 +854,7 @@ function renderPool(){
     const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ</span>`:"";
     const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:9px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
-    return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" onclick="${used?"":"pickD("+p.id+")"}"><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
+    return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" onclick='${used?"":"pickD("+p.id+")"}'  ><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
   }).join("");
 }
 
@@ -853,12 +865,12 @@ function renderSlots(){
     const pid=resolved[i];const pl=pid?S.players.find(p=>p.id===pid):null;const ovr=isOverridden(i);
     const tags=pl?pl.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join(""):"";
     const photoHtml=pl&&pl.photo?`<div class="sav"><img src="${pl.photo}"></div>`:"";
-    return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?"":"openPick("+i+")"}" style="cursor:${pl?"default":"pointer"}"><div class="snum">${i+1}</div><div class="spos">${Ps[i]||""}</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"Cliquer…"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px">${tags}</div>${pl?`<button class="srm" onclick="rmSlot(${i})">×</button>`:""}</div>`;
+    return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?'':'openPick('+i+')'}" style="cursor:${pl?"default":"pointer"}"><div class="snum">${i+1}</div><div class="spos">${Ps[i]||""}</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"Cliquer…"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px">${tags}</div>${pl?`<button class="srm" onclick="rmSlot(${i})">×</button>`:""}</div>`;
   }).join("");
   sr.innerHTML=Array.from({length:lineupSize(curEV)-ss2},(_,i)=>{
     const idx=i+ss2;const pid=resolved[idx];const pl=pid?S.players.find(p=>p.id===pid):null;const ovr=isOverridden(idx);
     const photoHtml=pl&&pl.photo?`<div class="sav"><img src="${pl.photo}"></div>`:"";
-    return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?"":"openPick("+idx+")"}" style="cursor:${pl?"default":"pointer"}"><div class="snum sub">${idx+1}</div><div class="spos">Remplaçant</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"—"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px"></div>${pl?`<button class="srm" onclick="rmSlot(${idx})">×</button>`:""}</div>`;
+    return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?'':'openPick('+idx+')'}" style="cursor:${pl?"default":"pointer"}"><div class="snum sub">${idx+1}</div><div class="spos">Remplaçant</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"—"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px"></div>${pl?`<button class="srm" onclick="rmSlot(${idx})">×</button>`:""}</div>`;
   }).join("");
   if(curEVview==="terrain")drawField();if(curEVview==="export")drawExport();
 }
@@ -870,7 +882,7 @@ function renderPick(){
   const kw=(curSlot<subsStart(curEV)?Ps[curSlot]||"":"").split(" ")[0].toLowerCase();
   let ps=S.players.filter(p=>!resolved.includes(p.id)&&(!s||`${p.p} ${p.n}`.toLowerCase().includes(s)));
   ps.sort((a,b)=>{const am=a.pos.some(pp=>pp.toLowerCase().includes(kw));const bm=b.pos.some(pp=>pp.toLowerCase().includes(kw));if(am&&!bm)return -1;if(!am&&bm)return 1;return`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`)});
-  document.getElementById("mpk-list").innerHTML=ps.map(p=>{const m2=p.pos.some(pp=>pp.toLowerCase().includes(kw));const tags=p.apt.slice(0,3).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:10px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;return`<div class="pi ${m2?"mp":""} ${p.inj?"inj":""}" onclick="${p.inj?"":"assignPick("+p.id+")"}"><div class="pav">${photoHtml}</div><div style="flex:1"><div style="font-size:12px;font-weight:500">${p.p} ${p.n} ${m2?'<span style="color:var(--cg);font-size:9px">✓</span>':""}</div><div style="font-size:9px;color:var(--g400)">${p.pos.slice(0,2).join(", ")||"—"}</div></div><div style="display:flex;gap:2px">${tags}${p.inj?'<span class="inj-badge">blessé</span>':""}</div></div>`;
+  document.getElementById("mpk-list").innerHTML=ps.map(p=>{const m2=p.pos.some(pp=>pp.toLowerCase().includes(kw));const tags=p.apt.slice(0,3).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:10px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;return`<div class="pi ${m2?"mp":""} ${p.inj?"inj":""}" onclick='${p.inj?"":"assignPick("+p.id+")"}' ><div class="pav">${photoHtml}</div><div style="flex:1"><div style="font-size:12px;font-weight:500">${p.p} ${p.n} ${m2?'<span style="color:var(--cg);font-size:9px">✓</span>':""}</div><div style="font-size:9px;color:var(--g400)">${p.pos.slice(0,2).join(", ")||"—"}</div></div><div style="display:flex;gap:2px">${tags}${p.inj?'<span class="inj-badge">blessé</span>':""}</div></div>`;
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
@@ -1037,6 +1049,24 @@ function rsettings(){
   document.getElementById("coaches-list").innerHTML=(S.coaches||[]).map((c,i)=>`<div style="display:flex;gap:4px;margin-bottom:4px"><input class="fi" value="${c.role}" onchange="S.coaches[${i}].role=this.value;sv()" placeholder="Rôle" style="flex:1"><input class="fi" value="${c.name}" onchange="S.coaches[${i}].name=this.value;sv()" placeholder="Nom" style="flex:1"><button class="btn btn-r" onclick="S.coaches.splice(${i},1);sv();rsettings()" style="padding:3px 6px">🗑</button></div>`).join("");
 }
 function applySett(){S.settings.name=document.getElementById("s-name").value;S.settings.season=document.getElementById("s-season").value;sv();const ns=document.getElementById("nav-sub-txt");if(ns)ns.textContent=`Entente M14 · Saison ${S.settings.season}`;}
+function gConnectDriveUI(){
+  const cid=document.getElementById("drive-client-id")?.value?.trim();
+  if(cid){localStorage.setItem("sarmom_gClientId",cid);}
+  gConnectDrive();
+}
+function gManualSave(){
+  if(window._gDriveReady) _gSaveCompos();
+  else { gConnectDriveUI(); }
+}
+function gUpdateDriveStatus(status){
+  const el=document.getElementById("drive-status");
+  if(!el)return;
+  if(status==="connected") el.innerHTML='<span style="color:var(--cg)">✅ Connecté — sauvegarde automatique active</span>';
+  else if(status==="saving") el.innerHTML='<span style="color:var(--sky)">⏳ Sauvegarde en cours…</span>';
+  else if(status==="saved") el.innerHTML='<span style="color:var(--cg)">✅ Sauvegardé sur Drive</span>';
+  else if(status==="error") el.innerHTML='<span style="color:#dc2626">❌ Erreur Drive</span>';
+  else el.innerHTML='<span style="color:var(--g400)">Non connecté</span>';
+}
 function applyCol(){S.settings.c1=document.getElementById("s-c1").value;S.settings.c2=document.getElementById("s-c2").value;sv();}
 function addTeam(){S.teams.push({id:"t"+Date.now(),label:"Nouvelle équipe"});sv();rsettings();}
 function updateTeam(id,val){const t=S.teams.find(t=>t.id===id);if(t)t.label=val;sv();}
@@ -1276,6 +1306,171 @@ function renderEffectif(){
   el.innerHTML=h;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// GOOGLE DRIVE — Sauvegarde automatique des Compos
+// ═══════════════════════════════════════════════════════════════════
+var _gTokenClient  = null;
+var _gAccessToken  = null;
+var _gComposFileId = null;
+var _gDriveReady   = false;
+var _gSaveTimer    = null;
+var _G_FILE_NAME   = "sarmom_compos.json";
+var _G_CLIENT_ID   = localStorage.getItem("sarmom_gClientId") || "";
+
+function _gGetClientId() {
+  return localStorage.getItem("sarmom_gClientId") || _G_CLIENT_ID || "";
+}
+
+// ── Connexion ────────────────────────────────────────────────────
+function gConnectDrive() {
+  var cid = _gGetClientId();
+  if (!cid) {
+    gShowClientIdPrompt();
+    return;
+  }
+  if (!window.google || !google.accounts) {
+    alert("Google Identity Services non chargé. Vérifiez votre connexion internet.");
+    return;
+  }
+  _gTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cid,
+    scope: "https://www.googleapis.com/auth/drive.file",
+    callback: function(resp) {
+      if (resp.error) { console.error("GIS error:", resp); gUpdateDriveStatus("error"); return; }
+      _gAccessToken = resp.access_token;
+      window._gtoken = resp.access_token; // compatibilité planification
+      _gDriveReady = true;
+      gUpdateDriveStatus("connected");
+      _gFindOrCreateFile();
+    }
+  });
+  _gTokenClient.requestAccessToken({prompt:""});
+}
+
+function gDisconnectDrive() {
+  if (_gAccessToken && window.google) google.accounts.oauth2.revoke(_gAccessToken);
+  _gAccessToken = null; _gComposFileId = null; _gDriveReady = false; window._gtoken = "";
+  gUpdateDriveStatus("disconnected");
+}
+
+// ── Trouver ou créer le fichier JSON sur Drive ────────────────────
+function _gFindOrCreateFile() {
+  gUpdateDriveStatus("syncing");
+  var q = "name='" + _G_FILE_NAME + "' and trashed=false";
+  fetch("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(q) + "&fields=files(id,name,modifiedTime)", {
+    headers: { Authorization: "Bearer " + _gAccessToken }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.files && data.files.length > 0) {
+      _gComposFileId = data.files[0].id;
+      _gLoadFromDrive(); // Charger les données existantes
+    } else {
+      _gUploadFile(null, function(){ gUpdateDriveStatus("connected"); }); // Créer le fichier
+    }
+  })
+  .catch(function(){ gUpdateDriveStatus("error"); });
+}
+
+// ── Charger depuis Drive ─────────────────────────────────────────
+function _gLoadFromDrive() {
+  if (!_gComposFileId || !_gAccessToken) return;
+  gUpdateDriveStatus("syncing");
+  fetch("https://www.googleapis.com/drive/v3/files/" + _gComposFileId + "?alt=media", {
+    headers: { Authorization: "Bearer " + _gAccessToken }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data && data.events !== undefined) {
+      // Fusionner avec localStorage : Drive gagne si plus récent
+      var local = _cLoad();
+      var driveEvents = (data.events||[]).length;
+      var localEvents = (local.events||[]).length;
+      if (driveEvents >= localEvents) {
+        _CS = data;
+        localStorage.setItem(_CS_KEY, JSON.stringify(_CS));
+      }
+    }
+    gUpdateDriveStatus("connected");
+    if (_cEditorOpen || _composView) renderCompos();
+  })
+  .catch(function(){ gUpdateDriveStatus("error"); });
+}
+
+// ── Sauvegarder vers Drive ────────────────────────────────────────
+function _gSaveCompos() {
+  clearTimeout(_gSaveTimer);
+  _gSaveTimer = setTimeout(function() {
+    if (!_gAccessToken || !_CS) return;
+    _gUploadFile(S, function(ok) {
+      gUpdateDriveStatus(ok ? "saved" : "error");
+      setTimeout(function(){ gUpdateDriveStatus("connected"); }, 2000);
+    });
+  }, 1500); // Délai pour grouper les saves rapides
+}
+
+function _gUploadFile(data, cb) {
+  var content = JSON.stringify(data || _CS || {});
+  var blob = new Blob([content], {type:"application/json"});
+  var meta = JSON.stringify({name: _G_FILE_NAME, mimeType:"application/json"});
+  var fd = new FormData();
+  fd.append("metadata", new Blob([meta], {type:"application/json"}));
+  fd.append("file", blob);
+  var url = _gComposFileId
+    ? "https://www.googleapis.com/upload/drive/v3/files/" + _gComposFileId + "?uploadType=multipart"
+    : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  var method = _gComposFileId ? "PATCH" : "POST";
+  fetch(url, { method:method, headers:{Authorization:"Bearer "+_gAccessToken}, body:fd })
+  .then(function(r){ return r.json(); })
+  .then(function(d){ if (!_gComposFileId && d.id) _gComposFileId = d.id; if(cb) cb(true); })
+  .catch(function(){ if(cb) cb(false); });
+}
+
+// ── Interface statut Drive ────────────────────────────────────────
+function gUpdateDriveStatus(status) {
+  var el = document.getElementById("g-drive-status");
+  if (!el) return;
+  var icons = {
+    disconnected: ["⚪","Non connecté","var(--gray5)"],
+    connected:    ["🟢","Connecté — synchronisé","#16a34a"],
+    syncing:      ["🔄","Synchronisation…","#d97706"],
+    saved:        ["✅","Sauvegardé sur Drive","#16a34a"],
+    error:        ["🔴","Erreur de connexion","#dc2626"]
+  };
+  var info = icons[status] || icons.disconnected;
+  el.innerHTML = '<span style="font-size:14px">' + info[0] + '</span>'
+    + '<span style="font-size:11px;font-weight:600;color:' + info[2] + '">' + info[1] + '</span>';
+}
+
+// ── Prompt Client ID ─────────────────────────────────────────────
+function gShowClientIdPrompt() {
+  var existing = document.getElementById("g-clientid-modal");
+  if (existing) existing.remove();
+  var div = document.createElement("div");
+  div.id = "g-clientid-modal";
+  div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px";
+  div.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
+    + '<div style="background:var(--g8);color:#fff;padding:14px 18px;font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:800">🔗 Connexion Google Drive</div>'
+    + '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
+    + '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.6;color:#92400e">'
+    + '<b>Configuration requise (une seule fois) :</b><br>'
+    + '1. Allez sur <a href="https://console.cloud.google.com" target="_blank" style="color:var(--g7)">console.cloud.google.com</a><br>'
+    + '2. Créez un projet → Activez <b>Google Drive API</b><br>'
+    + '3. Identifiants → Créer → <b>ID client OAuth 2.0</b> → Application Web<br>'
+    + '4. Origines autorisées : ajoutez <code style="background:#f0f0f0;padding:1px 4px;border-radius:3px">' + window.location.origin + '</code><br>'
+    + '5. Copiez l\'<b>ID client</b> ci-dessous</div>'
+    + '<div><label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray5);margin-bottom:4px">Client ID Google OAuth</label>'
+    + '<input id="g-cid-inp" type="text" value="' + (_gGetClientId()) + '" placeholder="XXXXXXXXX.apps.googleusercontent.com" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:7px;font-size:12px;font-family:monospace">'
+    + '</div></div>'
+    + '<div style="padding:10px 16px 16px;display:flex;gap:8px">'
+    + '<button onclick="document.getElementById(\'g-clientid-modal\').remove()" style="flex:1;padding:9px;background:var(--gray1);border:none;border-radius:7px;font-weight:700;cursor:pointer;color:var(--gray5)">Annuler</button>'
+    + '<button onclick="var v=document.getElementById(\'g-cid-inp\').value.trim();if(v){localStorage.setItem(\'mom_gClientId\',v);_G_CLIENT_ID=v;document.getElementById(\'g-clientid-modal\').remove();gConnectDrive();}" style="flex:2;padding:9px;background:var(--g7);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:Barlow Condensed,sans-serif;font-size:14px">🔗 Enregistrer et Connecter</button>'
+    + '</div></div>';
+  div.onclick = function(e){ if(e.target===div) div.remove(); };
+  document.body.appendChild(div);
+}
+
+// ── Panneau Drive dans la sidebar Compos ─────────────────────────
 // INIT — v7
 // Purge toutes les anciennes clés au démarrage
 ['sm5','sm6','sm7'].forEach(k=>{
