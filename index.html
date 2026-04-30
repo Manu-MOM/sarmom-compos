@@ -209,7 +209,6 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
 ::-webkit-scrollbar{width:4px}.sc-thumb{background:var(--g200);border-radius:2px}
 ::-webkit-scrollbar-thumb{background:var(--g200);border-radius:2px}
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -1085,7 +1084,9 @@ function impJSON(e){
       if(d.players&&d.players.length>0) S.players=d.players;
       sv();
       // Rafraîchir sans recharger la page (préserve la connexion Drive)
-      rdash();revents();rsettings();
+      // Vérifier si on revient d'un redirect OAuth
+_gCheckRedirectToken();
+rdash();revents();rsettings();
       alert('✅ Import réussi — '+( S.events.length)+' événements chargés');
     }catch(err){alert('Fichier invalide : '+err.message);}
   };
@@ -1324,61 +1325,75 @@ function renderEffectif(){
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// GOOGLE DRIVE — Sauvegarde automatique des Compos
+// GOOGLE DRIVE — Sauvegarde via OAuth2 implicit flow (redirect)
 // ═══════════════════════════════════════════════════════════════════
-var _gTokenClient  = null;
 var _gAccessToken  = null;
 var _gComposFileId = null;
 var _gDriveReady   = false;
 var _gSaveTimer    = null;
 var _G_FILE_NAME   = "sarmom_compos.json";
-var _G_FILE_ID    = ""; // Sera créé par l'app à la première connexion
-var _G_CLIENT_ID   = localStorage.getItem("sarmom_gClientId") || "";
+var _G_FILE_ID     = ""; // sera trouvé/créé à la connexion
+var _G_CLIENT_ID   = "";
 
 function _gGetClientId() {
   return localStorage.getItem("sarmom_gClientId") || _G_CLIENT_ID || "";
 }
 
-// ── Connexion ────────────────────────────────────────────────────
+// ── Connexion via redirect OAuth2 ────────────────────────────────
 function gConnectDrive() {
   var cid = _gGetClientId();
   if (!cid) { gShowClientIdPrompt(); return; }
-  // Attendre que GSI soit chargé (jusqu'à 5 secondes)
-  var tries = 0;
-  function tryConnect() {
-    if (window.google && google.accounts && google.accounts.oauth2) {
-      _gTokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: cid,
-        scope: "https://www.googleapis.com/auth/drive.file",
-        callback: function(resp) {
-          if (resp.error) {
-            console.error("GIS error:", resp);
-            gUpdateDriveStatus("error");
-            var se = document.getElementById("drive-status");
-            if(se) se.innerHTML = '<span style="color:#dc2626">❌ Erreur : '+( resp.error_description||resp.error)+'</span>';
-            return;
-          }
-          _gAccessToken = resp.access_token;
-          _gDriveReady = true;
-          gUpdateDriveStatus("connected");
-          var statusEl = document.getElementById("drive-status");
-          if(statusEl) statusEl.innerHTML = '<span style="color:var(--cg)">✅ Connecté — sauvegarde automatique active</span>';
-          _gFindOrCreateFile();
-        }
-      });
-      _gTokenClient.requestAccessToken({prompt: _gAccessToken ? "none" : ""});
-    } else if (tries++ < 20) {
-      setTimeout(tryConnect, 250);
-    } else {
-      alert("Google Identity Services non chargé.\nVérifiez votre connexion internet et rechargez la page.");
-    }
+
+  // Vérifier si on a déjà un token valide en localStorage
+  var saved = localStorage.getItem("sarmom_gtoken");
+  var savedExp = parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
+  if (saved && Date.now() < savedExp) {
+    _gAccessToken = saved;
+    _gDriveReady = true;
+    gUpdateDriveStatus("connected");
+    _gFindOrCreateFile();
+    return;
   }
-  tryConnect();
+
+  // Lancer le flux OAuth2 implicit (redirect)
+  var redirectUri = window.location.origin + window.location.pathname;
+  var params = new URLSearchParams({
+    client_id: cid,
+    redirect_uri: redirectUri,
+    response_type: "token",
+    scope: "https://www.googleapis.com/auth/drive.file",
+    include_granted_scopes: "true",
+    state: "drive_auth"
+  });
+  window.location.href = "https://accounts.google.com/o/oauth2/v2/auth?" + params.toString();
+}
+
+// ── Récupérer le token depuis le hash URL après redirect ─────────
+function _gCheckRedirectToken() {
+  var hash = window.location.hash;
+  if (!hash || hash.indexOf("access_token") < 0) return;
+  var params = new URLSearchParams(hash.substring(1));
+  var token = params.get("access_token");
+  var expiresIn = parseInt(params.get("expires_in") || "3600");
+  if (token) {
+    _gAccessToken = token;
+    _gDriveReady = true;
+    // Sauvegarder le token (expire dans expiresIn secondes)
+    localStorage.setItem("sarmom_gtoken", token);
+    localStorage.setItem("sarmom_gtoken_exp", String(Date.now() + expiresIn * 1000 - 60000));
+    // Nettoyer le hash de l'URL
+    history.replaceState(null, "", window.location.pathname);
+    gUpdateDriveStatus("connected");
+    var statusEl = document.getElementById("drive-status");
+    if(statusEl) statusEl.innerHTML = "<span style=\"color:var(--cg)\">✅ Connecté — sauvegarde automatique active</span>";
+    _gFindOrCreateFile();
+  }
 }
 
 function gDisconnectDrive() {
-  if (_gAccessToken && window.google) google.accounts.oauth2.revoke(_gAccessToken);
-  _gAccessToken = null; _gComposFileId = null; _gDriveReady = false; window._gtoken = "";
+  _gAccessToken = null; _gComposFileId = null; _gDriveReady = false;
+  localStorage.removeItem("sarmom_gtoken");
+  localStorage.removeItem("sarmom_gtoken_exp");
   gUpdateDriveStatus("disconnected");
 }
 
@@ -1393,54 +1408,29 @@ function _gFindOrCreateFile() {
   .then(function(data) {
     if (data.files && data.files.length > 0) {
       _gComposFileId = data.files[0].id;
-      _gLoadFromDrive(); // Charger les données existantes
+      gUpdateDriveStatus("connected");
     } else {
-      _gUploadFile(null, function(){ gUpdateDriveStatus("connected"); }); // Créer le fichier
+      _gUploadFile(S, function(){ gUpdateDriveStatus("connected"); });
     }
   })
-  .catch(function(){ gUpdateDriveStatus("error"); });
-}
-
-// ── Charger depuis Drive ─────────────────────────────────────────
-function _gLoadFromDrive() {
-  if (!_gComposFileId || !_gAccessToken) return;
-  gUpdateDriveStatus("syncing");
-  fetch("https://www.googleapis.com/drive/v3/files/" + _gComposFileId + "?alt=media", {
-    headers: { Authorization: "Bearer " + _gAccessToken }
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (data && data.events !== undefined) {
-      // Fusionner avec localStorage : Drive gagne si plus récent
-      var local = _cLoad();
-      var driveEvents = (data.events||[]).length;
-      var localEvents = (local.events||[]).length;
-      if (driveEvents >= localEvents) {
-        _CS = data;
-        localStorage.setItem(_CS_KEY, JSON.stringify(_CS));
-      }
-    }
-    gUpdateDriveStatus("connected");
-    if (_cEditorOpen || _composView) renderCompos();
-  })
-  .catch(function(){ gUpdateDriveStatus("error"); });
+  .catch(function(e){ console.error("Find file error:", e); gUpdateDriveStatus("error"); });
 }
 
 // ── Sauvegarder vers Drive ────────────────────────────────────────
 function _gSaveCompos() {
   clearTimeout(_gSaveTimer);
   _gSaveTimer = setTimeout(function() {
-    if (!_gAccessToken || !_CS) return;
+    if (!_gAccessToken || !S) return;
     _gUploadFile(S, function(ok) {
       gUpdateDriveStatus(ok ? "saved" : "error");
       setTimeout(function(){ gUpdateDriveStatus("connected"); }, 2000);
     });
-  }, 1500); // Délai pour grouper les saves rapides
+  }, 1500);
 }
 
 function _gUploadFile(data, cb) {
   if (!_gAccessToken) { if(cb) cb(false); return; }
-  var fileId = _G_FILE_ID;
+  var fileId = _gComposFileId || _G_FILE_ID;
   var body = JSON.stringify(data);
   var boundary = "sarmom_boundary";
   var meta = JSON.stringify({name: _G_FILE_NAME, mimeType: "application/json"});
@@ -1460,74 +1450,45 @@ function _gUploadFile(data, cb) {
     body: payload
   }).then(function(r){ return r.json(); })
   .then(function(d){
-    if (d.id) { _gComposFileId = d.id; if(cb) cb(true); gUpdateDriveStatus("saved"); }
-    else { console.error("Drive error:", d); if(cb) cb(false); gUpdateDriveStatus("error"); }
-  }).catch(function(e){ console.error("Drive fetch error:", e); if(cb) cb(false); gUpdateDriveStatus("error"); });
+    if (d.id) { _gComposFileId = d.id; if(cb) cb(true); }
+    else { console.error("Drive upload error:", d); if(cb) cb(false); }
+  }).catch(function(e){ console.error("Drive fetch error:", e); if(cb) cb(false); });
 }
 
-// ── Interface statut Drive ────────────────────────────────────────
-function gUpdateDriveStatus(status) {
+// ── Statut Drive ──────────────────────────────────────────────────
+function gUpdateDriveStatus(status){
   var el = document.getElementById("g-drive-status") || document.getElementById("drive-status");
   if (!el) return;
-  var icons = {
-    disconnected: ["⚪","Non connecté","var(--gray5)"],
-    connected:    ["🟢","Connecté — synchronisé","#16a34a"],
+  var map = {
+    disconnected: ["⚪","Non connecté","var(--g400)"],
+    connected:    ["🟢","Connecté — sauvegarde auto","#16a34a"],
     syncing:      ["🔄","Synchronisation…","#d97706"],
     saved:        ["✅","Sauvegardé sur Drive","#16a34a"],
-    error:        ["🔴","Erreur de connexion","#dc2626"]
+    error:        ["🔴","Erreur Drive","#dc2626"]
   };
-  var info = icons[status] || icons.disconnected;
-  el.innerHTML = '<span style="font-size:14px">' + info[0] + '</span>'
-    + '<span style="font-size:11px;font-weight:600;color:' + info[2] + '">' + info[1] + '</span>';
+  var info = map[status] || map.disconnected;
+  el.innerHTML = "<span style=\"font-size:13px\">" + info[0] + "</span> <span style=\"font-size:11px;font-weight:600;color:" + info[2] + "\">" + info[1] + "</span>";
 }
 
-// ── Prompt Client ID ─────────────────────────────────────────────
 function gShowClientIdPrompt() {
   var existing = document.getElementById("g-clientid-modal");
   if (existing) existing.remove();
   var div = document.createElement("div");
   div.id = "g-clientid-modal";
   div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px";
-  div.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
-    + '<div style="background:var(--g8);color:#fff;padding:14px 18px;font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:800">🔗 Connexion Google Drive</div>'
-    + '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
-    + '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.6;color:#92400e">'
-    + '<b>Configuration requise (une seule fois) :</b><br>'
-    + '1. Allez sur <a href="https://console.cloud.google.com" target="_blank" style="color:var(--g7)">console.cloud.google.com</a><br>'
-    + '2. Créez un projet → Activez <b>Google Drive API</b><br>'
-    + '3. Identifiants → Créer → <b>ID client OAuth 2.0</b> → Application Web<br>'
-    + '4. Origines autorisées : ajoutez <code style="background:#f0f0f0;padding:1px 4px;border-radius:3px">' + window.location.origin + '</code><br>'
-    + '5. Copiez l\'<b>ID client</b> ci-dessous</div>'
-    + '<div><label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray5);margin-bottom:4px">Client ID Google OAuth</label>'
-    + '<input id="g-cid-inp" type="text" value="' + (_gGetClientId()) + '" placeholder="XXXXXXXXX.apps.googleusercontent.com" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:7px;font-size:12px;font-family:monospace">'
-    + '</div></div>'
-    + '<div style="padding:10px 16px 16px;display:flex;gap:8px">'
-    + '<button onclick="document.getElementById(\'g-clientid-modal\').remove()" style="flex:1;padding:9px;background:var(--gray1);border:none;border-radius:7px;font-weight:700;cursor:pointer;color:var(--gray5)">Annuler</button>'
-    + '<button onclick="var v=document.getElementById(\'g-cid-inp\').value.trim();if(v){localStorage.setItem(\'sarmom_gClientId\',v);_G_CLIENT_ID=v;document.getElementById(\'g-clientid-modal\').remove();gConnectDrive();}" style="flex:2;padding:9px;background:var(--g7);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:Barlow Condensed,sans-serif;font-size:14px">🔗 Enregistrer et Connecter</button>'
-    + '</div></div>';
+  div.innerHTML = "<div style=\"background:#fff;border-radius:14px;max-width:500px;width:100%;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)\">"
+    + "<div style=\"background:var(--c1);color:#fff;padding:14px 18px;font-family:var(--fd);font-size:16px;font-weight:800\">🔗 Connexion Google Drive</div>"
+    + "<div style=\"padding:16px;display:flex;flex-direction:column;gap:12px\">"
+    + "<div><label style=\"display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:4px\">Client ID Google OAuth</label>"
+    + "<input id=\"g-cid-inp\" type=\"text\" value=\"" + _gGetClientId() + "\" placeholder=\"XXXXXXXXX.apps.googleusercontent.com\" style=\"width:100%;padding:8px 10px;border:1.5px solid var(--g200);border-radius:7px;font-size:12px;font-family:monospace\"></div>"
+    + "<div style=\"font-size:11px;color:var(--g600);background:var(--g50);padding:8px;border-radius:6px;line-height:1.6\">ℹ️ Après avoir cliqué Connecter, vous serez redirigé vers Google puis ramené sur l\'app automatiquement.</div>"
+    + "</div>"
+    + "<div style=\"padding:10px 16px 16px;display:flex;gap:8px\">"
+    + "<button onclick=\"document.getElementById(\'g-clientid-modal\').remove()\" style=\"flex:1;padding:9px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer;color:var(--g600)\">Annuler</button>"
+    + "<button onclick=\"var v=document.getElementById(\'g-cid-inp\').value.trim();if(v){localStorage.setItem(\'sarmom_gClientId\',v);document.getElementById(\'g-clientid-modal\').remove();gConnectDrive();}\" style=\"flex:2;padding:9px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd);font-size:14px\">🔗 Connecter Drive</button>"
+    + "</div></div>";
   div.onclick = function(e){ if(e.target===div) div.remove(); };
   document.body.appendChild(div);
 }
 
-// ── Panneau Drive dans la sidebar Compos ─────────────────────────
-// INIT — v7
-// Purge toutes les anciennes clés au démarrage
-// Purge uniquement les anciennes clés sm5/sm6 obsolètes
-['sm5','sm6'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
-// Purge sm7 seulement si les joueurs sont manquants (jamais sur les événements)
-try{
-  const _d=JSON.parse(localStorage.getItem('sm7')||'null');
-  if(_d && (_d.players||[]).length<60){ localStorage.removeItem('sm7'); }
-}catch(e){ localStorage.removeItem('sm7'); }
-// Recharger S avec données fraîches si nécessaire
-if(S.players.length<60){
-  S.players=INIT_PL;
-}
-(function(){
-  const ns=document.getElementById("nav-sub-txt");
-  if(ns&&S.settings.season) ns.textContent=`Entente M14 · Saison ${S.settings.season}`;
-})();
-rdash();revents();
-</script>
-</body>
-</html>
+>
