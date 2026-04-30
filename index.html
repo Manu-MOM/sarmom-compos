@@ -848,11 +848,11 @@ function renderPool(){
     return true;
   }).sort((a,b)=>`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`));
   pool.innerHTML=ps.map(p=>{
-    const used=resolved.includes(p.id);
+    const used=resolved.map(String).includes(String(p.id));
     const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ</span>`:"";
     const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:9px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
-    return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" onclick='${used?"":"pickD("+p.id+")"}'  ><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
+    return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" onclick='${used?"":"pickD(\'"+(p.id)+"\')"}'  ><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
   }).join("");
 }
 
@@ -860,13 +860,13 @@ function renderSlots(){
   const resolved=getEditable();const Ps=postes(curEV);const ss2=subsStart(curEV);
   const ss=document.getElementById("slots-s");const sr=document.getElementById("slots-r");if(!ss)return;
   ss.innerHTML=Array.from({length:ss2},(_,i)=>{
-    const pid=resolved[i];const pl=pid?S.players.find(p=>p.id===pid):null;const ovr=isOverridden(i);
+    const pid=resolved[i];const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;const ovr=isOverridden(i);
     const tags=pl?pl.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join(""):"";
     const photoHtml=pl&&pl.photo?`<div class="sav"><img src="${pl.photo}"></div>`:"";
     return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?'':'openPick('+i+')'}" style="cursor:${pl?"default":"pointer"}"><div class="snum">${i+1}</div><div class="spos">${Ps[i]||""}</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"Cliquer…"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px">${tags}</div>${pl?`<button class="srm" onclick="rmSlot(${i})">×</button>`:""}</div>`;
   }).join("");
   sr.innerHTML=Array.from({length:lineupSize(curEV)-ss2},(_,i)=>{
-    const idx=i+ss2;const pid=resolved[idx];const pl=pid?S.players.find(p=>p.id===pid):null;const ovr=isOverridden(idx);
+    const idx=i+ss2;const pid=resolved[idx];const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;const ovr=isOverridden(idx);
     const photoHtml=pl&&pl.photo?`<div class="sav"><img src="${pl.photo}"></div>`:"";
     return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?'':'openPick('+idx+')'}" style="cursor:${pl?"default":"pointer"}"><div class="snum sub">${idx+1}</div><div class="spos">Remplaçant</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"—"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px"></div>${pl?`<button class="srm" onclick="rmSlot(${idx})">×</button>`:""}</div>`;
   }).join("");
@@ -895,7 +895,7 @@ function drawField(){
   const m=getMatches(curEV).find(m=>m.id===curMID);
   let h=`<rect width="520" height="700" fill="#2d7a3a"/>${[0,1,2,3,4,5,6].map(i=>`<rect x="28" y="${36+i*95}" width="464" height="47.5" fill="rgba(0,0,0,${i%2?.05:0})"/>`).join("")}<rect x="28" y="36" width="464" height="628" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><line x1="28" y1="100" x2="492" y2="100" stroke="rgba(255,255,255,.35)" stroke-width="1"/><line x1="28" y1="600" x2="492" y2="600" stroke="rgba(255,255,255,.35)" stroke-width="1"/><line x1="28" y1="350" x2="492" y2="350" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/><circle cx="260" cy="350" r="30" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1"/><line x1="28" y1="192" x2="492" y2="192" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="5,4"/><line x1="28" y1="508" x2="492" y2="508" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="5,4"/><line x1="218" y1="600" x2="218" y2="645" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="302" y1="600" x2="302" y2="645" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="218" y1="628" x2="302" y2="628" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="260" y1="628" x2="260" y2="665" stroke="rgba(255,255,200,.6)" stroke-width="2"/><line x1="218" y1="100" x2="218" y2="55" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="302" y1="100" x2="302" y2="55" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="218" y1="72" x2="302" y2="72" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="260" y1="72" x2="260" y2="36" stroke="rgba(255,255,200,.6)" stroke-width="2"/><text x="260" y="22" fill="rgba(255,255,255,.45)" font-size="10" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" letter-spacing=".12em">${team?.label||""} — ${curMode==="base"?"BASE":"vs "+m?.adv||"?"}${isS?" (7)":""}</text>`;
   resolved.slice(0,subsStart(curEV)).forEach((pid,i)=>{
-    const pl=pid?S.players.find(p=>p.id===pid):null;const pos={x:xy[i]?.x||260,y:xy[i]?.y||350};const ovr=isOverridden(i);
+    const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;const pos={x:xy[i]?.x||260,y:xy[i]?.y||350};const ovr=isOverridden(i);
     h+=`<g style="cursor:pointer" onclick="openPick(${i})"><circle r="29" cx="${pos.x}" cy="${pos.y}" fill="${pl?c1:"rgba(0,0,0,.3)"}" stroke="${ovr?"#f97316":pl?c2:"rgba(255,255,255,.3)"}" stroke-width="${pl?2:1.5}" stroke-dasharray="${pl?"none":"5,4"}"/>`;
     if(pl&&pl.photo){h+=`<defs><clipPath id="cp${i}"><circle cx="${pos.x}" cy="${pos.y}" r="27"/></clipPath></defs><image href="${pl.photo}" x="${pos.x-27}" y="${pos.y-27}" width="54" height="54" clip-path="url(#cp${i})" preserveAspectRatio="xMidYMid slice" opacity="0.75"/><text x="${pos.x}" y="${pos.y+22}" fill="white" font-size="7.5" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700">${(pl.p[0]+"."+pl.n).slice(0,12)}</text>`;}
     else if(pl){h+=`<text x="${pos.x}" y="${pos.y-7}" fill="${c2}" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,sans-serif">${i+1}</text><text x="${pos.x}" y="${pos.y+8}" fill="white" font-size="7.5" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="600">${(pl.p[0]+"."+pl.n).slice(0,12)}</text>`;}
@@ -920,7 +920,7 @@ function drawExport(){
   const coaches=S.coaches||[];
 
   function playerCard(pid,i,isSub){
-    const pl=pid?S.players.find(p=>p.id===pid):null;
+    const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
     const fwd=i<8;
     const photoContent=pl?.photo?`<img src="${pl.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:${isSub?"8":"10"}px;font-weight:700;color:rgba(255,255,255,.35)">${pl?(pl.p[0]+pl.n[0]):""}</div>`;
     if(!isSub){return`<div class="exp-player ${fwd?"fwd":"bck"}"><div class="exp-pnum">${i+1}</div><div class="exp-pphoto ${pl?.photo?"":"no-photo"}">${photoContent}</div><div class="exp-pinfo"><div class="exp-pfname">${pl?pl.n:"À définir"}</div><div style="color:rgba(255,255,255,.5);font-size:8px;font-weight:600">${pl?.p||""}</div><div class="exp-ppos">${Ps[i]||""}</div>${pl?`<span class="exp-pclub exp-pclub-${pl.club}">${pl.club}</span>`:""}</div></div>`;}
@@ -967,8 +967,8 @@ function copyC(){
   const score=curMID&&curEV.scores?.[curMID];const sv2=score?.f!=null?` · Score: ${score.f}-${score.a}`:"";
   const mStr=curMode==="base"?"COMPO DE BASE":`vs ${m?.adv||"?"}${m?.phaseName?" ("+m.phaseName+")":""}${sv2}`;
   const lines=[`🏉 ${S.settings.name||"SAR×MOM M14"} — ${team?.label||""}`,`${curEV.name} · ${mStr} · ${fd(curEV.date)} · ${curEV.lieu}`,"","🟦 TITULAIRES"];
-  resolved.slice(0,ss2).forEach((pid,i)=>{const pl=pid?S.players.find(p=>p.id===pid):null;lines.push(`${i+1}. ${pl?pl.p+" "+pl.n:"—"} — ${Ps[i]}`)});
-  lines.push("","⬜ REMPLAÇANTS");resolved.slice(ss2).forEach((pid,i)=>{const pl=pid?S.players.find(p=>p.id===pid):null;if(pl)lines.push(`${i+ss2+1}. ${pl.p} ${pl.n}`)});
+  resolved.slice(0,ss2).forEach((pid,i)=>{const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;lines.push(`${i+1}. ${pl?pl.p+" "+pl.n:"—"} — ${Ps[i]}`)});
+  lines.push("","⬜ REMPLAÇANTS");resolved.slice(ss2).forEach((pid,i)=>{const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;if(pl)lines.push(`${i+ss2+1}. ${pl.p} ${pl.n}`)});
   if(S.coaches?.length){lines.push("","👔 STAFF");S.coaches.forEach(c=>lines.push(`${c.role} : ${c.name}`));}
   navigator.clipboard.writeText(lines.join("\n")).then(()=>{const b=document.querySelector(".exp-copy-btn");const o=b.textContent;b.textContent="✓ Copié !";setTimeout(()=>b.textContent=o,2000);});
 }
@@ -1000,7 +1000,7 @@ function rplayers(){
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ${p.injTo?" → "+new Date(p.injTo).toLocaleDateString("fr-FR",{day:"numeric",month:"short"}):""} </span>`:"";
     const photoContent=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:14px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
     return`<div class="pc ${p.inj?"injured":""}" onclick="openPM(${p.id})">
-      ${p.inj?'<div class="inj-overlay"><span class="inj-badge">🏥 BLESSÉ</span></div>':""}<div class="pch"><div class="pcav" style="background:${cc[p.club]||"#374151"};color:#fff">${photoContent}</div><div style="flex:1"><div class="pcn">${p.p} ${p.n}</div><div class="pcc"><span style="background:${(cc[p.club]||"#374151")+"22"};color:${cc[p.club]||"#374151"};padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">${p.club}</span> ${p.cat}</div></div><div class="pcnum">${p.id}</div></div>
+      ${p.inj?'<div class="inj-overlay"><span class="inj-badge">🏥 BLESSÉ</span></div>':""}<div class="pch"><div class="pcav" style="background:${cc[p.club]||"#374151"};color:#fff">${photoContent}</div><div style="flex:1"><div class="pcn">${p.p} ${p.n}</div><div class="pcc"><span style="background:${(cc[p.club]||"#374151")+"22"};color:${cc[p.club]||"#374151"};padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">${p.club}</span> ${p.cat}</div></div><div class="pcnum" style="font-size:11px;color:var(--g400)">${typeof p.id==="number"?p.id:(String(p.id).split("_").pop()||"")}</div></div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">${pb||'<span style="font-size:10px;color:var(--g400)">Postes non définis</span>'}</div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">${tags}</div>
       <div style="display:flex;gap:3px;flex-wrap:wrap">${jddLbl}${arbLbl}${injLbl}</div>
@@ -1010,7 +1010,7 @@ function rplayers(){
 function renderPlayers(){rplayers();}
 
 function openPM(id=null){
-  const p=id?S.players.find(p=>p.id===id):null;
+  const p=id?S.players.find(p=>String(p.id)===String(id)):null;
   document.getElementById("mp-title").textContent=p?`${p.p} ${p.n}`:"Nouveau joueur";
   document.getElementById("mp-id").value=id||"";
   document.getElementById("mp-p").value=p?.p||"";document.getElementById("mp-n").value=p?.n||"";
@@ -1031,7 +1031,7 @@ function openPM(id=null){
 function toggleInjForm(){const inj=document.getElementById("mp-inj").checked;document.getElementById("mp-inj-fields").style.display=inj?"block":"none";}
 function loadPhoto(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{const data=e.target.result;document.getElementById("mp-photo-data").value=data;const preview=document.getElementById("mp-photo-preview");preview.src=data;preview.style.display="block";document.getElementById("mp-photo-placeholder").style.display="none";};r.readAsDataURL(file);}
 function savePl(){
-  const id=parseInt(document.getElementById("mp-id").value)||null;
+  const id=document.getElementById("mp-id").value||null;
   const apt=[...document.querySelectorAll("#mp-apts input:checked")].map(i=>i.value);
   const data={p:document.getElementById("mp-p").value.trim(),n:document.getElementById("mp-n").value.trim().toUpperCase(),club:document.getElementById("mp-club").value,cat:document.getElementById("mp-cat").value,pos:document.getElementById("mp-pos").value.split(",").map(s=>s.trim()).filter(Boolean),h:parseFloat(document.getElementById("mp-h").value)||null,w:parseFloat(document.getElementById("mp-w").value)||null,apt,jdd:document.getElementById("mp-jdd").value,arb:document.getElementById("mp-arb").value,inj:document.getElementById("mp-inj").checked,injNat:document.getElementById("mp-inj-nat").value,injFrom:document.getElementById("mp-inj-from").value,injTo:document.getElementById("mp-inj-to").value,photo:document.getElementById("mp-photo-data").value};
   if(id){const p=S.players.find(p=>p.id===id);Object.assign(p,data);}else{S.players.push({id:Math.max(0,...S.players.map(p=>p.id))+1,...data});}
@@ -1197,12 +1197,12 @@ function exportMatchSheet(evId){
       const resolved=getResolved(ev,tid,m.id);
       h+=`<div class="team-section"><div class="team-lbl">${team.label}</div><div class="players-grid">`;
       resolved.slice(0,ss).forEach((pid,i)=>{
-        const pl=pid?S.players.find(p=>p.id===pid):null;
+        const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
         const fwd=i<8;
         h+=`<div class="player-row ${fwd?"fwd":"bck"}"><div class="pnum ${fwd?"fwd":"bck"}">${i+1}</div><div class="pname">${pl?(pl.n||"").toUpperCase()+" "+(pl.p||"")[0]+".":"—"}${pl&&pl.inj?' <span style="font-size:7px;background:#fee2e2;color:#dc2626;padding:0 3px;border-radius:2px">BL.</span>':""}</div><div class="ppos">${Ps[i]||""}</div></div>`;
       });
       resolved.slice(ss).forEach((pid,i)=>{
-        const pl=pid?S.players.find(p=>p.id===pid):null;
+        const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
         if(!pl)return;
         h+=`<div class="player-row sub"><div class="pnum sub">${ss+i+1}</div><div class="pname">${(pl.n||"").toUpperCase()} ${(pl.p||"")[0]}.</div><div class="ppos">Rem.</div></div>`;
       });
