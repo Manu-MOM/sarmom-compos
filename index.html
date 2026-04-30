@@ -1316,6 +1316,7 @@ var _gComposFileId = null;
 var _gDriveReady   = false;
 var _gSaveTimer    = null;
 var _G_FILE_NAME   = "sarmom_compos.json";
+var _G_FILE_ID    = "14b7F5Dv6T9YZ0AZyFe0KdZ03CzynNVV7"; // ID fixe Drive
 var _G_CLIENT_ID   = localStorage.getItem("sarmom_gClientId") || "";
 
 function _gGetClientId() {
@@ -1411,20 +1412,30 @@ function _gSaveCompos() {
 }
 
 function _gUploadFile(data, cb) {
-  var content = JSON.stringify(data || _CS || {});
-  var blob = new Blob([content], {type:"application/json"});
-  var meta = JSON.stringify({name: _G_FILE_NAME, mimeType:"application/json"});
-  var fd = new FormData();
-  fd.append("metadata", new Blob([meta], {type:"application/json"}));
-  fd.append("file", blob);
-  var url = _gComposFileId
-    ? "https://www.googleapis.com/upload/drive/v3/files/" + _gComposFileId + "?uploadType=multipart"
+  if (!_gAccessToken) { if(cb) cb(false); return; }
+  var fileId = _G_FILE_ID;
+  var body = JSON.stringify(data);
+  var boundary = "sarmom_boundary";
+  var meta = JSON.stringify({name: _G_FILE_NAME, mimeType: "application/json"});
+  var payload = "--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
+    + meta + "\r\n--" + boundary + "\r\nContent-Type: application/json\r\n\r\n"
+    + body + "\r\n--" + boundary + "--";
+  var url = fileId
+    ? "https://www.googleapis.com/upload/drive/v3/files/" + fileId + "?uploadType=multipart"
     : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
-  var method = _gComposFileId ? "PATCH" : "POST";
-  fetch(url, { method:method, headers:{Authorization:"Bearer "+_gAccessToken}, body:fd })
-  .then(function(r){ return r.json(); })
-  .then(function(d){ if (!_gComposFileId && d.id) _gComposFileId = d.id; if(cb) cb(true); })
-  .catch(function(){ if(cb) cb(false); });
+  var method = fileId ? "PATCH" : "POST";
+  fetch(url, {
+    method: method,
+    headers: {
+      "Authorization": "Bearer " + _gAccessToken,
+      "Content-Type": "multipart/related; boundary=" + boundary
+    },
+    body: payload
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d.id) { _gComposFileId = d.id; if(cb) cb(true); gUpdateDriveStatus("saved"); }
+    else { console.error("Drive error:", d); if(cb) cb(false); gUpdateDriveStatus("error"); }
+  }).catch(function(e){ console.error("Drive fetch error:", e); if(cb) cb(false); gUpdateDriveStatus("error"); });
 }
 
 // ── Interface statut Drive ────────────────────────────────────────
