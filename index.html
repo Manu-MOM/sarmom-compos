@@ -1485,14 +1485,13 @@ function gShowClientIdPrompt() {
 // ── Panneau Drive dans la sidebar Compos ─────────────────────────
 // INIT — v7
 // Purge toutes les anciennes clés au démarrage
-['sm5','sm6','sm7'].forEach(k=>{
-  try{
-    const d=JSON.parse(localStorage.getItem(k)||'null');
-    if(d&&((d.players||[]).length<60||(d.events||[]).length<7)){
-      localStorage.removeItem(k);
-    }
-  }catch(e){ localStorage.removeItem(k); }
-});
+// Purge uniquement les anciennes clés sm5/sm6 obsolètes
+['sm5','sm6'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+// Purge sm7 seulement si les joueurs sont manquants (jamais sur les événements)
+try{
+  const _d=JSON.parse(localStorage.getItem('sm7')||'null');
+  if(_d && (_d.players||[]).length<60){ localStorage.removeItem('sm7'); }
+}catch(e){ localStorage.removeItem('sm7'); }
 // Recharger S avec données fraîches si nécessaire
 if(S.players.length<60){
   S.players=INIT_PL;
