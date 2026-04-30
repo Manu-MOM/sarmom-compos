@@ -852,7 +852,7 @@ function renderPool(){
     const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ</span>`:"";
     const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:9px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
-    return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" onclick='${used?"":"pickD(\'"+(p.id)+"\')"}'  ><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
+    return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" data-pid="${p.id}" onclick="if(!this.classList.contains('used'))pickD(this.dataset.pid)"><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
   }).join("");
 }
 
@@ -880,7 +880,7 @@ function renderPick(){
   const kw=(curSlot<subsStart(curEV)?Ps[curSlot]||"":"").split(" ")[0].toLowerCase();
   let ps=S.players.filter(p=>!resolved.includes(p.id)&&(!s||`${p.p} ${p.n}`.toLowerCase().includes(s)));
   ps.sort((a,b)=>{const am=a.pos.some(pp=>pp.toLowerCase().includes(kw));const bm=b.pos.some(pp=>pp.toLowerCase().includes(kw));if(am&&!bm)return -1;if(!am&&bm)return 1;return`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`)});
-  document.getElementById("mpk-list").innerHTML=ps.map(p=>{const m2=p.pos.some(pp=>pp.toLowerCase().includes(kw));const tags=p.apt.slice(0,3).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:10px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;return`<div class="pi ${m2?"mp":""} ${p.inj?"inj":""}" onclick='${p.inj?"":"assignPick("+p.id+")"}' ><div class="pav">${photoHtml}</div><div style="flex:1"><div style="font-size:12px;font-weight:500">${p.p} ${p.n} ${m2?'<span style="color:var(--cg);font-size:9px">✓</span>':""}</div><div style="font-size:9px;color:var(--g400)">${p.pos.slice(0,2).join(", ")||"—"}</div></div><div style="display:flex;gap:2px">${tags}${p.inj?'<span class="inj-badge">blessé</span>':""}</div></div>`;
+  document.getElementById("mpk-list").innerHTML=ps.map(p=>{const m2=p.pos.some(pp=>pp.toLowerCase().includes(kw));const tags=p.apt.slice(0,3).map(a=>`<span class="tag tag-${a.toLowerCase()}">${a}</span>`).join("");const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:10px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;return`<div class="pi ${m2?"mp":""} ${p.inj?"inj":""}" data-pid="${p.id}" onclick="if(!p.inj)assignPick(this.dataset.pid)"  ><div class="pav">${photoHtml}</div><div style="flex:1"><div style="font-size:12px;font-weight:500">${p.p} ${p.n} ${m2?'<span style="color:var(--cg);font-size:9px">✓</span>':""}</div><div style="font-size:9px;color:var(--g400)">${p.pos.slice(0,2).join(", ")||"—"}</div></div><div style="display:flex;gap:2px">${tags}${p.inj?'<span class="inj-badge">blessé</span>':""}</div></div>`;
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
@@ -999,7 +999,7 @@ function rplayers(){
     const arbLbl=p.arb==="oui"?`<span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">ARB ✓</span>`:"";
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ${p.injTo?" → "+new Date(p.injTo).toLocaleDateString("fr-FR",{day:"numeric",month:"short"}):""} </span>`:"";
     const photoContent=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:14px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
-    return`<div class="pc ${p.inj?"injured":""}" onclick="openPM(${p.id})">
+    return`<div class="pc ${p.inj?"injured":""}" onclick="openPM('${p.id}')">
       ${p.inj?'<div class="inj-overlay"><span class="inj-badge">🏥 BLESSÉ</span></div>':""}<div class="pch"><div class="pcav" style="background:${cc[p.club]||"#374151"};color:#fff">${photoContent}</div><div style="flex:1"><div class="pcn">${p.p} ${p.n}</div><div class="pcc"><span style="background:${(cc[p.club]||"#374151")+"22"};color:${cc[p.club]||"#374151"};padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">${p.club}</span> ${p.cat}</div></div><div class="pcnum" style="font-size:11px;color:var(--g400)">${typeof p.id==="number"?p.id:(String(p.id).split("_").pop()||"")}</div></div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">${pb||'<span style="font-size:10px;color:var(--g400)">Postes non définis</span>'}</div>
       <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">${tags}</div>
@@ -1071,7 +1071,26 @@ function updateTeam(id,val){const t=S.teams.find(t=>t.id===id);if(t)t.label=val;
 function delTeam(id){if(!confirm("Supprimer ?"))return;S.teams=S.teams.filter(t=>t.id!==id);sv();rsettings();}
 function addCoach(){if(!S.coaches)S.coaches=[];S.coaches.push({id:"c"+Date.now(),role:"",name:""});sv();rsettings();}
 function expJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="sarmom_compos.json";a.click();}
-function impJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{S=JSON.parse(ev.target.result);sv();location.reload();}catch{alert("Fichier invalide");}};r.readAsText(f);}
+function impJSON(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      // Fusionner: garder les joueurs locaux, prendre les events/settings du JSON
+      if(d.events) S.events=d.events;
+      if(d.settings) S.settings=d.settings;
+      if(d.teams) S.teams=d.teams;
+      if(d.coaches) S.coaches=d.coaches;
+      if(d.players&&d.players.length>0) S.players=d.players;
+      sv();
+      // Rafraîchir sans recharger la page (préserve la connexion Drive)
+      rdash();revents();rsettings();
+      alert('✅ Import réussi — '+( S.events.length)+' événements chargés');
+    }catch(err){alert('Fichier invalide : '+err.message);}
+  };
+  r.readAsText(f);
+}
 
 // MISC
 function cm(id){document.getElementById(id).classList.remove("open");}
