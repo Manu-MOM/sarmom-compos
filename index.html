@@ -846,6 +846,8 @@ function openEditor(eid,tid,mid,mode){
   const mStr=curMode==="base"?"Compo de base":`Match vs ${m?.adv||"?"}${m?.phaseName?" · "+m.phaseName:""}`;
   document.getElementById("ed-sub").textContent=`${fd(curEV.date)} · ${curEV.lieu} · ${mStr}`;
   renderEdBtns();renderPool();renderSlots();
+  // Si l'onglet Match est actif, le rafraîchir avec le nouveau match
+  if(curEVview==="match")renderMatchTab();
   // Switch to appropriate tab
   var targetTab=curMode==="base"?"liste":"match";
   var targetBtn=document.querySelector('.stab[onclick*="'+targetTab+'"]');
