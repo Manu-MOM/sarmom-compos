@@ -1713,6 +1713,43 @@ function _mExportRapportPDF(){
   if(!JPDF){alert("PDF non disponible - rechargez la page");return;}
   if(typeof html2canvas==="undefined"){alert("html2canvas non disponible");return;}
   var evName=(curEV?curEV.name.replace(/\s+/g,"_"):"match");
+  // Render terrain first if available
+  var svgEl=document.getElementById("field-svg");
+  var terrainCanvas=null;
+  function finalizePDF(pdf){
+    pdf.save("rapport_"+evName+".pdf");
+  }
+  function addTerrainAndSave(pdf){
+    if(!svgEl||!svgEl.innerHTML||svgEl.innerHTML.trim()===""){
+      finalizePDF(pdf);return;
+    }
+    try{
+      var svgStr=new XMLSerializer().serializeToString(svgEl);
+      var blob=new Blob([svgStr],{type:"image/svg+xml"});
+      var url=URL.createObjectURL(blob);
+      var img=new Image();
+      img.onload=function(){
+        var fc=document.createElement("canvas");
+        var vb=svgEl.viewBox.baseVal;
+        var sw=vb.width||520,sh=vb.height||700;
+        fc.width=sw*2;fc.height=sh*2;
+        var ctx=fc.getContext("2d");ctx.scale(2,2);
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,sw,sh);
+        ctx.drawImage(img,0,0,sw,sh);
+        URL.revokeObjectURL(url);
+        pdf.addPage("a4","portrait");
+        var pw2=pdf.internal.pageSize.getWidth();
+        var ph2=pdf.internal.pageSize.getHeight();
+        var fi=fc.toDataURL("image/png");
+        var fw=pw2,fh=pw2*(fc.height/fc.width);
+        var yo2=fh<ph2?(ph2-fh)/2:0;
+        pdf.addImage(fi,"PNG",0,yo2,fw,fh<ph2?fh:ph2);
+        finalizePDF(pdf);
+      };
+      img.onerror=function(){URL.revokeObjectURL(url);finalizePDF(pdf);};
+      img.src=url;
+    }catch(e){console.warn(e);finalizePDF(pdf);}
+  }
   html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
     var pdf=new JPDF({orientation:"portrait",unit:"mm",format:"a4"});
     var pw=pdf.internal.pageSize.getWidth();
@@ -1720,41 +1757,15 @@ function _mExportRapportPDF(){
     var imgData=canvas.toDataURL("image/png");
     var ratio=canvas.height/canvas.width;
     var imgH=pw*ratio;
-    // Page 1 : rapport
+    // Page 1 : rapport (portrait)
     if(imgH<=ph){
       pdf.addImage(imgData,"PNG",0,0,pw,imgH);
     } else {
       var y=0;
       while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(imgData,"PNG",0,-y,pw,imgH);y+=ph;}
     }
-    // Page 2 : terrain (si disponible et rendu)
-    var svgEl=document.getElementById("field-svg");
-    if(svgEl&&svgEl.innerHTML&&svgEl.innerHTML.trim()!==""){
-      try{
-        var svgStr=new XMLSerializer().serializeToString(svgEl);
-        var blob=new Blob([svgStr],{type:"image/svg+xml"});
-        var url=URL.createObjectURL(blob);
-        var img=new Image();
-        img.onload=function(){
-          var fc=document.createElement("canvas");
-          var vb=svgEl.viewBox.baseVal;
-          fc.width=(vb.width||520)*2;fc.height=(vb.height||700)*2;
-          var ctx=fc.getContext("2d");ctx.scale(2,2);
-          ctx.drawImage(img,0,0,vb.width||520,vb.height||700);
-          URL.revokeObjectURL(url);
-          pdf.addPage("a4","portrait");
-          var pw2=pdf.internal.pageSize.getWidth();
-          var fi=fc.toDataURL("image/png");
-          var fh=pw2*(fc.height/fc.width);
-          pdf.addImage(fi,"PNG",0,0,pw2,fh);
-          pdf.save("rapport_"+evName+".pdf");
-        };
-        img.onerror=function(){URL.revokeObjectURL(url);pdf.save("rapport_"+evName+".pdf");};
-        img.src=url;
-        return;
-      }catch(e){console.warn(e);}
-    }
-    pdf.save("rapport_"+evName+".pdf");
+    // Page 2 : terrain
+    addTerrainAndSave(pdf);
   });
 }
 
@@ -1939,24 +1950,21 @@ function uploadLogo(event){
 }
 
 function _initCustomLogo(){
-  // Load custom logo from settings if exists
+  var dataUrl;
   if(S.settings&&S.settings.customLogo){
     window._LOGO_SM=S.settings.customLogo;
-    var dataUrl="data:image/png;base64,"+S.settings.customLogo;
+    dataUrl="data:image/png;base64,"+S.settings.customLogo;
     window._LOGO_EXP_CUSTOM=dataUrl;
-    var navLogo=document.querySelector(".nav-logo");
-    if(navLogo)navLogo.src=dataUrl;
-    var img=document.getElementById("sett-logo-img");
-    if(img)img.src=dataUrl;
   } else {
-    // Use default _LOGO_SM
-    var defaultSrc=window._LOGO_SM?"data:image/png;base64,"+window._LOGO_SM:"";
-    var navLogo2=document.getElementById("nav-logo-img");
-    if(navLogo2&&defaultSrc)navLogo2.src=defaultSrc;
-    window._LOGO_EXP_CUSTOM=defaultSrc;
-    var img2=document.getElementById("sett-logo-img");
-    if(img2&&defaultSrc)img2.src=defaultSrc;
+    // Default: use LOGO_EXP (transparent) or _LOGO_SM
+    dataUrl=(typeof LOGO_EXP!=="undefined"&&LOGO_EXP)?LOGO_EXP:
+            (window._LOGO_SM?"data:image/png;base64,"+window._LOGO_SM:"");
+    window._LOGO_EXP_CUSTOM=dataUrl;
   }
+  var navLogo=document.getElementById("nav-logo-img");
+  if(navLogo&&dataUrl)navLogo.src=dataUrl;
+  var settImg=document.getElementById("sett-logo-img");
+  if(settImg&&dataUrl)settImg.src=dataUrl;
 }
 
 
