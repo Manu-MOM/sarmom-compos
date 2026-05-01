@@ -843,9 +843,18 @@ function openEditor(eid,tid,mid,mode){
   const mStr=curMode==="base"?"Compo de base":`Match vs ${m?.adv||"?"}${m?.phaseName?" · "+m.phaseName:""}`;
   document.getElementById("ed-sub").textContent=`${fd(curEV.date)} · ${curEV.lieu} · ${mStr}`;
   renderEdBtns();renderPool();renderSlots();
-  // Reset to liste tab
-  const listeBtn=document.querySelector('.stab[onclick*="liste"]');
-  if(listeBtn){document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));listeBtn.classList.add("active");["liste","terrain","export","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v==="liste"?"block":"none";});}
+  // Switch to appropriate tab
+  var targetTab=curMode==="base"?"liste":"match";
+  var targetBtn=document.querySelector('.stab[onclick*="'+targetTab+'"]');
+  if(targetBtn){
+    document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));
+    targetBtn.classList.add("active");
+    ["liste","terrain","export","match","rapport"].forEach(v=>{
+      const el=document.getElementById("ev-"+v);
+      if(el)el.style.display=v===targetTab?"block":"none";
+    });
+    if(targetTab==="match")renderMatchTab();
+  }
 }
 function renderEdBtns(){
   const matches=getMatches(curEV);
