@@ -973,7 +973,7 @@ function drawExport(){
   function playerCard(pid,i,isSub){
     const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
     const fwd=i<8;
-    const photoContent=pl?.photo?`<img src="${pl.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:${isSub?"8":"10"}px;font-weight:700;color:rgba(255,255,255,.35)">${pl?(pl.p[0]+pl.n[0]):""}</div>`;
+    const photoContent=pl?.photo?`<img src="${pl.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:${isSub?"8":"10"}px;font-weight:700;color:rgba(255,255,255,.35)">${pl?(pl.p[0]+pl.n[0]):""}</div>`;
     if(!isSub){return`<div class="exp-player ${fwd?"fwd":"bck"}"><div class="exp-pnum">${i+1}</div><div class="exp-pphoto ${pl?.photo?"":"no-photo"}">${photoContent}</div><div class="exp-pinfo"><div class="exp-pfname">${pl?pl.n:"À définir"}</div><div style="color:rgba(255,255,255,.5);font-size:8px;font-weight:600">${pl?.p||""}</div><div class="exp-ppos">${Ps[i]||""}</div>${pl?`<span class="exp-pclub exp-pclub-${pl.club}">${pl.club}</span>`:""}</div></div>`;}
     else{return`<div class="exp-sub-p"><div class="exp-snum">${i+1}</div><div class="exp-sphoto ${pl?.photo?"":"no-photo"}">${photoContent}</div><div class="exp-sfname">${pl?pl.n+" "+pl.p[0]:"—"}</div></div>`;}
   }
@@ -1405,21 +1405,24 @@ function _mPickPlayer(pid,name){
 function _mRefreshHistory(){
   var el=document.getElementById("m-history");if(!el||!_mActiveMatchId)return;
   var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
+  var c2=S.settings.c2||"#f0c500";
   var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
   var allEvts=[];
   (md.periods||[]).forEach(function(p,pi){if(p)(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
   allEvts.sort(function(a,b){return b.ts-a.ts;});
-  if(!allEvts.length){el.innerHTML='<div style="color:#9ca3af;text-align:center;padding:10px;font-size:12px">Aucun evenement</div>';return;}
+  if(!allEvts.length){el.innerHTML='<div style="color:rgba(255,255,255,.4);text-align:center;padding:12px;font-size:12px">Aucun événement</div>';return;}
   var pCount=cfg.periods||2;
   el.innerHTML=allEvts.map(function(e){
     var pL=pCount===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
-    var desc=e.type==="remplacement"?(e.outName+" <> "+e.inName):(e.forUs===false?_mActiveMatchAdv:e.name||"");
-    if(e.nat)desc+=" ("+e.nat+")";if(e.pts&&e.forUs!==false)desc+=" +"+e.pts;
-    return'<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid #f3f4f6">'
-      +'<span>'+(icons[e.type]||"•")+'</span>'
-      +'<span style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">'+pL+" "+e.min+"'</span>"
-      +'<span style="flex:1;color:#374151;font-size:11px">'+desc+'</span>'
-      +'</div>';
+    var desc=e.type==="remplacement"?(e.outName+" ↔ "+e.inName):(e.forUs===false?_mActiveMatchAdv:e.name||"");
+    if(e.nat)desc+=" ("+e.nat+")";
+    var pts=e.pts&&e.forUs!==false?" +"+e.pts:"";
+    return'<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04)">'
+      +'<span style="font-size:14px">'+(icons[e.type]||"•")+'</span>'
+      +'<span style="background:rgba(255,255,255,.08);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd);color:'+c2+';letter-spacing:.05em;white-space:nowrap">'+pL+" "+e.min+"'</span>"
+      +'<span style="flex:1;color:rgba(255,255,255,.7);font-size:12px;font-family:var(--fd);letter-spacing:.02em">'+desc+'</span>'
+      +(pts?'<span style="font-family:var(--fd);font-size:16px;color:'+c2+'">'+pts+'</span>':"")
+    +'</div>';
   }).join("");
 }
 
@@ -1452,122 +1455,224 @@ function _mResetActiveMatch(){clearInterval(_mTimer);_mRunning=false;_mActiveMat
 
 function renderMatchTab(){
   var el=document.getElementById("match-content");if(!el)return;
+  var c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
 
-  // Mode BASE : invitation à sélectionner un match
   if(!curMode||curMode==="base"){
-    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#9ca3af">'
-      +'<div style="font-size:36px;margin-bottom:12px">⏱</div>'
-      +'<div style="font-size:13px;font-weight:600;margin-bottom:6px">Sélectionnez un match</div>'
-      +'<div style="font-size:11px">Cliquez sur un adversaire dans la barre MODE<br>pour démarrer le suivi du match</div>'
+    el.innerHTML='<div style="font-family:var(--fd);background:#0a0a1a;border-radius:10px;text-align:center;padding:40px 20px;color:rgba(255,255,255,.4)">'
+      +'<div style="font-size:48px;margin-bottom:12px">⏱</div>'
+      +'<div style="font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Suivi de match</div>'
+      +'<div style="font-size:12px;opacity:.6">Sélectionnez un adversaire dans la barre MODE</div>'
       +'</div>';
     return;
   }
 
-  // Toujours synchro avec curMID
-  if(curMID&&curEV){
-    var allM=getMatches(curEV)||[];
-    var cm=allM.find(function(m){return m.id===curMID;});
-    if(cm){
-      if(cm.id!==_mActiveMatchId){
-        clearInterval(_mTimer);_mRunning=false;
-        _mSeconds=0;
-      }
-      _mActiveMatchId=cm.id;
-      _mActiveMatchAdv=String(cm.adv&&String(cm.adv).length>2?cm.adv:"Match "+cm.adv);
-      var mdata=_mGetMatchData(curEV,cm.id);
-      if(cm.id!==_mActiveMatchId)_mSeconds=mdata.seconds||0;
-    }
-  }
-
   if(!_mActiveMatchId){
-    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#9ca3af">'
-      +'<div style="font-size:11px">Aucun match disponible</div></div>';
+    var ms=getMatches(curEV)||[];
+    var listHTML='<div style="background:#0a0a1a;border-radius:10px;overflow:hidden">'
+      +'<div style="background:linear-gradient(90deg,'+c1+' 0%,#0f2347 60%);padding:12px 16px;border-bottom:3px solid '+c2+'">'
+        +'<div style="font-family:var(--fd);font-size:18px;font-weight:700;color:'+c2+';text-transform:uppercase;letter-spacing:.08em">Sélectionner un match</div>'
+      +'</div>';
+    ms.forEach(function(m){
+      var adv=String(m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv);
+      listHTML+='<div onclick="_mSelectMatch(this)" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,"&quot;")+'" '
+        +'style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;transition:background .15s" '
+        +'onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'\'">'
+        +'<div style="font-family:var(--fd);font-size:16px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">vs '+adv+'</div>'
+        +'<div style="color:'+c2+';font-size:18px">▶</div>'
+      +'</div>';
+    });
+    listHTML+='</div>';
+    el.innerHTML=listHTML;
     return;
   }
 
-  var match=_mGetMatch(curEV);
-  var md=_mGetMatchData(curEV,_mActiveMatchId);
-  var cfg=match.config||{periods:2,duration:20,reverse:false};
-  var pCount=cfg.periods||2;
-  var pidx=md.currentPeriod||0;
-  var ended=md.status==="ended";
-  var totalUs=_mTotalScore(md,"score_us");
-  var totalThem=_mTotalScore(md,"score_them");
-  var pLabel=pCount===2?(pidx===0?"1ere mi-temps":"2eme mi-temps"):("Tiers-temps "+(pidx+1));
+  var match=_mGetMatch(curEV),md=_mGetMatchData(curEV,_mActiveMatchId),cfg=match.config||{periods:2,duration:20};
+  var totalUs=_mTotalScore(md,"score_us"),totalThem=_mTotalScore(md,"score_them");
+  var pidx=md.currentPeriod||0,ended=md.status==="ended",pCount=cfg.periods||2;
+  var pLabel=pCount===2?(pidx===0?"1ère mi-temps":"2ème mi-temps"):("Tiers-temps "+(pidx+1));
   var adv=String(_mActiveMatchAdv||"Adversaire");
-  var c1=S.settings.c1||"#1a3a6b";
 
-  var html="";
-  html+='<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px">';
-  html+='<span style="font-family:var(--fd);font-size:15px;font-weight:900;color:'+c1+'">vs '+adv+'</span>';
-  html+='</div>';
+  var html='<div style="font-family:var(--fd);background:#0a0a1a;border-radius:10px;overflow:hidden">';
 
-  html+='<details style="margin-bottom:10px"><summary style="font-size:11px;color:#6b7280;cursor:pointer;list-style:none">Parametres du chrono</summary>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 0;align-items:end">';
-  html+='<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Periodes</label>';
-  html+='<input id="mc-periods" type="number" min="1" max="5" value="'+pCount+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>';
-  html+='<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Duree (min)</label>';
-  html+='<input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>';
-  html+='<div><label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-top:14px">';
-  html+='<input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inverse</label></div>';
-  html+='</div><button onclick="_mSaveConfig()" style="width:100%;padding:7px;background:'+c1+';color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button></details>';
-
-  html+='<div style="background:'+c1+';color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center">';
-  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.65;margin-bottom:2px">'+(ended?"TERMINE":pLabel+" ("+(pidx+1)+"/"+pCount+")")+'</div>';
-  html+='<div id="m-time" style="font-size:52px;font-weight:900;font-family:var(--fd);letter-spacing:3px;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>';
-  html+='<div style="display:flex;justify-content:center;align-items:center;gap:28px;margin:10px 0 12px">';
-  html+='<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">SAR/MOM</div>';
-  html+='<div id="m-score-us" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalUs+'</div></div>';
-  html+='<div style="font-size:22px;opacity:.35;font-weight:900">-</div>';
-  html+='<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">'+adv+'</div>';
-  html+='<div id="m-score-them" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalThem+'</div></div>';
-  html+='</div>';
-  if(!ended){
-    html+='<div style="display:flex;gap:8px">';
-    html+='<button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+(_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)")+';color:'+(_mRunning?"#fff":"var(--c1)")+'">'+(_mRunning?"Pause":"Demarrer")+'</button>';
-    html+='<button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+(pidx<pCount-1?"Fin periode":"Fin match")+'</button>';
+  // Header
+  html+='<div style="background:linear-gradient(90deg,'+c1+' 0%,#0f2347 60%);padding:10px 14px;border-bottom:3px solid '+c2+';display:flex;align-items:center;justify-content:space-between">';
+    html+='<div>';
+      html+='<div style="font-size:11px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em;font-weight:700">'+curEV.name+'</div>';
+      html+='<div style="font-size:18px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">vs '+adv+'</div>';
     html+='</div>';
-  } else {
-    html+='<div style="display:flex;gap:8px">';
-    html+='<button onclick="_mReset()" style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">Nouveau</button>';
-    html+='<button onclick="_mExportMatch()" style="flex:2;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.9);color:var(--c1)">Rapport</button>';
+    html+='<div style="display:flex;align-items:center;gap:8px">';
+      html+='<img src="'+window._LOGO_SM+'" style="height:36px;width:36px;border-radius:50%;object-fit:cover;border:2px solid '+c2+'">';
+      html+='<button onclick="_mResetActiveMatch()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--fd);letter-spacing:.05em">CHANGER</button>';
     html+='</div>';
-  }
   html+='</div>';
 
-  html+='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
-  html+='<button onclick="_mDoEssai()" style="padding:10px;border:2px solid #16a34a;color:#16a34a;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>';
-  html+='<button onclick="_mDoTransfo()" style="padding:10px;border:2px solid #2563eb;color:#2563eb;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>';
-  html+='<button onclick="_mDoPenalite()" style="padding:10px;border:2px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>';
-  html+='<button onclick="_mDoDrop()" style="padding:10px;border:2px solid #d97706;color:#d97706;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>';
-  html+='</div></div>';
-
-  html+='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">'+adv+'</div>';
-  html+='<div style="display:flex;gap:4px">';
-  html+='<button onclick="_mDoAdvEssai()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+5</button>';
-  html+='<button onclick="_mDoAdvTransfo()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+2</button>';
-  html+='<button onclick="_mDoAdvPenalite()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>';
-  html+='<button onclick="_mDoAdvDrop()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>';
-  html+='<button onclick="_mCorrectScore(-1)" style="padding:9px 10px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-size:12px;cursor:pointer;color:#6b7280">-1</button>';
-  html+='</div></div>';
-
-  html+='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">Evenements</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
-  html+='<button onclick="_mDoRemplacement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Remplacement</button>';
-  html+='<button onclick="_mDoAvertissement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Avertissement</button>';
-  html+='<button onclick="_mDoCartonJ()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton jaune</button>';
-  html+='<button onclick="_mDoCartonR()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton rouge</button>';
-  html+='<button onclick="_mDoBlessure()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>';
-  html+='</div></div>';
-
-  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Historique</div>';
-  html+='<div id="m-history" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;min-height:36px"></div>';
+  // Chrono + Score
+  html+='<div style="background:rgba(255,255,255,.03);padding:16px;text-align:center">';
+    html+='<div style="font-size:11px;color:'+c2+';text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px">'+(ended?"MATCH TERMINÉ":pLabel+' ('+(pidx+1)+'/'+pCount+')')+'</div>';
+    html+='<div id="m-time" style="font-family:var(--fd);font-size:64px;color:#fff;letter-spacing:4px;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>';
+    html+='<div style="display:flex;justify-content:center;align-items:center;gap:32px;margin:12px 0 16px">';
+      html+='<div style="text-align:center">';
+        html+='<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">SAR/MOM</div>';
+        html+='<div id="m-score-us" style="font-family:var(--fd);font-size:56px;color:'+c2+';line-height:1">'+totalUs+'</div>';
+      html+='</div>';
+      html+='<div style="font-family:var(--fd);font-size:36px;color:rgba(255,255,255,.25)">—</div>';
+      html+='<div style="text-align:center">';
+        html+='<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">'+adv+'</div>';
+        html+='<div id="m-score-them" style="font-family:var(--fd);font-size:56px;color:#fff;line-height:1">'+totalThem+'</div>';
+      html+='</div>';
+    html+='</div>';
+    if(!ended){
+      var btnStyle='flex:2;padding:12px;border:none;border-radius:6px;font-family:var(--fd);font-weight:700;font-size:16px;letter-spacing:.06em;cursor:pointer;text-transform:uppercase;';
+      html+='<div style="display:flex;gap:8px">';
+        html+='<button id="m-btn-ss" onclick="_mStartStop()" style="'+btnStyle+'background:'+(_mRunning?'rgba(255,255,255,.15)':c2)+';color:'+(_mRunning?'#fff':'#0a0a1a')+'">'+(_mRunning?'⏸ PAUSE':'▶ DÉMARRER')+'</button>';
+        html+='<button onclick="_mNextPeriod()" style="'+btnStyle+'flex:1;background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);">'+(pidx<pCount-1?'⏭ PÉRIODE':'🏁 FIN')+'</button>';
+      html+='</div>';
+    } else {
+      html+='<div style="display:flex;gap:8px">';
+        html+='<button onclick="_mReset()" style="flex:1;padding:10px;border:none;border-radius:6px;font-family:var(--fd);font-weight:700;font-size:14px;letter-spacing:.06em;cursor:pointer;text-transform:uppercase;background:rgba(255,255,255,.08);color:rgba(255,255,255,.7)">NOUVEAU</button>';
+        html+='<button onclick="_mExportMatch()" style="flex:2;padding:10px;border:none;border-radius:6px;font-family:var(--fd);font-weight:700;font-size:14px;letter-spacing:.06em;cursor:pointer;text-transform:uppercase;background:'+c2+';color:#0a0a1a">📊 RAPPORT</button>';
+      html+='</div>';
+    }
   html+='</div>';
 
+  // Config
+  html+='<details style="border-top:1px solid rgba(255,255,255,.06)">';
+    html+='<summary style="padding:10px 14px;font-size:11px;color:rgba(255,255,255,.4);cursor:pointer;text-transform:uppercase;letter-spacing:.08em;list-style:none">⚙ Paramètres du chrono</summary>';
+    html+='<div style="padding:0 14px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">';
+      html+='<div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Périodes</div>';
+        html+='<input id="mc-periods" type="number" min="1" max="5" value="'+(cfg.periods||2)+'" style="width:100%;padding:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#fff;font-size:16px;text-align:center;font-family:var(--fd)"></div>';
+      html+='<div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Durée (min)</div>';
+        html+='<input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#fff;font-size:16px;text-align:center;font-family:var(--fd)"></div>';
+      html+='<div><label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:rgba(255,255,255,.5);font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-top:20px">';
+        html+='<input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inversé</label></div>';
+    html+='</div>';
+    html+='<div style="padding:0 14px 12px"><button onclick="_mSaveConfig()" style="width:100%;padding:8px;background:'+c1+';color:'+c2+';border:none;border-radius:6px;font-family:var(--fd);font-weight:700;font-size:14px;letter-spacing:.06em;cursor:pointer;text-transform:uppercase">APPLIQUER</button></div>';
+  html+='</details>';
+
+  // SAR/MOM scoring
+  html+='<div style="padding:12px 14px;border-top:1px solid rgba(255,255,255,.06)">';
+    html+='<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-weight:700">⚡ SAR/MOM</div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+      var btnBase='padding:11px;border-radius:6px;font-family:var(--fd);font-weight:700;font-size:15px;letter-spacing:.05em;cursor:pointer;text-transform:uppercase;border:none;';
+      html+='<button onclick="_mDoEssai()" style="'+btnBase+'background:rgba(22,163,74,.15);color:#4ade80;border:1.5px solid rgba(22,163,74,.4)">🏉 Essai +5</button>';
+      html+='<button onclick="_mDoTransfo()" style="'+btnBase+'background:rgba(37,99,235,.15);color:#60a5fa;border:1.5px solid rgba(37,99,235,.4)">🥾 Transfo +2</button>';
+      html+='<button onclick="_mDoPenalite()" style="'+btnBase+'background:rgba(124,58,237,.15);color:#a78bfa;border:1.5px solid rgba(124,58,237,.4)">🎯 Pénalité +3</button>';
+      html+='<button onclick="_mDoDrop()" style="'+btnBase+'background:rgba(217,119,6,.15);color:#fbbf24;border:1.5px solid rgba(217,119,6,.4)">💥 Drop +3</button>';
+    html+='</div>';
+  html+='</div>';
+
+  // Adversaire
+  html+='<div style="padding:8px 14px 12px;border-top:1px solid rgba(255,255,255,.06)">';
+    html+='<div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-weight:700">🆚 '+adv+'</div>';
+    html+='<div style="display:flex;gap:5px">';
+      var advBtn='flex:1;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:rgba(255,255,255,.7);font-family:var(--fd);font-weight:700;font-size:14px;cursor:pointer;';
+      html+='<button onclick="_mDoAdvEssai()" style="'+advBtn+'">+5</button>';
+      html+='<button onclick="_mDoAdvTransfo()" style="'+advBtn+'">+2</button>';
+      html+='<button onclick="_mDoAdvPenalite()" style="'+advBtn+'">+3</button>';
+      html+='<button onclick="_mDoAdvDrop()" style="'+advBtn+'">+3</button>';
+      html+='<button onclick="_mCorrectScore(-1)" style="'+advBtn+'color:rgba(255,100,100,.7)">−1</button>';
+    html+='</div>';
+  html+='</div>';
+
+  // Événements
+  html+='<div style="padding:8px 14px 12px;border-top:1px solid rgba(255,255,255,.06)">';
+    html+='<div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-weight:700">📋 Événements</div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
+      var evBtn='padding:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:rgba(255,255,255,.7);font-family:var(--fd);font-weight:600;font-size:13px;cursor:pointer;letter-spacing:.03em;text-transform:uppercase;';
+      html+='<button onclick="_mDoRemplacement()" style="'+evBtn+'">🔄 Remplacement</button>';
+      html+='<button onclick="_mDoAvertissement()" style="'+evBtn+'">⚠️ Avertissement</button>';
+      html+='<button onclick="_mDoCartonJ()" style="'+evBtn+'">🟡 Carton jaune</button>';
+      html+='<button onclick="_mDoCartonR()" style="'+evBtn+'">🔴 Carton rouge</button>';
+      html+='<button onclick="_mDoBlessure()" style="'+evBtn+'grid-column:span 2">🤕 Blessure</button>';
+    html+='</div>';
+  html+='</div>';
+
+  // Historique
+  html+='<div style="border-top:1px solid rgba(255,255,255,.06)">';
+    html+='<div style="padding:10px 14px 6px;font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;font-weight:700">📜 Historique</div>';
+    html+='<div id="m-history" style="max-height:180px;overflow-y:auto;min-height:36px"></div>';
+  html+='</div>';
+
+  html+='</div>';
   el.innerHTML=html;
   _mRefreshHistory();
 }
+
+function renderRapport(){
+  var el=document.getElementById("rapport-content");if(!el)return;
+  if(!curEV){el.innerHTML='<p style="color:rgba(255,255,255,.4);text-align:center;padding:20px">Aucun evenement</p>';return;}
+  var c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
+  var allMatches=getMatches(curEV)||[];
+  var byMatch=(curEV.match&&curEV.match.byMatch)||{};
+  var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
+  var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
+  var c1s=c1.replace("#",""); // for CSS use
+  var html='<div style="background:#0a0a1a;border-radius:10px;overflow:hidden">';
+  // Event header
+  html+='<div style="background:linear-gradient(90deg,'+c1+' 0%,#0f2347 60%);padding:12px 16px;border-bottom:3px solid '+c2+';display:flex;align-items:center;justify-content:space-between">';
+    html+='<div>';
+      html+='<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em">'+curEV.date+' · '+curEV.lieu+'</div>';
+      html+='<div style="font-size:20px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">'+curEV.name+'</div>';
+    html+='</div>';
+    html+='<img src="'+window._LOGO_SM+'" style="height:40px;width:40px;border-radius:50%;object-fit:cover;border:2px solid '+c2+'">';
+  html+='</div>';
+  var hasData=false;
+  allMatches.forEach(function(m){
+    var adv=String(m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv);
+    var md=byMatch[m.id];
+    var totalUs=0,totalThem=0;
+    if(md)(md.periods||[]).forEach(function(p){if(p){totalUs+=(p.score_us||0);totalThem+=(p.score_them||0);}});
+    var allEvts=[];
+    if(md)(md.periods||[]).forEach(function(p,pi){if(p)(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
+    allEvts.sort(function(a,b){return a.ts-b.ts;});
+    var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended");
+    if(played)hasData=true;
+    var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
+    var resultBorder=!played?"rgba(255,255,255,.1)":win?"#4ade80":draw?"rgba(255,255,255,.2)":"#f87171";
+    var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
+    var resultColor2=!played?"rgba(255,255,255,.3)":win?"#4ade80":draw?c2:"#f87171";
+    html+='<div style="border-bottom:1px solid rgba(255,255,255,.06);padding:12px 16px">';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+        html+='<div style="font-size:15px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">vs '+adv+'</div>';
+        html+='<div style="font-size:11px;font-weight:700;color:'+resultColor2+';text-transform:uppercase;letter-spacing:.08em">'+resultLabel+'</div>';
+      html+='</div>';
+      if(played){
+        html+='<div style="background:rgba(255,255,255,.04);border-left:3px solid '+resultBorder+';border-radius:6px;padding:10px;display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:8px">';
+          html+='<div style="text-align:center">';
+            html+='<div style="font-size:9px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px">SAR/MOM</div>';
+            html+='<div style="font-size:44px;font-weight:900;color:'+c2+';line-height:1">'+totalUs+'</div>';
+          html+='</div>';
+          html+='<div style="font-size:28px;color:rgba(255,255,255,.2);font-weight:900">&#8212;</div>';
+          html+='<div style="text-align:center">';
+            html+='<div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px">'+adv+'</div>';
+            html+='<div style="font-size:44px;font-weight:900;color:#fff;line-height:1">'+totalThem+'</div>';
+          html+='</div>';
+        html+='</div>';
+      }
+      if(allEvts.length){
+        allEvts.forEach(function(e){
+          var pL=(cfg.periods||2)===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
+          var desc=e.type==="remplacement"?(e.outName+" > "+e.inName):(e.forUs===false?"["+adv+"]":e.name||"");
+          if(e.nat)desc+=" ("+e.nat+")";
+          html+='<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px">';
+            html+='<span>'+(icons[e.type]||"•")+'</span>';
+            html+='<span style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;color:'+c2+';white-space:nowrap">'+pL+" "+e.min+"'</span>";
+            html+='<span style="flex:1;color:rgba(255,255,255,.7)">'+desc+'</span>';
+            if(e.pts&&e.forUs!==false)html+='<span style="font-size:14px;font-weight:700;color:'+c2+'">+'+e.pts+'</span>';
+          html+='</div>';
+        });
+      }
+    html+='</div>';
+  });
+  if(hasData){
+    html+='<div style="padding:12px 16px">';
+    html+='<button onclick="_mExportRapportPDF()" style="width:100%;padding:12px;background:'+c2+';color:#0a0a1a;border:none;border-radius:6px;font-weight:700;font-size:15px;letter-spacing:.08em;cursor:pointer;text-transform:uppercase">EXPORTER EN PDF</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
 
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 if(S.players.length<60)S.players=INIT_PL;
