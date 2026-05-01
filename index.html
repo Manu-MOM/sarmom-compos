@@ -194,7 +194,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
 .photo-area:hover{border-color:var(--sky);background:#f0f8ff}
 .photo-preview{width:70px;height:70px;border-radius:50%;object-fit:cover;margin:0 auto 6px;display:block;border:2px solid var(--c1)}
 /* STABS */
-.stabs{display:flex;border-bottom:1px solid var(--g200);margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
+.stabs{display:flex;border-bottom:1px solid var(--g200);margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
 .stab{padding:6px 8px;font-size:11px;font-weight:600;color:var(--g400);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:var(--fd);text-transform:uppercase;letter-spacing:.04em}
 .stab.active{color:var(--c1);border-bottom-color:var(--c1)}
 /* FBAR */
@@ -314,7 +314,6 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
         <div id="ev-export" style="display:none"><div class="exp-wrap" id="export-preview"></div></div>
         <div id="ev-effectif" style="display:none"><div id="effectif-content"></div></div>
         <div id="ev-match" style="display:none"><div id="match-content"></div></div>
-        <div id="ev-match" style="display:none"><div id="match-content"></div></div>
       </div>
     </div>
   </div>
@@ -338,13 +337,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </select>
     <select class="fsel" id="p-jdd" onchange="rplayers()"><option value="">Passeport JDD</option><option value="oui">JDD Validé</option><option value="non">Sans JDD</option></select>
     <select class="fsel" id="p-arb" onchange="rplayers()"><option value="">Passeport Arbitrage</option><option value="oui">Arbitrage Validé</option><option value="non">Sans arbitrage</option></select>
-    <select class="fsel" id="p-apt" onchange="rplayers()">
-      <option value="">Toutes aptitudes</option>
-      <option>Tank</option><option>Driver</option><option>Runner</option>
-      <option>Botteur</option><option>Lanceur</option><option>Sauteur</option><option>Lifteur</option>
-      <option>Avant</option><option>3/4</option><option>Gros défenseur</option>
-      <option>Bon gratteur</option><option>Fort au contact</option><option>Rapide</option>
-    </select>
+    <select class="fsel" id="p-apt" onchange="rplayers()"><option value="">Toutes aptitudes</option><option>Tank</option><option>Driver</option><option>Runner</option><option>Botteur</option><option>Lanceur</option><option>Sauteur</option><option>Lifteur</option><option>Avant</option><option>3/4</option><option>Gros défenseur</option><option>Bon gratteur</option><option>Fort au contact</option><option>Rapide</option></select>
     <select class="fsel" id="p-inj" onchange="rplayers()"><option value="">Tous états</option><option value="ok">Disponibles</option><option value="inj">Blessés</option></select>
   </div>
   <div class="pg" id="players-grid"></div>
@@ -372,8 +365,8 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <div class="fg"><label class="fl">Couleur accent</label><input type="color" class="fi" id="s-c2" value="#f0c500" style="height:34px;padding:2px 5px;cursor:pointer"></div>
       <button class="btn btn-y" onclick="applyCol()">Appliquer</button>
     </div>
-    <div class="card" id="drive-sett-card"><div class="ctitle">Google Drive</div>
-      <div id="drive-status" style="font-size:11px;color:var(--g400);margin-bottom:8px">Non connecté</div>
+    <div class="card"><div class="ctitle">Google Drive</div>
+      <div id="drive-status" style="font-size:12px;margin-bottom:8px">⚪ Non connecté</div>
       <div class="fg"><label class="fl">Client ID Google</label>
         <input class="fi" id="drive-client-id" placeholder="xxxx.apps.googleusercontent.com" style="font-size:10px">
       </div>
@@ -384,7 +377,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <button class="btn btn-g" onclick="expJSON()" style="width:100%;justify-content:center;margin-bottom:5px">⬇ Exporter JSON</button>
       <button class="btn btn-g" onclick="document.getElementById('imp').click()" style="width:100%;justify-content:center;margin-bottom:5px">⬆ Importer JSON</button>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(event)">
-      <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm7');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
+      <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm5');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
     </div>
   </div>
 </div>
@@ -471,13 +464,8 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </div>
     <div class="fg"><label class="fl">Postes</label>
       <div id="mp-pos-dropdown" style="position:relative">
-        <div id="mp-pos-display" onclick="document.getElementById('mp-pos-list').style.display=document.getElementById('mp-pos-list').style.display==='block'?'none':'block'" 
-          style="cursor:pointer;border:1px solid var(--g200);border-radius:6px;padding:7px 10px;font-size:13px;min-height:34px;background:#fff;display:flex;align-items:center;flex-wrap:wrap;gap:4px">
-          <span id="mp-pos-placeholder" style="color:var(--g400);font-size:12px">Sélectionner des postes…</span>
-        </div>
-        <div id="mp-pos-list" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;width:100%;left:0;top:calc(100% + 2px)">
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Talonneur" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Talonneur</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="2ème ligne gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 2ème ligne gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="2ème ligne droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 2ème ligne droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Flanker gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Flanker gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Flanker droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Flanker droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Numéro 8" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Numéro 8</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Demi de mêlée" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Demi de mêlée</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Demi d'ouverture" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Demi d'ouverture</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Ailier gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Ailier gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Ailier droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Ailier droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Arrière" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Arrière</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="3ème ligne" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 3ème ligne</label>
-        </div>
+        <div id="mp-pos-display" onclick="document.getElementById('mp-pos-list').style.display=document.getElementById('mp-pos-list').style.display==='block'?'none':'block'" style="cursor:pointer;border:1px solid var(--g200);border-radius:6px;padding:7px 10px;font-size:13px;min-height:34px;background:#fff;display:flex;align-items:center;flex-wrap:wrap;gap:4px"><span style="color:var(--g400);font-size:12px">Sélectionner des postes…</span></div>
+        <div id="mp-pos-list" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;width:100%;left:0;top:calc(100% + 2px)"><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Talonneur" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Talonneur</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="2ème ligne gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 2ème ligne gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="2ème ligne droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 2ème ligne droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Flanker gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Flanker gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Flanker droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Flanker droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Numéro 8" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Numéro 8</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Demi de mêlée" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Demi de mêlée</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Demi d'ouverture" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Demi d'ouverture</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Ailier gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Ailier gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Ailier droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Ailier droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Arrière" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Arrière</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="3ème ligne" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 3ème ligne</label></div>
       </div>
       <input type="hidden" id="mp-pos"></div>
     <div class="fg"><label class="fl">Aptitudes</label><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:3px" id="mp-apts"></div></div>
@@ -588,29 +576,15 @@ const INIT_EV=[
   {id:"e4",type:"championnat-2",name:"Journée 6 — Nancy",date:"2026-04-25",lieu:"Nancy",teams:["t1","t3"],adv1:"Nancy SC",adv2:"Metz",scores:{},lineups:{}},
   {id:"e5",type:"vie",name:"Challenge Vié — Finale",date:"2026-05-30",lieu:"Strasbourg",teams:["t1","t2","t3"],phases:[{id:"vph1",name:"Poules",date:"2026-05-30",matches:[{id:"vm1",adv:"Finaliste 1",score:{f:null,a:null}},{id:"vm2",adv:"Finaliste 2",score:{f:null,a:null}}]}],scores:{},lineups:{}},
   {id:"e6",type:"seven",name:"Tournoi de Seven",date:"2026-06-14",lieu:"Strasbourg",teams:["t1"],adv1:"Adversaire 1",adv2:"Adversaire 2",scores:{},lineups:{}},
-  {"id":"e1777557892595","type":"tournoi","name":"SCF 1880 Gonder Jugendfestival 2026","format":"13","date":"2026-05-02","lieu":"Frankfurt (Allemagne)","teams":["t1"],"scores":{},"lineups":{"BASE_t1":["edr_M14F15_39","edr_M14F15_14","edr_M14F15_38","edr_M14F15_5","edr_M14F15_57","edr_M14F15_45","edr_M14F15_44","edr_M14F15_11","edr_M14F15_29","edr_M14F15_17","edr_M14F15_24","edr_M14F15_3","edr_M14F15_53","edr_M14F15_30","edr_M14F15_16","edr_M14F15_37","edr_M14F15_25","edr_M14F15_42","edr_M14F15_59"],"OVR_t1_m1777558118384":{},"OVR_t1_m1777558255153":{},"OVR_t1_m1777558284224":{},"OVR_t1_m1777558308886":{},"OVR_t1_m1777558347844":{},"OVR_t1_m1777558401340":{}},"phases":[{"id":"ph1777558118384","name":"Poule de brassage","date":"2026-05-02","matches":[{"id":"m1777558118384","adv":"Rugby Academy Roumanie","score":{"f":null,"a":null}},{"id":"m1777558255153","adv":"Caerphilly RFC Pays de Galles","score":{"f":null,"a":null}},{"id":"m1777558284224","adv":"London Welsh Red Angleterre","score":{"f":null,"a":null}},{"id":"m1777558308886","adv":"SC FRankfurt 1880 Red","score":{"f":null,"a":null}}]},{"id":"ph1777558347844","name":"Phases finales","date":"2026-05-03","matches":[{"id":"m1777558347844","adv":"1","score":{"f":null,"a":null}},{"id":"m1777558401340","adv":"2","score":{"f":null,"a":null}}]}],"cat":"M14F15"},
-  {"id":"e1777492272902","type":"tournoi","name":"Les Gemmeurs","format":"15","date":"2026-05-23","lieu":"Rion-des-Landes","teams":["t1"],"scores":{},"lineups":{"BASE_t1":["edr_M14F15_39","edr_M14F15_7","edr_M14F15_10","edr_M14F15_9","edr_M14F15_35","edr_M14F15_21","edr_M14F15_16","edr_M14F15_33","edr_M14F15_20","edr_M14F15_11","edr_M14F15_27","edr_M14F15_45","edr_M14F15_31","edr_M14F15_1","edr_M14F15_53","edr_M14F15_18","edr_M14F15_38","edr_M14F15_23","edr_M14F15_30","edr_M14F15_3",null,null,null],"OVR_t1_m1777492200008":{},"OVR_t1_m1777492216786":{},"OVR_t1_m1777492226209":{},"OVR_t1_m1777492256861":{},"OVR_t1_m1777492260597":{}},"phases":[{"id":"ph1777492200008","name":"Poule de brassage","date":"2026-05-23","matches":[{"id":"m1777492200008","adv":"1","score":{"f":null,"a":null}},{"id":"m1777492216786","adv":"2","score":{"f":null,"a":null}}]},{"id":"ph1777492226209","name":"Poule de classement","date":"2026-05-23","matches":[{"id":"m1777492226209","adv":"1","score":{"f":null,"a":null}},{"id":"m1777492256861","adv":"2","score":{"f":null,"a":null}},{"id":"m1777492260597","adv":"3","score":{"f":null,"a":null}}]}],"cat":"M14F15"},
-  {"id":"e1777557892595","type":"tournoi","name":"SCF 1880 Gonder Jugendfestival 2026","format":"13","date":"2026-05-02","lieu":"Frankfurt (Allemagne)","teams":["t1"],"scores":{},"lineups":{"BASE_t1":["edr_M14F15_39","edr_M14F15_14","edr_M14F15_38","edr_M14F15_5","edr_M14F15_57","edr_M14F15_45","edr_M14F15_44","edr_M14F15_11","edr_M14F15_29","edr_M14F15_17","edr_M14F15_24","edr_M14F15_3","edr_M14F15_53","edr_M14F15_30","edr_M14F15_16","edr_M14F15_37","edr_M14F15_25","edr_M14F15_42","edr_M14F15_59"],"OVR_t1_m1777558118384":{},"OVR_t1_m1777558255153":{},"OVR_t1_m1777558284224":{},"OVR_t1_m1777558308886":{},"OVR_t1_m1777558347844":{},"OVR_t1_m1777558401340":{}},"phases":[{"id":"ph1777558118384","name":"Poule de brassage","date":"2026-05-02","matches":[{"id":"m1777558118384","adv":"RugbyAcademy Roumanie","score":{"f":null,"a":null}},{"id":"m1777558255153","adv":"Caerjailly RFC Pays de Galles","score":{"f":null,"a":null}},{"id":"m1777558284224","adv":"London Welsh Red Angleterre","score":{"f":null,"a":null}},{"id":"m1777558308886","adv":"SC FRankfurt 1880 Red","score":{"f":null,"a":null}}]},{"id":"ph1777558347844","name":"Phases finales","date":"2026-05-03","matches":[{"id":"m1777558347844","adv":"1","score":{"f":null,"a":null}},{"id":"m1777558401340","adv":"2","score":{"f":null,"a":null}}]}],"cat":"M14F15"}
+  {"id":"e1777478886406","cat":"M14F15","type":"tournoi","name":"Tournoi de Frankfurt","format":"13","date":"2026-05-02","lieu":"Frankfurt","teams":["t1"],"scores":{},"lineups":{"BASE_t1":["edr_M14F15_39","edr_M14F15_14","edr_M14F15_38","edr_M14F15_5","edr_M14F15_57","edr_M14F15_30","edr_M14F15_45","edr_M14F15_16","edr_M14F15_44","edr_M14F15_11","edr_M14F15_3","edr_M14F15_24","edr_M14F15_53","edr_M14F15_29","edr_M14F15_17","edr_M14F15_37","edr_M14F15_25","edr_M14F15_42","edr_M14F15_59",null,null,null,null],"OVR_t1_m1777478813593":{"0":"edr_M14F15_39","1":"edr_M14F15_14","2":"edr_M14F15_38","3":"edr_M14F15_5","5":"edr_M14F15_30","6":"edr_M14F15_16"},"OVR_t1_m1777478842698":{},"OVR_t1_m1777478846671":{},"OVR_t1_m1777478850940":{},"OVR_t1_m1777478872694":{},"OVR_t1_m1777478877330":{}},"phases":[{"id":"ph1777478813593","name":"Poule de brassage","date":"2026-05-02","matches":[{"id":"m1777478813593","adv":"1","score":{"f":null,"a":null}},{"id":"m1777478842698","adv":"2","score":{"f":null,"a":null}},{"id":"m1777478846671","adv":"3","score":{"f":null,"a":null}}]},{"id":"ph1777478850940","name":"Poule de classement","date":"2026-05-03","matches":[{"id":"m1777478850940","adv":"1","score":{"f":null,"a":null}},{"id":"m1777478872694","adv":"2","score":{"f":null,"a":null}},{"id":"m1777478877330","adv":"3","score":{"f":null,"a":null}}]}]},
+  {"id":"e1777492272902","cat":"M14F15","type":"tournoi","name":"Les Gemmeurs","format":"15","date":"2026-05-23","lieu":"Rion-des-Landes","teams":["t1"],"scores":{},"lineups":{"BASE_t1":["edr_M14F15_39","edr_M14F15_7","edr_M14F15_10","edr_M14F15_9","edr_M14F15_35","edr_M14F15_21","edr_M14F15_16","edr_M14F15_33","edr_M14F15_20","edr_M14F15_11","edr_M14F15_27","edr_M14F15_45","edr_M14F15_31","edr_M14F15_1","edr_M14F15_53","edr_M14F15_18","edr_M14F15_38","edr_M14F15_23","edr_M14F15_30","edr_M14F15_3",null,null,null],"OVR_t1_m1777492200008":{},"OVR_t1_m1777492216786":{},"OVR_t1_m1777492226209":{},"OVR_t1_m1777492256861":{},"OVR_t1_m1777492260597":{}},"phases":[{"id":"ph1777492200008","name":"Poule de brassage","date":"2026-05-23","matches":[{"id":"m1777492200008","adv":"1","score":{"f":null,"a":null}},{"id":"m1777492216786","adv":"2","score":{"f":null,"a":null}}]},{"id":"ph1777492226209","name":"Poule de classement","date":"2026-05-23","matches":[{"id":"m1777492226209","adv":"1","score":{"f":null,"a":null}},{"id":"m1777492256861","adv":"2","score":{"f":null,"a":null}},{"id":"m1777492260597","adv":"3","score":{"f":null,"a":null}}]}]}
 ];
 const INIT_TEAMS=[{id:"t1",label:"SAR/MOM 1"},{id:"t2",label:"SAR/MOM 2"},{id:"t3",label:"SAR/MOM X"}];
 const INIT_COACHES=[{id:"c1",role:"Entraîneur principal",name:"Vivien RULFO"},{id:"c2",role:"Manager",name:"Emmanuel JUNG"},{id:"c3",role:"Entraîneur adjoint",name:"Loïc HELM"}];
 
-function load(){
-  try{
-    const s=localStorage.getItem("sm7");
-    if(s){
-      const d=JSON.parse(s);
-      // Seulement réinjecter les joueurs si manquants (pas les événements !)
-      if((d.players||[]).length<60) d.players=INIT_PL;
-      return d;
-    }
-  }catch(e){}
-  return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}};
-}
-function sv(){
-  localStorage.setItem("sm7",JSON.stringify(S));
-  if(window._gDriveReady) _gSaveCompos();
-}
+function load(){try{const s=localStorage.getItem("sm5");if(s)return JSON.parse(s);}catch(e){}
+  return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}}}
+function sv(){localStorage.setItem("sm5",JSON.stringify(S));}
 let S=load();
 
 // Lineup helpers
@@ -767,11 +741,11 @@ function renderEvCard(ev){
     const t=S.teams.find(t=>t.id===tid);
     return`<div style="margin-bottom:8px"><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--c1);margin-bottom:3px">${t?.label||tid}</div>
     <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px"><span class="cchip base-c" onclick="openEditor('${ev.id}','${tid}','${matches[0]?.id||""}','base')">📋 Base</span></div>
-    <div class="cchips">${matches.map(m=>{const res=getResolved(ev,tid,m.id);const ok=res.some(v=>v!==null);const hasO=Object.keys(getOvr(ev,tid,m.id)).length>0||isInd(ev,tid,m.id);const sc=ev.scores?.[m.id];const sv2=sc?.f!=null?` ${sc.f}-${sc.a}`:"";return`<span class="cchip ${ok?"done":"pending"} ${hasO?"ovr":""}" onclick="openEditor('${ev.id}','${tid}','${m.id}','match')">${hasO?"✏️":ok?"✓":"+"} vs ${m.adv}${sv2}</span><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:1px 5px;font-size:10px;background:#6d28d9;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:2px;vertical-align:middle" title="Suivi de match">⏱</button>`;}).join("")}</div></div>`;
+    <div class="cchips">${matches.map(m=>{const res=getResolved(ev,tid,m.id);const ok=res.some(v=>v!==null);const hasO=Object.keys(getOvr(ev,tid,m.id)).length>0||isInd(ev,tid,m.id);const sc=ev.scores?.[m.id];const sv2=sc?.f!=null?` ${sc.f}-${sc.a}`:"";return`<span class="cchip ${ok?"done":"pending"} ${hasO?"ovr":""}" onclick="openEditor('${ev.id}','${tid}','${m.id}','match')">${hasO?"✏️":ok?"✓":"+"} vs ${m.adv}${sv2}</span><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:1px 5px;font-size:10px;background:#6d28d9;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:2px;vertical-align:middle">T</button>`;}).join("")}</div></div>`;
   }).join("");
   let scoreHtml="";
-  if(!isTour){scoreHtml=matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px" title="Suivi de match">⏱</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("");}
-  else{scoreHtml=(ev.phases||[]).map(ph=>`<div style="margin-bottom:7px"><div style="font-size:10px;font-weight:700;color:var(--tour);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;font-family:var(--fd)">📍 ${ph.name}</div>${ph.matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px" title="Suivi de match">⏱</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("")}</div>`).join("");}
+  if(!isTour){scoreHtml=matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("");}
+  else{scoreHtml=(ev.phases||[]).map(ph=>`<div style="margin-bottom:7px"><div style="font-size:10px;font-weight:700;color:var(--tour);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;font-family:var(--fd)">📍 ${ph.name}</div>${ph.matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("")}</div>`).join("");}
   return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
 }
 function toggleEv(id){const el=document.getElementById("eb-"+id);el&&el.classList.toggle("open");}
@@ -866,11 +840,9 @@ function renderPool(){
   const hideInj=document.getElementById("pool-hide-inj")?.checked;
   const resolved=getEditable();
   const pool=document.getElementById("player-pool");if(!pool)return;
-  // Restreindre au pool de base si mode match
-  const basePool = curMode !== "base" ? getBase(curEV, curTID).filter(Boolean) : null;
+  const basePool=curMode!=="base"?getBase(curEV,curTID).filter(Boolean):null;
   let ps=S.players.filter(p=>{
-    // Si mode match : seulement les convoqués (dans BASE)
-    if(basePool && basePool.length > 0 && !basePool.map(String).includes(String(p.id))) return false;
+    if(basePool&&basePool.length>0&&!basePool.map(String).includes(String(p.id)))return false;
     if(hideInj&&p.inj)return false;
     if(s&&!`${p.p} ${p.n}`.toLowerCase().includes(s))return false;
     if(pf&&!p.pos.some(pos=>pos.toLowerCase().includes(pf.toLowerCase())))return false;
@@ -908,13 +880,14 @@ function openPick(idx){curSlot=idx;const Ps=postes(curEV);document.getElementByI
 function renderPick(){
   const s=(document.getElementById("mpk-s")?.value||"").toLowerCase();const resolved=getEditable();const Ps=postes(curEV);
   const kw=(curSlot<subsStart(curEV)?Ps[curSlot]||"":"").split(" ")[0].toLowerCase();
-  let ps=S.players.filter(p=>!resolved.map(String).includes(String(p.id))&&(!s||`${p.p} ${p.n}`.toLowerCase().includes(s)));
+  const baseLineup=curMode!=="base"?getBase(curEV,curTID).filter(Boolean):null;
+  let ps=S.players.filter(p=>{if(resolved.map(String).includes(String(p.id)))return false;if(s&&!`${p.p} ${p.n}`.toLowerCase().includes(s))return false;if(baseLineup&&baseLineup.length>0&&!baseLineup.map(String).includes(String(p.id)))return false;return true;});
   ps.sort((a,b)=>{const am=a.pos.some(pp=>pp.toLowerCase().includes(kw));const bm=b.pos.some(pp=>pp.toLowerCase().includes(kw));if(am&&!bm)return -1;if(!am&&bm)return 1;return`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`)});
   document.getElementById("mpk-list").innerHTML=ps.map(p=>{const m2=p.pos.some(pp=>pp.toLowerCase().includes(kw));const tags=p.apt.slice(0,3).map(a=>`<span class="tag tag-${a.toLowerCase().replace(/ /g,'-').replace(/[éè]/g,'e').replace(/û/g,'u').replace(/\//g,'-')}">${a}</span>`).join("");const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:10px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;return`<div class="pi ${m2?"mp":""} ${p.inj?"inj":""}" data-pid="${p.id}" data-inj="${p.inj?'1':''}" onclick="if(!this.dataset.inj)assignPick(this.dataset.pid)"><div class="pav">${photoHtml}</div><div style="flex:1"><div style="font-size:12px;font-weight:500">${p.p} ${p.n} ${m2?'<span style="color:var(--cg);font-size:9px">✓</span>':""}</div><div style="font-size:9px;color:var(--g400)">${p.pos.slice(0,2).join(", ")||"—"}</div></div><div style="display:flex;gap:2px">${tags}${p.inj?'<span class="inj-badge">blessé</span>':""}</div></div>`;
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif","match"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="effectif")renderEffectif();if(view==="match")renderMatch();}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export"].forEach(v=>document.getElementById("ev-"+v).style.display=v===view?"block":"none");if(view==="terrain")drawField();if(view==="export")drawExport();}
 
 // FIELD SVG
 function drawField(){
@@ -1013,8 +986,7 @@ function rplayers(){
     if(s&&!`${p.p} ${p.n}`.toLowerCase().includes(s))return false;
     if(club&&p.club!==club)return false;if(cat&&p.cat!==cat)return false;
     if(pos&&!p.pos.some(pp=>pp.toLowerCase().includes(pos.toLowerCase())))return false;
-    const apt=document.getElementById('p-apt')?.value||'';
-    if(apt&&!(p.apt||[]).includes(apt))return false;
+    const apt=document.getElementById('p-apt')?.value||'';if(apt&&!(p.apt||[]).includes(apt))return false;
     if(jdd==="oui"&&p.jdd!=="oui")return false;if(jdd==="non"&&p.jdd==="oui")return false;
     if(arb==="oui"&&p.arb!=="oui")return false;if(arb==="non"&&p.arb==="oui")return false;
     if(inj==="ok"&&p.inj)return false;if(inj==="inj"&&!p.inj)return false;
@@ -1047,7 +1019,7 @@ function openPM(id=null){
   document.getElementById("mp-id").value=id||"";
   document.getElementById("mp-p").value=p?.p||"";document.getElementById("mp-n").value=p?.n||"";
   document.getElementById("mp-club").value=p?.club||"MOM";document.getElementById("mp-cat").value=p?.cat||"M14";
-  document.getElementById("mp-pos").value=(p?.pos||[]).join(", ");
+  document.getElementById("mp-pos").value=(p?.pos||[]).join(", ");if(typeof _mInitPosDropdown==="function")_mInitPosDropdown(p?.pos||[]);
   document.getElementById("mp-h").value=p?.h||"";document.getElementById("mp-w").value=p?.w||"";
   document.getElementById("mp-jdd").value=p?.jdd||"";document.getElementById("mp-arb").value=p?.arb||"";
   document.getElementById("mp-inj").checked=p?.inj||false;
@@ -1063,7 +1035,7 @@ function openPM(id=null){
 function toggleInjForm(){const inj=document.getElementById("mp-inj").checked;document.getElementById("mp-inj-fields").style.display=inj?"block":"none";}
 function loadPhoto(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{const data=e.target.result;document.getElementById("mp-photo-data").value=data;const preview=document.getElementById("mp-photo-preview");preview.src=data;preview.style.display="block";document.getElementById("mp-photo-placeholder").style.display="none";};r.readAsDataURL(file);}
 function savePl(){
-  const id=document.getElementById("mp-id").value||null;
+  const id=parseInt(document.getElementById("mp-id").value)||null;
   const apt=[...document.querySelectorAll("#mp-apts input:checked")].map(i=>i.value);
   const data={p:document.getElementById("mp-p").value.trim(),n:document.getElementById("mp-n").value.trim().toUpperCase(),club:document.getElementById("mp-club").value,cat:document.getElementById("mp-cat").value,pos:document.getElementById("mp-pos").value.split(",").map(s=>s.trim()).filter(Boolean),h:parseFloat(document.getElementById("mp-h").value)||null,w:parseFloat(document.getElementById("mp-w").value)||null,apt,jdd:document.getElementById("mp-jdd").value,arb:document.getElementById("mp-arb").value,inj:document.getElementById("mp-inj").checked,injNat:document.getElementById("mp-inj-nat").value,injFrom:document.getElementById("mp-inj-from").value,injTo:document.getElementById("mp-inj-to").value,photo:document.getElementById("mp-photo-data").value};
   if(id){const p=S.players.find(p=>p.id===id);Object.assign(p,data);}else{S.players.push({id:Math.max(0,...S.players.map(p=>p.id))+1,...data});}
@@ -1079,953 +1051,502 @@ function rsettings(){
   document.getElementById("coaches-list").innerHTML=(S.coaches||[]).map((c,i)=>`<div style="display:flex;gap:4px;margin-bottom:4px"><input class="fi" value="${c.role}" onchange="S.coaches[${i}].role=this.value;sv()" placeholder="Rôle" style="flex:1"><input class="fi" value="${c.name}" onchange="S.coaches[${i}].name=this.value;sv()" placeholder="Nom" style="flex:1"><button class="btn btn-r" onclick="S.coaches.splice(${i},1);sv();rsettings()" style="padding:3px 6px">🗑</button></div>`).join("");
 }
 function applySett(){S.settings.name=document.getElementById("s-name").value;S.settings.season=document.getElementById("s-season").value;sv();const ns=document.getElementById("nav-sub-txt");if(ns)ns.textContent=`Entente M14 · Saison ${S.settings.season}`;}
-function gConnectDriveUI(){
-  const cid=document.getElementById("drive-client-id")?.value?.trim();
-  if(cid){localStorage.setItem("sarmom_gClientId",cid);}
-  gConnectDrive();
-}
-function gManualSave(){
-  if(window._gDriveReady) _gSaveCompos();
-  else { gConnectDriveUI(); }
-}
-function gUpdateDriveStatus(status){
-  const el=document.getElementById("drive-status");
-  if(!el)return;
-  if(status==="connected") el.innerHTML='<span style="color:var(--cg)">✅ Connecté — sauvegarde automatique active</span>';
-  else if(status==="saving") el.innerHTML='<span style="color:var(--sky)">⏳ Sauvegarde en cours…</span>';
-  else if(status==="saved") el.innerHTML='<span style="color:var(--cg)">✅ Sauvegardé sur Drive</span>';
-  else if(status==="error") el.innerHTML='<span style="color:#dc2626">❌ Erreur Drive</span>';
-  else el.innerHTML='<span style="color:var(--g400)">Non connecté</span>';
-}
 function applyCol(){S.settings.c1=document.getElementById("s-c1").value;S.settings.c2=document.getElementById("s-c2").value;sv();}
 function addTeam(){S.teams.push({id:"t"+Date.now(),label:"Nouvelle équipe"});sv();rsettings();}
 function updateTeam(id,val){const t=S.teams.find(t=>t.id===id);if(t)t.label=val;sv();}
 function delTeam(id){if(!confirm("Supprimer ?"))return;S.teams=S.teams.filter(t=>t.id!==id);sv();rsettings();}
 function addCoach(){if(!S.coaches)S.coaches=[];S.coaches.push({id:"c"+Date.now(),role:"",name:""});sv();rsettings();}
 function expJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="sarmom_compos.json";a.click();}
-function impJSON(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    try{
-      const d=JSON.parse(ev.target.result);
-      // Fusionner: garder les joueurs locaux, prendre les events/settings du JSON
-      if(d.events) S.events=d.events;
-      if(d.settings) S.settings=d.settings;
-      if(d.teams) S.teams=d.teams;
-      if(d.coaches) S.coaches=d.coaches;
-      if(d.players&&d.players.length>0) S.players=d.players;
-      sv();
-      // Rafraîchir sans recharger la page (préserve la connexion Drive)
-            alert('✅ Import réussi — '+( S.events.length)+' événements chargés');
-    }catch(err){alert('Fichier invalide : '+err.message);}
-  };
-  r.readAsText(f);
+function impJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.events)S.events=d.events;if(d.settings)S.settings=d.settings;if(d.teams)S.teams=d.teams;if(d.coaches)S.coaches=d.coaches;if(d.players&&d.players.length>0)S.players=d.players;sv();rdash();revents();rsettings();alert('Import OK — '+S.events.length+' événements');}catch(err){alert('Fichier invalide');}};r.readAsText(f);}
+
+function _mResetActiveMatch(){
+  _mActiveMatchId=null; _mActiveMatchAdv='';
+  clearInterval(_mTimer); _mRunning=false; _mSeconds=0;
+  renderMatchTab();
 }
+function _mClosePickerOverlay(){var o=document.getElementById('m-pick-overlay');if(o)o.remove();}
+// MISC
+function cm(id){document.getElementById(id).classList.remove("open");}
+document.querySelectorAll(".mbg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");}));
 
-// INIT
-// Vérifier si on revient d'un redirect OAuth
-_gCheckRedirectToken();
-rdash();revents();
-
-// ═══════════════════════════════════════════════════════════════════
-// SUIVI DE MATCH
-// ═══════════════════════════════════════════════════════════════════
-
-// État du chrono
-var _mTimer = null;
-var _mRunning = false;
-var _mSeconds = 0;       // secondes écoulées dans la période
-var _mPeriod = 0;        // période en cours (0-based)
-var _mConfig = null;     // config chrono de l'événement courant
-
-function _mGetMatch(ev, mid) {
-  if (!ev.matchData) ev.matchData = {};
-  if (!ev.matchData[mid]) ev.matchData[mid] = {
-    events: [], scoreAdv: 0, config: null, periodTimes: []
-  };
-  return ev.matchData[mid];
-}
-
-function _mGetConfig(ev, mid) {
-  const md = _mGetMatch(ev, mid);
-  if (md.config) return md.config;
-  // Config par défaut
-  return { periods: 2, duration: 20, inverse: false };
-}
-
-function _mSaveConfig(ev, mid, cfg) {
-  _mGetMatch(ev, mid).config = cfg;
-  sv();
-}
-
-function _mTimeStr(sec, cfg) {
-  if (cfg.inverse) {
-    const rem = Math.max(0, cfg.duration * 60 - sec);
-    const m = Math.floor(rem / 60), s = rem % 60;
-    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+// ═══════════════════════════════════════════════════════
+// LIEU AUTOCOMPLETE (OpenStreetMap Nominatim)
+// ═══════════════════════════════════════════════════════
+function initLieuAC(input){
+  const sugg=document.getElementById("me-lieu-suggestions");
+  if(!input||!sugg)return;
+  let timer=null;
+  function renderS(items){
+    if(!items.length){sugg.style.display="none";return;}
+    sugg.innerHTML=items.map(item=>{
+      const safe=(item.nom||"").replace(/'/g,"\'");
+      return`<div style="padding:7px 11px;cursor:pointer;border-bottom:1px solid var(--g100)" onmousedown="event.preventDefault();document.getElementById('me-lieu').value='${safe}';document.getElementById('me-lieu-suggestions').style.display='none'" onmouseover="this.style.background='var(--g50)'" onmouseout="this.style.background=''">
+        <div style="font-size:11px;font-weight:600;color:var(--g800)">📍 ${item.nom}</div>
+        ${item.adresse?`<div style="font-size:9px;color:var(--g400)">${item.adresse}</div>`:""}
+      </div>`;
+    }).join("");
+    sugg.style.display="block";
   }
-  const m = Math.floor(sec / 60), s = sec % 60;
-  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  function searchNom(q){
+    const url=`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&accept-language=fr&q=${encodeURIComponent(q)}`;
+    fetch(url).then(r=>r.json()).then(data=>{
+      const osm=data.slice(0,6).map(r=>{
+        const addr=r.address||{};
+        const name=r.name||r.display_name.split(",")[0];
+        const city=addr.city||addr.town||addr.village||"";
+        const postcode=addr.postcode||"";
+        const country=(addr.country_code||"fr")!=="fr"?` (${addr.country||""})` :"";
+        return{nom:name.trim(),adresse:[postcode,city].filter(Boolean).join(" ")+country};
+      });
+      const q_low=q.toLowerCase();
+      const favs=LIEUX_FAVORIS.filter(f=>f.nom.toLowerCase().includes(q_low)||(f.adresse||"").toLowerCase().includes(q_low));
+      renderS(favs.concat(osm).slice(0,8));
+    }).catch(()=>{
+      const q_low=q.toLowerCase();
+      renderS(LIEUX_FAVORIS.filter(f=>f.nom.toLowerCase().includes(q_low)));
+    });
+  }
+  input.addEventListener("focus",()=>{if(!input.value.trim())renderS(LIEUX_FAVORIS);});
+  input.addEventListener("input",()=>{clearTimeout(timer);const q=input.value.trim();if(!q){renderS(LIEUX_FAVORIS);return;}if(q.length<2){sugg.style.display="none";return;}timer=setTimeout(()=>searchNom(q),380);});
+  input.addEventListener("blur",()=>setTimeout(()=>sugg.style.display="none",200));
 }
 
-function _mCurTime() {
-  const cfg = _mConfig || { duration: 20, inverse: false };
-  return _mTimeStr(_mSeconds, cfg);
-}
-
-function _mCurMinute() {
-  return Math.floor(_mSeconds / 60) + 1;
-}
-
-function mStart() {
-  if (_mRunning) return;
-  _mRunning = true;
-  _mTimer = setInterval(function() {
-    _mSeconds++;
-    const cfg = _mConfig || { duration: 20 };
-    // Fin de période automatique
-    if (_mSeconds >= cfg.duration * 60) {
-      clearInterval(_mTimer); _mTimer = null; _mRunning = false;
-      mEndPeriod();
+// ═══════════════════════════════════════════════════════
+// EXPORT IMAGE / PDF (html2canvas + jsPDF)
+// ═══════════════════════════════════════════════════════
+function exportImg(format){
+  const el=document.getElementById("export-preview");
+  if(!el||!el.firstElementChild){alert("Générez d'abord la composition en vue Réseaux.");return;}
+  const target=el.firstElementChild;
+  const btn=event&&event.target;const orig=btn?btn.innerHTML:"";
+  if(btn)btn.innerHTML="⏳";
+  html2canvas(target,{backgroundColor:null,scale:2,useCORS:true,allowTaint:true,logging:false}).then(canvas=>{
+    const team=S.teams.find(t=>t.id===curTID)||{label:"SAR-MOM"};
+    const evName=(curEV?.name||"compo").replace(/[^a-zA-Z0-9\-_]/g,"_");
+    const filename=`SARMOM_${team.label.replace(/\s/g,"")}_${evName}`;
+    if(format==="png"){const a=document.createElement("a");a.download=filename+".png";a.href=canvas.toDataURL("image/png");a.click();}
+    else if(format==="jpeg"){const a=document.createElement("a");a.download=filename+".jpg";a.href=canvas.toDataURL("image/jpeg",0.92);a.click();}
+    else if(format==="pdf"){
+      const imgData=canvas.toDataURL("image/png");
+      const w=canvas.width,h=canvas.height;
+      const jsPDFlib=window.jspdf?window.jspdf.jsPDF:(window.jsPDF);
+      if(!jsPDFlib){alert("jsPDF non chargé.");return;}
+      const pdf=new jsPDFlib({orientation:h>=w?"portrait":"landscape",unit:"mm"});
+      const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),mg=8;
+      const dpi=96*2;const iw=w/dpi*25.4,ih=h/dpi*25.4;
+      const ratio=Math.min((pw-mg*2)/iw,(ph-mg*2)/ih,1);
+      const fw=iw*ratio,fh=ih*ratio;
+      pdf.addImage(imgData,"PNG",(pw-fw)/2,(ph-fh)/2,fw,fh,"","FAST");
+      pdf.save(filename+".pdf");
     }
-    document.getElementById('m-chrono-display') &&
-      (document.getElementById('m-chrono-display').textContent = _mCurTime());
-  }, 1000);
-  renderMatchControls();
+    if(btn)btn.innerHTML=orig;
+  }).catch(err=>{console.error(err);alert("Erreur export. Réessayez.");if(btn)btn.innerHTML=orig;});
 }
 
-function mPause() {
-  if (!_mRunning) { mStart(); return; }
-  clearInterval(_mTimer); _mTimer = null; _mRunning = false;
-  renderMatchControls();
-}
-
-function mStop() {
-  clearInterval(_mTimer); _mTimer = null; _mRunning = false;
-  _mSeconds = 0;
-  document.getElementById('m-chrono-display') &&
-    (document.getElementById('m-chrono-display').textContent = _mCurTime());
-  renderMatchControls();
-}
-
-function mEndPeriod() {
-  const md = _mGetMatch(curEV, curMID);
-  md.periodTimes = md.periodTimes || [];
-  md.periodTimes[_mPeriod] = _mSeconds;
-  const cfg = _mConfig || { periods: 2, duration: 20 };
-  _mPeriod++;
-  _mSeconds = 0;
-  if (_mPeriod >= cfg.periods) {
-    _mPeriod = 0;
-    alert('🏁 Match terminé !');
-  } else {
-    const names = cfg.periods === 2 ? ['Mi-temps','Fin de match'] :
-      cfg.periods === 3 ? ['Fin du 1er tiers','Fin du 2e tiers','Fin de match'] :
-      Array.from({length: cfg.periods}, (_,i) => `Fin période ${i+1}`);
-    alert(`⏸ ${names[_mPeriod-1]} — reprise quand vous êtes prêts`);
-  }
-  sv();
-  renderMatch();
-}
-
-function mAddEvent(type, data) {
-  const md = _mGetMatch(curEV, curMID);
-  const minute = _mCurMinute();
-  const ev = { type, minute, ...data, ts: Date.now() };
-  md.events.push(ev);
-  // Sauvegarder score adverse si fourni
-  if (data.scoreAdv !== undefined) md.scoreAdv = data.scoreAdv;
-  sv();
-  renderMatch();
-}
-
-function mScore(ev, mid) {
-  const md = _mGetMatch(ev, mid);
-  const pts = { essai: 5, transformation: 2, penalite: 3, drop: 3 };
-  return md.events.filter(e => pts[e.type]).reduce((s, e) => s + (pts[e.type]||0), 0);
-}
-
-function mPromptScore(type, label, pts) {
-  // Choisir le joueur
-  const base = getBase(curEV, curTID).filter(Boolean);
-  const players = base.length > 0
-    ? base.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean)
-    : S.players;
+// ═══════════════════════════════════════════════════════
+// FEUILLE DE MATCH PDF (impression A4)
+// ═══════════════════════════════════════════════════════
+function exportMatchSheet(evId){
+  const ev=S.events.find(e=>e.id===evId)||curEV;
+  if(!ev)return;
+  const Ps=postes(ev);const ss=subsStart(ev);
+  const ms=getMatches(ev);
+  const dateStr=ev.date?new Date(ev.date+"T00:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):"";
+  const logo=document.querySelector(".nav-logo")||{src:""};
+  const c1=S.settings.c1||"#1a3a6b";const c2=S.settings.c2||"#f0c500";
   
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden">
-      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:16px">
-        ${label} (+${pts} pts) — Min. ${_mCurMinute()}
-      </div>
-      <div style="padding:12px;max-height:60vh;overflow-y:auto">
-        <input id="m-score-search" placeholder="Rechercher joueur…" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-bottom:8px;font-size:13px" oninput="mFilterScorers(this.value)">
-        <div id="m-scorer-list" style="display:flex;flex-direction:column;gap:4px">
-          ${players.map(p => `
-            <button onclick="mConfirmScore('${type}','${p.id}',${pts});this.closest('.m-modal').remove()" 
-              style="padding:10px 12px;background:var(--g50);border:none;border-radius:7px;text-align:left;cursor:pointer;font-size:13px;font-weight:500">
-              ${p.p} ${p.n} <span style="color:var(--g400);font-size:11px">${p.pos[0]||''}</span>
-            </button>`).join('')}
-        </div>
-      </div>
-      <div style="padding:10px 12px;border-top:1px solid var(--g100)">
-        <button onclick="this.closest('div[style*=fixed]').remove()" 
-          style="width:100%;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
-      </div>
-    </div>`;
-  modal.querySelector('div').classList.add('m-modal');
-  document.body.appendChild(modal);
-}
-
-function mFilterScorers(s) {
-  document.querySelectorAll('#m-scorer-list button').forEach(btn => {
-    btn.style.display = btn.textContent.toLowerCase().includes(s.toLowerCase()) ? '' : 'none';
+  let h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Feuille de match — ${ev.name}</title><style>
+    @page{size:A4 portrait;margin:10mm 12mm}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;font-size:9px;color:#1a1a14;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .hdr{background:${c1};color:#fff;display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:6px;margin-bottom:10px}
+    .ev-name{font-size:16px;font-weight:900;line-height:1}
+    .ev-sub{font-size:9px;opacity:.7;margin-top:2px}
+    .badge{background:${c2};color:${c1};font-size:8px;font-weight:900;padding:2px 8px;border-radius:10px;white-space:nowrap}
+    .match-block{border:1.5px solid ${c1};border-radius:6px;overflow:hidden;margin-bottom:10px;break-inside:avoid}
+    .match-hdr{background:${c1};color:#fff;padding:5px 10px;display:flex;align-items:center;gap:10px}
+    .match-vs{font-size:13px;font-weight:900;flex:1}
+    .score-box{background:${c2};color:${c1};font-size:11px;font-weight:900;padding:2px 8px;border-radius:4px;min-width:50px;text-align:center}
+    .team-section{padding:6px 10px;border-bottom:1px solid #e8e8e0}
+    .team-lbl{font-size:9px;font-weight:900;color:${c1};text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+    .players-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+    .player-row{display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:3px}
+    .player-row.fwd{background:#e3f2fd}.player-row.bck{background:#e8f5e9}.player-row.sub{background:#f5f5f0;opacity:.85}
+    .pnum{width:18px;height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:9px;color:#fff;flex-shrink:0}
+    .pnum.fwd{background:#1a3a6b}.pnum.bck{background:#1a6b3a}.pnum.sub{background:#888}
+    .pname{flex:1;font-size:9px;font-weight:600}.ppos{font-size:7px;color:#888;min-width:60px;text-align:right}
+    .footer{margin-top:8px;display:flex;justify-content:space-between;font-size:7px;color:#aaa;border-top:1px solid #e0e0d8;padding-top:5px}
+  </style></head><body>`;
+  
+  h+=`<div class="hdr"><div><div class="ev-name">${ev.name}</div><div class="ev-sub">${dateStr}${ev.lieu?" · "+ev.lieu:""}</div></div><div class="badge">${TYPE_LABELS[ev.type]||ev.type}</div></div>`;
+  
+  ms.forEach(m=>{
+    const score=ev.scores&&ev.scores[m.id];
+    const scoreStr=score&&score.f!==null?score.f+" — "+score.a:"__ — __";
+    h+=`<div class="match-block"><div class="match-hdr"><div class="match-vs">vs ${m.adv}${m.phaseName?` <span style="font-size:9px;opacity:.6">· ${m.phaseName}</span>`:""}</div><div style="font-size:8px;opacity:.7;margin-right:8px">Score</div><div class="score-box">${scoreStr}</div></div>`;
+    (ev.teams||[]).forEach(tid=>{
+      const team=S.teams.find(t=>t.id===tid)||{label:tid};
+      const resolved=getResolved(ev,tid,m.id);
+      h+=`<div class="team-section"><div class="team-lbl">${team.label}</div><div class="players-grid">`;
+      resolved.slice(0,ss).forEach((pid,i)=>{
+        const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
+        const fwd=i<8;
+        h+=`<div class="player-row ${fwd?"fwd":"bck"}"><div class="pnum ${fwd?"fwd":"bck"}">${i+1}</div><div class="pname">${pl?(pl.n||"").toUpperCase()+" "+(pl.p||"")[0]+".":"—"}${pl&&pl.inj?' <span style="font-size:7px;background:#fee2e2;color:#dc2626;padding:0 3px;border-radius:2px">BL.</span>':""}</div><div class="ppos">${Ps[i]||""}</div></div>`;
+      });
+      resolved.slice(ss).forEach((pid,i)=>{
+        const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
+        if(!pl)return;
+        h+=`<div class="player-row sub"><div class="pnum sub">${ss+i+1}</div><div class="pname">${(pl.n||"").toUpperCase()} ${(pl.p||"")[0]}.</div><div class="ppos">Rem.</div></div>`;
+      });
+      h+=`</div></div>`;
+    });
+    if((S.coaches||[]).length){
+      const evCoaches=Array.isArray(ev.staff)&&ev.staff.length?S.coaches.filter(c=>ev.staff.includes(c.id)):Array.isArray(ev.staff)&&ev.staff.length===0?[]:S.coaches;
+      if(evCoaches.length)h+=`<div style="padding:4px 10px;background:#f9f9f5;border-top:1px solid #e8e8e0;font-size:8px;color:#555"><b>Staff :</b> ${evCoaches.map(c=>c.role+" : "+c.name).join(" | ")}</div>`;
+    }
+    h+=`</div>`;
   });
-}
-
-function mConfirmScore(type, pid, pts) {
-  document.querySelector('div[style*="position:fixed"][style*="900"]')?.remove();
-  mAddEvent(type, { pid });
-}
-
-function mPromptEvent(type, label, emoji) {
-  const base = getBase(curEV, curTID).filter(Boolean);
-  const players = base.length > 0
-    ? base.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean)
-    : S.players;
-
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
   
-  let extra = '';
-  if (type === 'remplacement') {
-    const base2 = getBase(curEV, curTID).filter(Boolean);
-    const sortants = base2.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean);
-    extra = `<div style="margin-top:8px">
-      <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Joueur entrant</label>
-      <select id="m-enter" style="width:100%;padding:7px;border:1.5px solid var(--g200);border-radius:7px;margin-top:3px">
-        ${sortants.map(p => `<option value="${p.id}">${p.p} ${p.n}</option>`).join('')}
-      </select>
-    </div>`;
-  }
-  if (type === 'blessure') {
-    extra = `<div style="margin-top:8px">
-      <input id="m-injury-desc" placeholder="Nature de la blessure (optionnel)" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;font-size:12px">
-    </div>`;
-  }
-
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden">
-      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:16px">
-        ${emoji} ${label} — Min. ${_mCurMinute()}
-      </div>
-      <div style="padding:12px;max-height:55vh;overflow-y:auto">
-        <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:6px">
-          ${type === 'remplacement' ? 'Joueur sortant' : 'Joueur concerné'}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          ${players.map(p => `
-            <button class="m-ev-player" data-pid="${p.id}"
-              onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.style.background='var(--g50)');this.style.background='var(--c2)30'"
-              style="padding:9px 12px;background:var(--g50);border:1.5px solid transparent;border-radius:7px;text-align:left;cursor:pointer;font-size:13px">
-              ${p.p} ${p.n}
-            </button>`).join('')}
-        </div>
-        ${extra}
-      </div>
-      <div style="padding:10px 12px;border-top:1px solid var(--g100);display:flex;gap:8px">
-        <button onclick="this.closest('div[style*=fixed]').remove()" 
-          style="flex:1;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
-        <button onclick="mConfirmEvent('${type}')" 
-          style="flex:2;padding:10px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd)">
-          ${emoji} Confirmer</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-function mConfirmEvent(type) {
-  const modal = document.querySelector('div[style*="position:fixed"][style*="900"]');
-  const selected = modal?.querySelector('.m-ev-player[style*="c2"]');
-  const pid = selected?.dataset.pid;
-  if (!pid) { alert('Sélectionnez un joueur'); return; }
+  h+=`<div class="footer"><div><b>${S.settings.name||"SAR×MOM M14"}</b> · Saison ${S.settings.season||"2025/2026"}</div><div>Généré le ${new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
   
-  const data = { pid };
-  if (type === 'remplacement') {
-    data.pidIn = modal.querySelector('#m-enter')?.value;
-  }
-  if (type === 'blessure') {
-    data.desc = modal.querySelector('#m-injury-desc')?.value || '';
-  }
-  modal.remove();
-  mAddEvent(type, data);
+  const win=window.open("","_blank","width=800,height=1000");
+  if(win){win.document.write(h);win.document.close();setTimeout(()=>win.print(),500);}
 }
 
-function mPromptAdv() {
-  const md = _mGetMatch(curEV, curMID);
-  const val = prompt('Score adverse actuel :', md.scoreAdv || 0);
-  if (val !== null && !isNaN(parseInt(val))) {
-    mAddEvent('score_adv', { scoreAdv: parseInt(val) });
-  }
-}
-
-function mDeleteEvent(idx) {
-  if (!confirm('Supprimer cet événement ?')) return;
-  const md = _mGetMatch(curEV, curMID);
-  md.events.splice(idx, 1);
-  sv();
-  renderMatch();
-}
-
-function mOpenConfig() {
-  const cfg = _mGetConfig(curEV, curMID);
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;width:100%;max-width:340px">
-      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:15px">⚙️ Paramètres chrono</div>
-      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
-        <div>
-          <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Nombre de périodes</label>
-          <input id="m-cfg-periods" type="number" min="1" max="6" value="${cfg.periods}" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-top:4px;font-size:16px">
-        </div>
-        <div>
-          <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Durée d'une période (minutes)</label>
-          <input id="m-cfg-duration" type="number" min="1" max="60" value="${cfg.duration}" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-top:4px;font-size:16px">
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input id="m-cfg-inverse" type="checkbox" ${cfg.inverse?'checked':''} style="width:18px;height:18px">
-          <label for="m-cfg-inverse" style="font-size:13px;font-weight:500">Chrono inversé (décompte)</label>
-        </div>
-      </div>
-      <div style="padding:10px 16px 16px;display:flex;gap:8px">
-        <button onclick="this.closest('div[style*=fixed]').remove()" 
-          style="flex:1;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
-        <button onclick="mSaveConfig()" 
-          style="flex:2;padding:10px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd)">✅ Appliquer</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-function mSaveConfig() {
-  const modal = document.querySelector('div[style*="position:fixed"][style*="900"]');
-  const periods = parseInt(modal.querySelector('#m-cfg-periods').value) || 2;
-  const duration = parseInt(modal.querySelector('#m-cfg-duration').value) || 20;
-  const inverse = modal.querySelector('#m-cfg-inverse').checked;
-  modal.remove();
-  const cfg = { periods, duration, inverse };
-  _mSaveConfig(curEV, curMID, cfg);
-  _mConfig = cfg;
-  _mSeconds = 0; _mPeriod = 0; _mRunning = false;
-  clearInterval(_mTimer); _mTimer = null;
-  renderMatch();
-}
-
-function renderMatchControls() {
-  const btn = document.getElementById('m-play-btn');
-  if (!btn) return;
-  btn.textContent = _mRunning ? '⏸ Pause' : (_mSeconds > 0 ? '▶ Reprendre' : '▶ Démarrer');
-  btn.style.background = _mRunning ? '#d97706' : 'var(--cg)';
-}
-
-function renderMatch() {
-  const el = document.getElementById('match-content');
-  if (!el) return;
-
-  const md = _mGetMatch(curEV, curMID);
-  const cfg = md.config || { periods: 2, duration: 20, inverse: false };
-  _mConfig = cfg;
-
-  const ourScore = mScore(curEV, curMID);
-  const advScore = md.scoreAdv || 0;
-  const periodNames = cfg.periods === 2 ? ['1ère mi-temps','2ème mi-temps'] :
-    cfg.periods === 3 ? ['1er tiers-temps','2e tiers-temps','3e tiers-temps'] :
-    Array.from({length: cfg.periods}, (_,i) => `Période ${i+1}`);
-
-  const typeLabels = {
-    essai: ['🏉','Essai','+5'],
-    transformation: ['🎯','Transformation','+2'],
-    penalite: ['🅿️','Pénalité','+3'],
-    drop: ['🦵','Drop','+3'],
-    carton_jaune: ['⚠️','Carton jaune',''],
-    carton_rouge: ['🟥','Carton rouge',''],
-    blessure: ['🤕','Blessure',''],
-    remplacement: ['🔄','Remplacement',''],
-    score_adv: ['⚔️','Score adverse',''],
-  };
-
-  // Group events by period
-  const byPeriod = Array.from({length: cfg.periods}, () => []);
-  const periodSecs = cfg.duration * 60;
-  md.events.forEach((ev, idx) => {
-    const p = Math.min(Math.floor(((ev.minute-1) * 60) / periodSecs), cfg.periods-1);
-    byPeriod[Math.max(0,p)].push({...ev, _idx: idx});
-  });
-
-  el.innerHTML = `
-    <!-- SCORE -->
-    <div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;text-align:center;color:#fff">
-      <div style="font-size:11px;font-weight:700;opacity:.7;font-family:var(--fd);letter-spacing:1px;margin-bottom:4px">
-        ${periodNames[_mPeriod] || 'Match terminé'} · ${_mConfig.inverse ? 'Décompte' : 'Chrono normal'}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:12px">
-        <div>
-          <div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR×MOM</div>
-          <div style="font-size:52px;font-weight:900;font-family:var(--fd);color:var(--c2);line-height:1">${ourScore}</div>
-        </div>
-        <div style="font-size:28px;opacity:.5">—</div>
-        <div>
-          <div style="font-size:11px;opacity:.7;font-family:var(--fd)">${curEV._curTrackAdv||'Adversaire'}</div>
-          <div style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1" id="m-adv-score">${advScore}</div>
-        </div>
-      </div>
-      <!-- CHRONO -->
-      <div style="font-size:42px;font-weight:900;font-family:monospace;letter-spacing:2px;color:var(--c2)" id="m-chrono-display">${_mCurTime()}</div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
-        <button id="m-play-btn" onclick="mPause()" style="padding:10px 20px;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer;color:#fff;font-family:var(--fd)">▶ Démarrer</button>
-        <button onclick="mStop()" style="padding:10px 16px;background:rgba(255,255,255,.2);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:#fff">⏹ Reset</button>
-        <button onclick="mEndPeriod()" style="padding:10px 16px;background:rgba(255,255,255,.2);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:#fff">⏭ Fin période</button>
-        <button onclick="mOpenConfig()" style="padding:10px 14px;background:rgba(255,255,255,.15);border:none;border-radius:8px;font-size:13px;cursor:pointer;color:#fff">⚙️</button>
-      </div>
-    </div>
-
-    <!-- ACTIONS DE JEU -->
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Actions SAR×MOM</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button onclick="mPromptScore('essai','🏉 Essai',5)" style="padding:14px 8px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--fd)">🏉 Essai +5</button>
-        <button onclick="mPromptScore('transformation','🎯 Transformation',2)" style="padding:14px 8px;background:#0369a1;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--fd)">🎯 Transfo +2</button>
-        <button onclick="mPromptScore('penalite','🅿️ Pénalité',3)" style="padding:14px 8px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;font-family:var(--fd)">🅿️ Pénalité +3</button>
-        <button onclick="mPromptScore('drop','🦵 Drop',3)" style="padding:14px 8px;background:#b45309;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;font-family:var(--fd)">🦵 Drop +3</button>
-      </div>
-    </div>
-
-    <!-- SCORE ADVERSAIRE -->
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Score adversaire</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+5)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🏉 +5</button>
-        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+2)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🎯 +2</button>
-        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+3)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🅿️ +3</button>
-      </div>
-      <button onclick="mPromptAdv()" style="width:100%;margin-top:6px;padding:9px;background:var(--g100);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">✏️ Saisir score exact</button>
-    </div>
-
-    <!-- ÉVÉNEMENTS -->
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Événements</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button onclick="mPromptEvent('carton_jaune','Carton jaune','⚠️')" style="padding:12px 8px;background:#fef3c7;color:#92400e;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">⚠️ Carton jaune</button>
-        <button onclick="mPromptEvent('carton_rouge','Carton rouge','🟥')" style="padding:12px 8px;background:#fee2e2;color:#991b1b;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🟥 Carton rouge</button>
-        <button onclick="mPromptEvent('blessure','Blessure','🤕')" style="padding:12px 8px;background:#e0f2fe;color:#0369a1;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🤕 Blessure</button>
-        <button onclick="mPromptEvent('remplacement','Remplacement','🔄')" style="padding:12px 8px;background:#f0fdf4;color:#166534;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🔄 Remplacement</button>
-      </div>
-    </div>
-
-    <!-- HISTORIQUE -->
-    <div>
-      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Historique du match</div>
-      ${md.events.length === 0 ? '<div style="text-align:center;color:var(--g400);padding:20px;font-size:13px">Aucun événement enregistré</div>' :
-        [...md.events].reverse().map((ev, ri) => {
-          const idx = md.events.length - 1 - ri;
-          const pl = S.players.find(p => String(p.id) === String(ev.pid));
-          const plIn = ev.pidIn ? S.players.find(p => String(p.id) === String(ev.pidIn)) : null;
-          const lbl = typeLabels[ev.type] || ['❓', ev.type, ''];
-          const pts = lbl[2] ? `<span style="font-weight:800;color:var(--cg)">${lbl[2]}</span>` : '';
-          const plName = pl ? `${pl.p} ${pl.n}` : (ev.type === 'score_adv' ? `Score adv. → ${ev.scoreAdv}` : '');
-          const plInName = plIn ? ` → ${plIn.p} ${plIn.n}` : '';
-          const desc = ev.desc ? ` (${ev.desc})` : '';
-          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border-radius:8px;margin-bottom:5px">
-            <div style="font-size:18px;width:24px;text-align:center">${lbl[0]}</div>
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:700">${lbl[1]} ${pts}</div>
-              <div style="font-size:11px;color:var(--g600)">${plName}${plInName}${desc} · Min. ${ev.minute}</div>
-            </div>
-            <button onclick="mDeleteEvent(${idx})" style="border:none;background:none;color:var(--g400);cursor:pointer;font-size:16px;padding:4px">🗑</button>
-          </div>`;
-        }).join('')}
-    </div>
-  `;
-  renderMatchControls();
-}
-// ═══════════════════════════════════════════════════════════════════
-// SUIVI DE MATCH
-// ═══════════════════════════════════════════════════════════════════
-
-// État du chrono
-var _mTimer = null;
-var _mRunning = false;
-var _mSeconds = 0;        // secondes écoulées dans la période courante
-var _mPeriod = 0;         // période courante (0-based)
-var _mConfig = null;      // config chrono de l'événement courant
-
-function _mGetMatch(ev) {
-  if (!ev.match) ev.match = {
-    config: { periods: 2, duration: 20, reverse: false },
-    periods: [],           // { score_us, score_them, events[] }
-    currentPeriod: 0,
-    status: "idle"         // idle | running | paused | ended
-  };
-  return ev.match;
-}
-
-function _mGetPlayers() {
-  const base = getBase(curEV, curTID).filter(Boolean);
-  if (base.length > 0) return S.players.filter(p => base.map(String).includes(String(p.id)));
-  return S.players;
-}
-
-function _mFormatTime(secs, config) {
-  const dur = (config.duration || 20) * 60;
-  const t = config.reverse ? Math.max(0, dur - secs) : secs;
-  const m = Math.floor(t / 60);
-  const s = t % 60;
-  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
-
-function _mTotalScore(match, key) {
-  return (match.periods || []).reduce((acc, p) => acc + (p[key] || 0), 0);
-}
-
-function _mCurrentPeriod(match) {
-  const idx = match.currentPeriod || 0;
-  if (!match.periods[idx]) match.periods[idx] = { score_us: 0, score_them: 0, events: [] };
-  return match.periods[idx];
-}
-
-function _mAddEvent(type, data) {
-  const match = _mGetMatch(curEV);
-  const period = _mCurrentPeriod(match);
-  const config = match.config;
-  const dur = (config.duration || 20) * 60;
-  const t = config.reverse ? Math.max(0, dur - _mSeconds) : _mSeconds;
-  const min = Math.floor(t / 60);
-  period.events = period.events || [];
-  period.events.push({ type, min, ...data, ts: Date.now() });
-  sv();
-  renderMatchTab();
-}
-
-function _mScore(type, forUs) {
-  const pts = { essai: 5, transfo: 2, penalite: 3, drop: 3 }[type] || 0;
-  const match = _mGetMatch(curEV);
-  const period = _mCurrentPeriod(match);
-  if (forUs) period.score_us = (period.score_us || 0) + pts;
-  else period.score_them = (period.score_them || 0) + pts;
-  sv();
-  renderMatchTab();
-}
-
-function initMatchTab() {
-  const match = _mGetMatch(curEV);
-  _mConfig = match.config;
-  _mActiveMatchId = null; // reset to match list view
-  _mSeconds = 0;
-  _mRunning = false;
-  clearInterval(_mTimer);
-  renderMatchTab();
-}
-
-var _mActiveMatchId = null; // ID du match en cours de suivi
-
-function _mOpenMatch(mid) {
-  // Stop any running timer
-  clearInterval(_mTimer);
-  _mRunning = false;
-  _mActiveMatchId = mid;
-  // Load saved state for this match
-  const match = _mGetMatch(curEV);
-  const ms = (match.matchStates || {})[mid] || {};
-  _mSeconds = ms._seconds || 0;
-  renderMatchTab();
-}
-
-function _mBackToList() {
-  clearInterval(_mTimer);
-  _mRunning = false;
-  const match = _mGetMatch(curEV);
-  if (_mActiveMatchId) {
-    if (!match.matchStates) match.matchStates = {};
-    match.matchStates[_mActiveMatchId] = match.matchStates[_mActiveMatchId] || {};
-    match.matchStates[_mActiveMatchId]._seconds = _mSeconds;
-  }
-  _mActiveMatchId = null;
-  sv();
-  renderMatchTab();
-}
-
-function _mGetMatchState(mid) {
-  const match = _mGetMatch(curEV);
-  if (!match.matchStates) match.matchStates = {};
-  if (!match.matchStates[mid]) match.matchStates[mid] = {
-    score_us: 0, score_them: 0, events: [], _seconds: 0, status: "idle"
-  };
-  return match.matchStates[mid];
-}
-
-function _mStartStop() {
-  if (!_mActiveMatchId) return;
-  const match = _mGetMatch(curEV);
-  const cfg = match.config;
-  const ms = _mGetMatchState(_mActiveMatchId);
-  if (_mRunning) {
-    clearInterval(_mTimer);
-    _mRunning = false;
-    ms._seconds = _mSeconds;
-    ms.status = "paused";
-    sv();
-  } else {
-    ms.status = "running";
-    _mRunning = true;
-    _mTimer = setInterval(() => {
-      _mSeconds++;
-      ms._seconds = _mSeconds;
-      const dur = (cfg.duration || 20) * 60;
-      if (_mSeconds >= dur) {
-        clearInterval(_mTimer);
-        _mRunning = false;
-        ms.status = "ended";
-        ms._seconds = _mSeconds;
-        sv();
-        renderMatchTab();
-        return;
-      }
-      _mUpdateChronoDisplay();
-    }, 1000);
-  }
-  renderMatchTab();
-}
-
-function _mUpdateChronoDisplay() {
-  if (!_mActiveMatchId) return;
-  const match = _mGetMatch(curEV);
-  const ms = _mGetMatchState(_mActiveMatchId);
-  const el = document.getElementById("match-chrono-time");
-  if (el) el.textContent = _mFormatTime(_mSeconds, match.config);
-  const su = document.getElementById("match-score-us");
-  const st = document.getElementById("match-score-them");
-  if (su) su.textContent = ms.score_us || 0;
-  if (st) st.textContent = ms.score_them || 0;
-}
-
-function _mScore(type, forUs) {
-  if (!_mActiveMatchId) return;
-  const pts = { essai: 5, transfo: 2, penalite: 3, drop: 3 }[type] || 0;
-  const ms = _mGetMatchState(_mActiveMatchId);
-  if (forUs) ms.score_us = (ms.score_us || 0) + pts;
-  else ms.score_them = (ms.score_them || 0) + pts;
-  sv();
-  _mUpdateChronoDisplay();
-}
-
-function _mAddEvent(type, data) {
-  if (!_mActiveMatchId) return;
-  const match = _mGetMatch(curEV);
-  const cfg = match.config;
-  const dur = (cfg.duration || 20) * 60;
-  const t = cfg.reverse ? Math.max(0, dur - _mSeconds) : _mSeconds;
-  const min = Math.floor(t / 60);
-  const ms = _mGetMatchState(_mActiveMatchId);
-  ms.events = ms.events || [];
-  ms.events.push({ type, min, ...data, ts: Date.now() });
-  sv();
-  renderMatchTab();
-}
-
-function _mSaveConfig() {
-  const match = _mGetMatch(curEV);
-  match.config.periods  = 1; // always 1 per match
-  match.config.duration = parseInt(document.getElementById("mc-duration").value) || 20;
-  match.config.reverse  = document.getElementById("mc-reverse").checked;
-  _mConfig = match.config;
-  sv();
-  renderMatchTab();
-}
-
-function _mReset() {
-  if (!_mActiveMatchId) return;
-  if (!confirm("Réinitialiser le suivi de ce match ?")) return;
-  const match = _mGetMatch(curEV);
-  if (match.matchStates) delete match.matchStates[_mActiveMatchId];
-  clearInterval(_mTimer);
-  _mRunning = false;
-  _mSeconds = 0;
-  sv();
-  renderMatchTab();
-}
-
-function renderMatchTab() {
-  const el = document.getElementById("match-content");
-  if (!el) return;
-  const match = _mGetMatch(curEV);
-  const cfg = match.config;
-
-  // ── VUE LISTE DES MATCHS ─────────────────────────────────────
-  if (!_mActiveMatchId) {
-    const allMatches = [];
-    (curEV.phases || []).forEach(ph => {
-      (ph.matches || []).forEach(m => {
-        allMatches.push({ ...m, phaseName: ph.name, phaseDate: ph.date });
+// ═══════════════════════════════════════════════════════
+// EFFECTIF — vue joueurs avec statistiques
+// ═══════════════════════════════════════════════════════
+function computePlayerStats(){
+  const stats={};
+  (S.events||[]).forEach(ev=>{
+    const ms=getMatches(ev);
+    const Ps=postes(ev);
+    (ev.teams||[]).forEach(tid=>{
+      ms.forEach(m=>{
+        const res=getResolved(ev,tid,m.id);
+        res.forEach((pid,idx)=>{
+          if(!pid)return;
+          if(!stats[pid])stats[pid]={matchs:0,postes:{},events:[]};
+          stats[pid].matchs++;
+          const poste=Ps[idx]||"Remplaçant";
+          stats[pid].postes[poste]=(stats[pid].postes[poste]||0)+1;
+          if(!stats[pid].events.includes(ev.name))stats[pid].events.push(ev.name);
+        });
       });
     });
+  });
+  return stats;
+}
 
-    el.innerHTML = `
-    <!-- Config globale -->
-    <div style="background:var(--g50);border:1px solid var(--g200);border-radius:10px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:8px;font-family:var(--fd)">⚙️ Paramètres chrono (pour tous les matchs)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end">
-        <div>
-          <label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Durée (min)</label>
-          <input id="mc-duration" type="number" min="1" max="60" value="${cfg.duration||20}" 
-            style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:14px;text-align:center">
+function renderEffectif(){
+  const el=document.getElementById("effectif-content");
+  if(!el)return;
+  const stats=computePlayerStats();
+  const cc={SAR:"#1a3a6b",MOM:"#1a6b1a",ASCS:"#374151"};
+  const tagcols={Tank:["#fce7f3","#9d174d"],Driver:["#dbeafe","#1e40af"],Runner:["#fef3c7","#92400e"],Botteur:["#d1fae5","#065f46"],Lanceur:["#ede9fe","#4c1d95"],Sauteur:["#ffedd5","#9a3412"],Lifteur:["#f0fdf4","#14532d"]};
+  
+  let search=(document.getElementById("eff-search")||{}).value||"";
+  let players=[...S.players].filter(p=>!search||`${p.p} ${p.n}`.toLowerCase().includes(search.toLowerCase()));
+  players.sort((a,b)=>{
+    const sa=stats[a.id]||{matchs:0};const sb=stats[b.id]||{matchs:0};
+    if(sb.matchs!==sa.matchs)return sb.matchs-sa.matchs;
+    return `${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`);
+  });
+  
+  let h=`<div style="padding:12px 0">`;
+  h+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">`;
+  h+=`<input id="eff-search" placeholder="🔍 Rechercher…" value="${search}" oninput="renderEffectif()" style="flex:1;padding:7px 10px;border:1.5px solid var(--g200);border-radius:8px;font-size:12px">`;
+  h+=`</div>`;
+  h+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">`;
+  
+  players.forEach(p=>{
+    const jstat=stats[p.id]||{matchs:0,postes:{},events:[]};
+    const color=cc[p.club]||"#374151";
+    const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:14px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
+    const tags=(p.apt||[]).map(a=>{const tc=tagcols[a]||["#f3f4f6","#374151"];return`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${tc[0]};color:${tc[1]};font-weight:700">${a}</span>`;}).join("");
+    const topPostes=Object.keys(jstat.postes).sort((a,b)=>jstat.postes[b]-jstat.postes[a]).slice(0,3);
+    const posBar=topPostes.length?`<div style="margin:5px 0;padding:5px 7px;background:var(--g50);border-radius:6px;border:1px solid var(--g100)">
+      <div style="font-size:8px;font-weight:700;color:var(--g600);margin-bottom:3px">Postes occupés</div>
+      ${topPostes.map(pos=>{const cnt=jstat.postes[pos];const pct=Math.round(cnt/jstat.matchs*100);return`<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px"><span style="font-size:8px;color:var(--g400);min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pos}</span><div style="flex:1;height:5px;background:var(--g200);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--c1);width:${pct}%"></div></div><span style="font-size:8px;font-weight:700;color:var(--c1);min-width:16px;text-align:right">${cnt}</span></div>`;}).join("")}
+    </div>`:"";
+    const jddLbl=p.jdd==="oui"?`<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">JDD ✓</span>`:"";
+    const arbLbl=p.arb==="oui"?`<span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">ARB ✓</span>`:"";
+    
+    h+=`<div style="background:var(--w);border:${p.inj?"1px solid #fca5a5":"0.5px solid var(--g200)"};border-radius:var(--rl);padding:11px;position:relative;background:${p.inj?"#fff5f5":"var(--w)"}">
+      ${p.inj?`<div style="position:absolute;top:8px;right:8px"><span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">🏥 BLESSÉ</span></div>`:""}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+        <div style="width:40px;height:40px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:14px;font-weight:700;flex-shrink:0;overflow:hidden">${photoHtml}</div>
+        <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.p} ${p.n}</div>
+          <div style="font-size:10px;color:var(--g400)"><span style="background:${color}22;color:${color};padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">${p.club}</span> ${p.cat}</div>
         </div>
-        <div>
-          <label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Décompte</label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:6px 0">
-            <input id="mc-reverse" type="checkbox" ${cfg.reverse?"checked":""} style="width:15px;height:15px"> Inversé
-          </label>
+        <div style="text-align:center;min-width:44px">
+          <div style="font-family:var(--bebas);font-size:24px;color:${jstat.matchs>0?"var(--c1)":"var(--g200)"};line-height:1">${jstat.matchs}</div>
+          <div style="font-size:7px;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">match${jstat.matchs>1?"s":""}</div>
         </div>
       </div>
-      <button onclick="_mSaveConfig()" style="margin-top:8px;width:100%;padding:7px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--fd)">✓ Appliquer</button>
-    </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">${(p.pos||[]).map(pp=>`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#e8f0fb;color:var(--c1);font-family:var(--fd)">${pp}</span>`).join("")||`<span style="font-size:10px;color:var(--g400)">Postes non définis</span>`}</div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:3px">${tags}</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap">${jddLbl}${arbLbl}</div>
+      ${posBar}
+      ${p.h?`<div style="font-size:10px;color:var(--g400);margin-top:4px">📏 ${p.h}m · ⚖️ ${p.w}kg</div>`:""}
+    </div>`;
+  });
+  
+  h+=`</div></div>`;
+  el.innerHTML=h;
+}
 
-    <!-- Liste des matchs -->
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:8px;font-family:var(--fd)">🏉 Sélectionner un match</div>
-    ${allMatches.length === 0 ? '<div style="color:var(--g400);font-size:13px;text-align:center;padding:20px">Aucun match défini pour cet événement</div>' :
-      allMatches.map(m => {
-        const ms = (match.matchStates || {})[m.id] || {};
-        const scoreUs = ms.score_us || 0;
-        const scoreThem = ms.score_them || 0;
-        const hasData = ms.events && ms.events.length > 0;
-        const advName = (m.adv && !isNaN(m.adv)) ? (m.phaseName&&m.phaseName.toLowerCase().includes('final') ? (m.adv==='1'?'Finale':'Petite finale') : `Classé ${m.adv}`) : (m.adv||'Adversaire');
-        const statusDot = ms.status === 'ended' ? '🏁' : hasData ? '🟡' : '⚪';
-        return `<button onclick="_mOpenMatch('${m.id}')" 
-          style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;background:#fff;border:1.5px solid ${hasData?'var(--c1)':'var(--g200)'};border-radius:10px;cursor:pointer;gap:10px">
-          <span style="font-size:18px">${statusDot}</span>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;font-family:var(--fd);color:var(--g800)">vs ${advName}</div>
-            <div style="font-size:11px;color:var(--g400);margin-top:2px">${m.phaseName}${ms.status==='ended'?' · Terminé':hasData?' · En cours':''}
-            </div>
-          </div>
-          ${hasData ? `<div style="font-size:16px;font-weight:900;font-family:var(--fd);color:${scoreUs>scoreThem?'#16a34a':scoreUs<scoreThem?'#dc2626':'var(--g600)'}">${scoreUs} - ${scoreThem}</div>` : ''}
-          <span style="color:var(--g400);font-size:16px">›</span>
-        </button>`;
-      }).join('')
-    }`;
+
+var _mActiveMatchId = null;
+var _mActiveMatchAdv = '';
+var _mTimer = null;
+var _mRunning = false;
+var _mSeconds = 0;
+var _mPickerCallback = null;
+
+function openMatchTracker(evId, mid, adv){
+  var ev = S.events.find(function(e){ return e.id === evId; });
+  if (!ev) return;
+  curEV = ev;
+  curTID = (ev.teams || ['t1'])[0];
+  _mActiveMatchId = mid;
+  _mActiveMatchAdv = adv || '';
+  openEMtab(evId, 'match');
+}
+
+function _mGetMatch(ev){
+  if (!ev.match) ev.match = { config:{periods:2,duration:20,reverse:false}, byMatch:{} };
+  if (!ev.match.byMatch) ev.match.byMatch = {};
+  return ev.match;
+}
+function _mGetMatchData(ev, mid){
+  var match = _mGetMatch(ev);
+  if (!match.byMatch[mid]) match.byMatch[mid] = {periods:[],currentPeriod:0,status:"idle",_seconds:0};
+  return match.byMatch[mid];
+}
+function _mGetPlayers(){
+  var base = getBase(curEV, curTID).filter(Boolean);
+  if (base.length > 0) return S.players.filter(function(p){ return base.map(String).includes(String(p.id)); });
+  return S.players;
+}
+function _mFormatTime(secs, cfg){
+  var dur = (cfg.duration||20)*60;
+  var t = cfg.reverse ? Math.max(0,dur-secs) : secs;
+  var m = Math.floor(t/60), s = t%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function _mTotalScore(mdata, key){
+  return (mdata.periods||[]).reduce(function(acc,p){return acc+(p[key]||0);},0);
+}
+function _mCurrentPeriod(mdata){
+  var idx = mdata.currentPeriod||0;
+  if (!mdata.periods[idx]) mdata.periods[idx]={score_us:0,score_them:0,events:[]};
+  return mdata.periods[idx];
+}
+function _mAddEvent(type, data){
+  if (!_mActiveMatchId) return;
+  var match = _mGetMatch(curEV);
+  var mdata = _mGetMatchData(curEV, _mActiveMatchId);
+  var cfg = match.config;
+  var dur = (cfg.duration||20)*60;
+  var t = cfg.reverse ? Math.max(0,dur-_mSeconds) : _mSeconds;
+  var min = Math.floor(t/60);
+  var period = _mCurrentPeriod(mdata);
+  period.events = period.events||[];
+  var evt = {type:type,min:min,ts:Date.now()};
+  Object.keys(data).forEach(function(k){evt[k]=data[k];});
+  period.events.push(evt);
+  sv(); renderMatchTab();
+}
+function _mScore(type, forUs){
+  if (!_mActiveMatchId) return;
+  var pts = {essai:5,transfo:2,penalite:3,drop:3}[type]||0;
+  var mdata = _mGetMatchData(curEV, _mActiveMatchId);
+  var period = _mCurrentPeriod(mdata);
+  if (forUs) period.score_us=(period.score_us||0)+pts;
+  else period.score_them=(period.score_them||0)+pts;
+  sv(); renderMatchTab();
+}
+function initMatchTab(){
+  if (_mActiveMatchId){
+    var mdata = _mGetMatchData(curEV, _mActiveMatchId);
+    _mSeconds = mdata._seconds||0;
+  } else { _mSeconds=0; }
+  _mRunning=false; renderMatchTab();
+}
+function _mStartStop(){
+  if (!_mActiveMatchId){alert("Selectionnez un match depuis le calendrier.");return;}
+  var match=_mGetMatch(curEV); var mdata=_mGetMatchData(curEV,_mActiveMatchId);
+  if (_mRunning){
+    clearInterval(_mTimer); _mRunning=false; mdata.status="paused"; mdata._seconds=_mSeconds; sv();
+  } else {
+    _mRunning=true; mdata.status="running";
+    _mTimer=setInterval(function(){
+      _mSeconds++; mdata._seconds=_mSeconds;
+      var dur=(match.config.duration||20)*60;
+      if(_mSeconds>=dur){clearInterval(_mTimer);_mRunning=false;mdata.status="paused";sv();}
+      var el=document.getElementById("match-chrono-time"); if(el) el.textContent=_mFormatTime(_mSeconds,match.config);
+      var su=document.getElementById("match-score-us"); if(su) su.textContent=_mTotalScore(mdata,"score_us");
+      var st=document.getElementById("match-score-them"); if(st) st.textContent=_mTotalScore(mdata,"score_them");
+    },1000);
+  }
+  renderMatchTab();
+}
+function _mNextPeriod(){
+  if (!_mActiveMatchId) return;
+  var match=_mGetMatch(curEV); var mdata=_mGetMatchData(curEV,_mActiveMatchId);
+  clearInterval(_mTimer); _mRunning=false;
+  var total=match.config.periods||2;
+  if((mdata.currentPeriod||0)<total-1){mdata.currentPeriod=(mdata.currentPeriod||0)+1;_mSeconds=0;mdata._seconds=0;mdata.status="idle";}
+  else{mdata.status="ended";}
+  sv(); renderMatchTab();
+}
+function _mSaveConfig(){
+  var match=_mGetMatch(curEV);
+  match.config.periods=parseInt(document.getElementById("mc-periods").value)||2;
+  match.config.duration=parseInt(document.getElementById("mc-duration").value)||20;
+  match.config.reverse=document.getElementById("mc-reverse").checked;
+  sv(); renderMatchTab();
+}
+function _mReset(){
+  if(!_mActiveMatchId||!confirm("Reinitialiser le suivi ?")) return;
+  var match=_mGetMatch(curEV); delete match.byMatch[_mActiveMatchId];
+  clearInterval(_mTimer); _mRunning=false; _mSeconds=0; sv(); renderMatchTab();
+}
+function renderMatchTab(){
+  var el=document.getElementById("match-content"); if(!el)return;
+  var match=_mGetMatch(curEV); var cfg=match.config;
+  if(!_mActiveMatchId){
+    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--g400)"><div style="font-size:40px;margin-bottom:12px">&#x23F1;</div><div style="font-size:13px">Cliquez sur &#x23F1; a cote d un match dans le Calendrier.</div></div>';
     return;
   }
+  var mdata=_mGetMatchData(curEV,_mActiveMatchId);
+  var totalUs=_mTotalScore(mdata,"score_us"), totalThem=_mTotalScore(mdata,"score_them");
+  var pidx=mdata.currentPeriod||0, ended=mdata.status==="ended";
+  var pLabel=cfg.periods===2?(pidx===0?"1ere mi-temps":"2eme mi-temps"):("Tiers-temps "+(pidx+1));
+  var allEvts=[]; 
+  (mdata.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(ev){var e={periodIdx:pi};Object.keys(ev).forEach(function(k){e[k]=ev[k];});allEvts.push(e);});});
+  allEvts.sort(function(a,b){return a.ts-b.ts;});
+  var icons={essai:"&#x1F3C9;",transfo:"&#x1F97E;",penalite:"&#x1F3AF;",drop:"&#x1F4A5;",remplacement:"&#x1F504;",carton_jaune:"&#x1F7E1;",carton_rouge:"&#x1F534;",blessure:"&#x1F915;",avertissement:"&#x26A0;"};
+  var histHTML="";
+  if(allEvts.length>0){
+    histHTML='<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">Historique</div><div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden">'
+    +allEvts.slice().reverse().map(function(ev){
+      var pL=cfg.periods===2?(ev.periodIdx===0?"1MT":"2MT"):("T"+(ev.periodIdx+1));
+      var desc=ev.type==="remplacement"?(ev.outName+" > "+ev.inName):ev.forUs===false?(_mActiveMatchAdv||"Adv"):(ev.name||"");
+      if(ev.nat) desc+=" ("+ev.nat+")";
+      if(ev.pts&&ev.forUs!==false) desc+=" +"+ev.pts+"pts";
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--g100);font-size:12px">'
+        +'<span style="font-size:16px">'+(icons[ev.type]||"*")+"</span>"
+        +'<span style="background:var(--g100);padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">'+pL+" "+ev.min+"'</span>"
+        +'<span style="flex:1;color:var(--g700)">'+desc+"</span></div>";
+    }).join("")+"</div></div>";
+  }
+  el.innerHTML=
+    (_mActiveMatchAdv?'<div style="background:var(--c2);color:var(--c1);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-family:var(--fd);font-weight:800;font-size:14px;text-align:center">vs '+_mActiveMatchAdv+"</div>":'')
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+'<div style="font-size:11px;color:var(--g500)">Match actif</div>'+'<button onclick="_mResetActiveMatch()" style="font-size:11px;padding:3px 8px;background:var(--g100);border:1px solid var(--g200);border-radius:5px;cursor:pointer">↩ Changer de match</button>'+'</div>'+'<div style="background:var(--g50);border:1px solid var(--g200);border-radius:10px;padding:12px;margin-bottom:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--g600);margin-bottom:8px;font-family:var(--fd)">Configuration</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+    +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Periodes</label><input id="mc-periods" type="number" min="1" max="5" value="'+(cfg.periods||2)+'" style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:13px;text-align:center"></div>'
+    +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Duree (min)</label><input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:13px;text-align:center"></div>'
+    +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Decompte</label><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:6px 0"><input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+'> Inverse</label></div>'
+    +'</div><button onclick="_mSaveConfig()" style="margin-top:8px;width:100%;padding:6px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button></div>'
+    +'<div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;color:#fff;text-align:center">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;opacity:.7;margin-bottom:4px;font-family:var(--fd)">'+(ended?"MATCH TERMINE":pLabel+" ("+(pidx+1)+"/"+(cfg.periods||2)+")")+"</div>"
+    +(_mActiveMatchAdv?'<div style="font-size:18px;font-weight:900;font-family:var(--fd);margin:4px 0;letter-spacing:.5px">vs '+_mActiveMatchAdv+'</div>':"")
+    +'<div id="match-chrono-time" style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1;letter-spacing:2px">'+_mFormatTime(_mSeconds,cfg)+"</div>"
+    +'<div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-top:12px">'
+    +'<div style="text-align:center"><div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR/MOM</div><div id="match-score-us" style="font-size:42px;font-weight:900;font-family:var(--fd)">'+totalUs+"</div></div>"
+    +'<div style="font-size:28px;opacity:.5">-</div>'
+    +'<div style="text-align:center"><div style="font-size:11px;opacity:.7;font-family:var(--fd)">'+(_mActiveMatchAdv||"Adversaire")+'</div><div id="match-score-them" style="font-size:42px;font-weight:900;font-family:var(--fd)">'+totalThem+"</div></div>"
+    +"</div>"
+    +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:center">'
+    +(!ended
+      ?'<button onclick="_mStartStop()" style="flex:2;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;background:'+(_mRunning?"#f59e0b":"#22c55e")+';color:#fff">'+(_mRunning?"Pause":"Demarrer")+"</button>"
+       +'<button onclick="_mNextPeriod()" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.2);color:#fff">'+(pidx<(cfg.periods||2)-1?"Mi-temps":"Fin")+"</button>"
+      :'<button onclick="_mReset()" style="padding:10px 20px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.2);color:#fff">Nouveau match</button>')
+    +"</div></div>"
+    +'<div style="margin-bottom:10px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">Actions SAR/MOM</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+    +'<button data-action="essai" style="padding:10px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>'
+    +'<button data-action="transfo" style="padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>'
+    +'<button data-action="penalite" style="padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>'
+    +'<button data-action="drop" style="padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>'
+    +'</div></div>'
+    +'<div style="margin-bottom:10px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">'+(_mActiveMatchAdv||"Adversaire")+"</div>"
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">'
+    +'<button data-action="adv-essai" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+5</button>'
+    +'<button data-action="adv-transfo" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+2</button>'
+    +'<button data-action="adv-penalite" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
+    +'<button data-action="adv-drop" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:4px;align-items:center">'
+    +'<span style="font-size:11px;color:var(--g500)">Correction:</span>'
+    +'<button data-action="adv-minus" style="padding:4px 10px;background:var(--g100);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:12px">-1</button>'
+    +"</div></div>"
+    +'<div style="margin-bottom:10px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">Evenements</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+    +'<button data-action="remplacement" style="padding:9px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Remplacement</button>'
+    +'<button data-action="avertissement" style="padding:9px;background:#f97316;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Avertissement</button>'
+    +'<button data-action="carton_jaune" style="padding:9px;background:#eab308;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Carton jaune</button>'
+    +'<button data-action="carton_rouge" style="padding:9px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Carton rouge</button>'
+    +'<button data-action="blessure" style="padding:9px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>'
+    +"</div></div>"; 
 
-  // ── VUE SUIVI D'UN MATCH SPÉCIFIQUE ──────────────────────────
-  const ms = _mGetMatchState(_mActiveMatchId);
-  // Find match info
-  let matchInfo = null;
-  (curEV.phases || []).forEach(ph => {
-    (ph.matches || []).forEach(m => {
-      if (m.id === _mActiveMatchId) matchInfo = { ...m, phaseName: ph.name };
-    });
-  });
-  const advName = matchInfo ? ((matchInfo.adv&&!isNaN(matchInfo.adv)) ? (matchInfo.phaseName&&matchInfo.phaseName.toLowerCase().includes('final') ? (matchInfo.adv==='1'?'Finale':'Petite finale') : `Classé ${matchInfo.adv}`) : (matchInfo.adv||'Adversaire')) : 'Match';
-  const ended = ms.status === "ended";
-  const scoreUs = ms.score_us || 0;
-  const scoreThem = ms.score_them || 0;
-  const icons = {essai:'🏉',transfo:'🥾',penalite:'🎯',drop:'💥',remplacement:'🔄',carton_jaune:'🟡',carton_rouge:'🔴',blessure:'🤕',avertissement:'⚠️'};
-
-  el.innerHTML = `
-  <!-- Retour -->
-  <button onclick="_mBackToList()" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--g100);border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:10px;color:var(--g700)">
-    ‹ Tous les matchs
-  </button>
-
-  <!-- Chrono + Score -->
-  <div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;color:#fff;text-align:center">
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;opacity:.8;margin-bottom:4px;font-family:var(--fd)">${matchInfo?.phaseName || ''}</div>
-    <div style="font-size:16px;font-weight:900;font-family:var(--fd);letter-spacing:.02em;margin-bottom:8px">vs ${advName}</div>
-    <div id="match-chrono-time" style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1;letter-spacing:2px">${_mFormatTime(_mSeconds, cfg)}</div>
-    <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin-top:12px">
-      <div style="text-align:center">
-        <div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR/MOM</div>
-        <div id="match-score-us" style="font-size:46px;font-weight:900;font-family:var(--fd)">${scoreUs}</div>
-      </div>
-      <div style="font-size:24px;opacity:.4">—</div>
-      <div style="text-align:center">
-        <div style="font-size:11px;opacity:.7;font-family:var(--fd)">${advName}</div>
-        <div id="match-score-them" style="font-size:46px;font-weight:900;font-family:var(--fd)">${scoreThem}</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
-      ${!ended ? `
-      <button onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;font-family:var(--fd);background:${_mRunning?"#f59e0b":"#22c55e"};color:#fff">
-        ${_mRunning ? "⏸ Pause" : "▶ Démarrer"}
-      </button>
-      <button onclick="_mReset()" style="padding:11px 14px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd);background:rgba(255,255,255,.2);color:#fff">↺</button>
-      <button onclick="const ms=_mGetMatchState(_mActiveMatchId);ms.status='ended';clearInterval(_mTimer);_mRunning=false;sv();renderMatchTab();" style="padding:11px 14px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd);background:rgba(255,255,255,.2);color:#fff">🏁</button>
-      ` : `<div style="font-size:14px;font-weight:700;opacity:.9">Match terminé</div>`}
-    </div>
-  </div>
-
-  <!-- Actions SAR/MOM -->
-  <div style="margin-bottom:10px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">⚡ SAR/MOM</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-      <button onclick="_mShowPlayerPicker('essai','Essai — Qui marque ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('essai',true);_mAddEvent('essai',{pid,name:p?p.p+' '+p.n:'?',pts:5,forUs:true});})" 
-        style="padding:12px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--fd)">🏉 Essai +5</button>
-      <button onclick="_mShowPlayerPicker('transfo','Transformation — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('transfo',true);_mAddEvent('transfo',{pid,name:p?p.p+' '+p.n:'?',pts:2,forUs:true});})"
-        style="padding:12px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--fd)">🥾 Transfo +2</button>
-      <button onclick="_mShowPlayerPicker('penalite','Pénalité — Qui bute ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('penalite',true);_mAddEvent('penalite',{pid,name:p?p.p+' '+p.n:'?',pts:3,forUs:true});})"
-        style="padding:12px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--fd)">🎯 Pénalité +3</button>
-      <button onclick="_mShowPlayerPicker('drop','Drop — Qui bute ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('drop',true);_mAddEvent('drop',{pid,name:p?p.p+' '+p.n:'?',pts:3,forUs:true});})"
-        style="padding:12px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--fd)">💥 Drop +3</button>
-    </div>
-  </div>
-
-  <!-- Score adversaire -->
-  <div style="margin-bottom:10px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">🆚 ${advName}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">
-      <button onclick="_mScore('essai',false);_mAddEvent('essai',{forUs:false,pts:5,name:'${advName}'})" 
-        style="padding:11px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">+5</button>
-      <button onclick="_mScore('transfo',false);_mAddEvent('transfo',{forUs:false,pts:2,name:'${advName}'})"
-        style="padding:11px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">+2</button>
-      <button onclick="_mScore('penalite',false);_mAddEvent('penalite',{forUs:false,pts:3,name:'${advName}'})"
-        style="padding:11px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">+3</button>
-      <button onclick="_mScore('drop',false);_mAddEvent('drop',{forUs:false,pts:3,name:'${advName}'})"
-        style="padding:11px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">+3</button>
-    </div>
-    <div style="display:flex;gap:6px;margin-top:5px;align-items:center">
-      <span style="font-size:11px;color:var(--g500)">Correction :</span>
-      <button onclick="const ms=_mGetMatchState(_mActiveMatchId);ms.score_them=Math.max(0,(ms.score_them||0)-1);sv();_mUpdateChronoDisplay();"
-        style="padding:4px 12px;background:var(--g100);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:13px">−1</button>
-      <button onclick="const ms=_mGetMatchState(_mActiveMatchId);ms.score_us=Math.max(0,(ms.score_us||0)-1);sv();_mUpdateChronoDisplay();"
-        style="padding:4px 12px;background:var(--g100);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:13px">−1 nous</button>
-    </div>
-  </div>
-
-  <!-- Événements -->
-  <div style="margin-bottom:10px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">📋 Événements</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-      <button onclick="_mShowPlayerPicker('remplacement','Sort — Qui ?',function(pid1){const p1=S.players.find(x=>String(x.id)===String(pid1));_mShowPlayerPicker('remplacement','Entre — Qui ?',function(pid2){const p2=S.players.find(x=>String(x.id)===String(pid2));_mAddEvent('remplacement',{out:pid1,outName:p1?p1.p+' '+p1.n:'?',in:pid2,inName:p2?p2.p+' '+p2.n:'?'});});})"
-        style="padding:10px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🔄 Remplacement</button>
-      <button onclick="_mShowPlayerPicker('avertissement','Avertissement — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mAddEvent('avertissement',{pid,name:p?p.p+' '+p.n:'?'});})"
-        style="padding:10px;background:#f97316;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">⚠️ Avertissement</button>
-      <button onclick="_mShowPlayerPicker('carton_jaune','Carton jaune — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mAddEvent('carton_jaune',{pid,name:p?p.p+' '+p.n:'?'});})"
-        style="padding:10px;background:#eab308;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🟡 Carton jaune</button>
-      <button onclick="_mShowPlayerPicker('carton_rouge','Carton rouge — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mAddEvent('carton_rouge',{pid,name:p?p.p+' '+p.n:'?'});})"
-        style="padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🔴 Carton rouge</button>
-      <button onclick="_mShowPlayerPicker('blessure','Blessure — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));const nat=prompt('Nature :','');_mAddEvent('blessure',{pid,name:p?p.p+' '+p.n:'?',nat:nat||''});})"
-        style="padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd);grid-column:span 2">🤕 Blessure</button>
-    </div>
-  </div>
-
-  <!-- Historique -->
-  ${(ms.events||[]).length > 0 ? `
-  <div>
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">📜 Historique</div>
-    <div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden">
-      ${[...(ms.events||[])].reverse().map(ev => {
-        let desc = ev.type==='remplacement' ? `${ev.outName} → ${ev.inName}` : ev.forUs===false ? advName : (ev.name||'');
-        if (ev.nat) desc += ` (${ev.nat})`;
-        if (ev.pts && ev.forUs!==false) desc += ` +${ev.pts}pts`;
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--g100);font-size:12px">
-          <span style="font-size:15px">${icons[ev.type]||'•'}</span>
-          <span style="background:var(--g100);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-family:var(--fd)">${ev.min}'</span>
-          <span style="flex:1;color:var(--g700)">${desc}</span>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>` : ''}
-  `;
+  // Set up event delegation for action buttons
+  setTimeout(function(){
+    var mc=document.getElementById("match-content");
+    if(!mc)return;
+    mc.addEventListener("click",function(e){
+      var btn=e.target.closest("[data-action]");
+      if(!btn)return;
+      var action=btn.dataset.action;
+      var labels={essai:"Essai - Qui marque ?",transfo:"Transformation - Qui ?",penalite:"Penalite - Qui ?",drop:"Drop - Qui ?",remplacement:"Sort ?",avertissement:"Avertissement - Qui ?",carton_jaune:"Carton jaune - Qui ?",carton_rouge:"Carton rouge - Qui ?",blessure:"Blessure - Qui ?"};
+      var pts={essai:5,transfo:2,penalite:3,drop:3};
+      if(action.startsWith("adv-")){
+        var t=action.replace("adv-","");
+        if(t==="minus"){var md=_mGetMatchData(curEV,_mActiveMatchId);var p=_mCurrentPeriod(md);p.score_them=Math.max(0,(p.score_them||0)-1);sv();renderMatchTab();}
+        else{_mScore(t,false);_mAddEvent(t,{forUs:false,pts:pts[t]||0,name:"Adv"});}
+      } else if(action==="remplacement"){
+        _mShowPlayerPicker("r1","Sort ?",function(p1){_mShowPlayerPicker("r2","Entre ?",function(p2){var pp1=S.players.find(function(x){return String(x.id)===String(p1);});var pp2=S.players.find(function(x){return String(x.id)===String(p2);});_mAddEvent("remplacement",{out:p1,outName:pp1?pp1.p+" "+pp1.n:"?",in:p2,inName:pp2?pp2.p+" "+pp2.n:"?"});});});
+      } else if(labels[action]){
+        _mShowPlayerPicker(action,labels[action],function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});var extras={pid:pid,name:p?p.p+" "+p.n:"?"};if(action==="blessure"){extras.nat=prompt("Nature:","");}else if(pts[action]){_mScore(action,true);extras.pts=pts[action];extras.forUs=true;}_mAddEvent(action,extras);});
+      }
+    },true);
+  },50);
 }
-
-var _mPickerCallback = null;
-function _mShowPlayerPicker(type, label, callback) {
-  _mPickerCallback = callback;
-  const players = _mGetPlayers();
-  var existing = document.getElementById("m-pick-overlay");
-  if (existing) existing.remove();
-  var overlay = document.createElement("div");
-  overlay.id = "m-pick-overlay";
-  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px";
-  var btns = players.map(function(p) {
-    var btn = document.createElement("button");
-    btn.dataset.pid = p.id;
-    btn.onclick = function(){ _mPickPlayer(this.dataset.pid); };
-    btn.style.cssText = "display:block;width:100%;text-align:left;padding:9px 12px;margin:2px 0;background:var(--g50);border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--fd)";
-    btn.textContent = p.p + " " + p.n;
-    return btn;
-  });
-  var inner = document.createElement("div");
-  inner.style.cssText = "background:#fff;border-radius:12px;width:100%;max-width:340px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.25)";
-  var header = document.createElement("div");
-  header.style.cssText = "padding:12px 16px;font-weight:700;font-size:14px;font-family:var(--fd);background:var(--c1);color:#fff;border-radius:12px 12px 0 0";
-  header.textContent = label;
-  var list = document.createElement("div");
-  list.style.cssText = "overflow-y:auto;flex:1;padding:8px";
-  btns.forEach(function(b){ list.appendChild(b); });
-  var footer = document.createElement("div");
-  footer.style.cssText = "padding:8px";
-  var cancelBtn = document.createElement("button");
-  cancelBtn.textContent = "Annuler";
-  cancelBtn.style.cssText = "width:100%;padding:9px;background:var(--g200);border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:13px";
-  cancelBtn.onclick = function(){ overlay.remove(); };
-  footer.appendChild(cancelBtn);
-  inner.appendChild(header);
-  inner.appendChild(list);
-  inner.appendChild(footer);
-  overlay.appendChild(inner);
-  overlay.addEventListener("click", function(e){ if(e.target===overlay) overlay.remove(); });
+function _mShowPlayerPicker(type, label, callback){
+  _mPickerCallback=callback;
+  var players=_mGetPlayers();
+  var ex=document.getElementById("m-pick-overlay"); if(ex) ex.remove();
+  var overlay=document.createElement("div");
+  overlay.id="m-pick-overlay";
+  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px";
+  var listHTML=players.map(function(p){
+    return "<button data-pid=\""+p.id+"\" onclick=\"_mPickPlayer(this.dataset.pid)\" style=\"display:block;width:100%;text-align:left;padding:9px 12px;margin:2px 0;background:var(--g50);border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:13px\">"+p.p+" "+p.n+"</button>";
+  }).join("");
+  var cancelBtn="<button onclick=\"document.getElementById('m-pick-overlay').remove()\" style=\"width:100%;padding:9px;background:var(--g200);border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:13px\">Annuler</button>";
+  overlay.innerHTML="<div style=\"background:#fff;border-radius:12px;width:100%;max-width:340px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.25)\">"
+    +"<div style=\"padding:12px 16px;font-weight:700;font-size:14px;background:var(--c1);color:#fff;border-radius:12px 12px 0 0\">"+label+"</div>"
+    +"<div style=\"overflow-y:auto;flex:1;padding:8px\">"+listHTML+"</div>"
+    +"<div style=\"padding:8px\">"+cancelBtn+"</div>"
+    +"</div>";
+  overlay.addEventListener("click",function(e){if(e.target===overlay)overlay.remove();});
   document.body.appendChild(overlay);
 }
-function _mPickPlayer(pid) {
-  var overlay = document.getElementById("m-pick-overlay");
-  if (overlay) overlay.remove();
-  if (_mPickerCallback) { _mPickerCallback(pid); _mPickerCallback = null; }
+function _mPickPlayer(pid){
+  var o=document.getElementById("m-pick-overlay"); if(o) o.remove();
+  if(_mPickerCallback){_mPickerCallback(pid);_mPickerCallback=null;}
 }
-
-// MISC
-function cm(id){document.getElementById(id)?.classList.remove("open");}
-function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`\${dd}/\${m}/\${y}`;}
-function typeLabel(t){const L={"championnat-1":"Champ. L1","championnat-2":"Champ. L2","vie":"Challenge Vié","federal":"Challenge Féd.","tournoi":"Tournoi","amical":"Amical","seven":"Seven"};return L[t]||t;}
-function openEMtab(id, tab){
-  openEM(id);
-  setTimeout(function(){
-    const btn = document.querySelector('.stab[onclick*="' + tab + '"]');
-    if(btn) btn.click();
-  }, 200);
-}
-function _mUpdatePosDisplay(){
-  const cbs=[...document.querySelectorAll('.mp-pos-cb:checked')];
-  const vals=cbs.map(c=>c.value);
-  document.getElementById('mp-pos').value=vals.join(', ');
-  const disp=document.getElementById('mp-pos-display');
-  if(vals.length===0){
-    disp.innerHTML='<span id="mp-pos-placeholder" style="color:var(--g400);font-size:12px">Sélectionner des postes…</span>';
-  } else {
-    disp.innerHTML=vals.map(v=>`<span style="background:var(--g100);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600">\${v}</span>`).join('');
-  }
-}
-function _mInitPosDropdown(posArr){
-  document.querySelectorAll('.mp-pos-cb').forEach(cb=>{
-    cb.checked=posArr.includes(cb.value);
-  });
-  _mUpdatePosDisplay();
-}
-
 // INIT
-['sm5','sm6'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
-try{
-  const _d=JSON.parse(localStorage.getItem('sm7')||'null');
-  if(_d && (_d.players||[]).length<60){ localStorage.removeItem('sm7'); }
-}catch(e){ localStorage.removeItem('sm7'); }
-if(S.players.length<60){ S.players=INIT_PL; }
+// Apply stored settings on load
 (function(){
   const ns=document.getElementById("nav-sub-txt");
-  if(ns&&S.settings&&S.settings.season) ns.textContent='Entente M14 · Saison '+S.settings.season;
+  if(ns&&S.settings.season) ns.textContent=`Entente M14 · Saison ${S.settings.season}`;
 })();
-_gCheckRedirectToken();
 rdash();revents();
 </script>
 </body>
