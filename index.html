@@ -861,8 +861,8 @@ function openEditor(eid,tid,mid,mode){
 }
 function renderEdBtns(){
   const matches=getMatches(curEV);
-  let html=`<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap"><span style="font-size:9px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">Équipe :</span>${(curEV.teams||[]).map(tid=>{const t=S.teams.find(t=>t.id===tid);return`<button class="btn ${tid===curTID?"btn-b":"btn-g"}" onclick="switchTeam('${tid}')">${t?.label||tid}</button>`;}). join("")}</div>`;
-  html+=`<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap"><span style="font-size:9px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">Mode :</span><button class="btn ${curMode==="base"?"btn-b":"btn-g"}" onclick="switchMode('base')" style="${curMode==="base"?"":"border-color:#93c5fd;color:#1e40af"}">📋 Base</button>${matches.map(m=>`<button class="btn ${curMode==="match"&&curMID===m.id?"btn-b":"btn-g"}" onclick="switchMode('match','${m.id}')">✏️ vs ${m.adv}</button>`).join("")}</div>`;
+  let html=`<div style="display:flex;gap:3px;align-items:center;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px"><span style="font-size:9px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">Équipe :</span>${(curEV.teams||[]).map(tid=>{const t=S.teams.find(t=>t.id===tid);return`<button class="btn ${tid===curTID?"btn-b":"btn-g"}" onclick="switchTeam('${tid}')">${t?.label||tid}</button>`;}). join("")}</div>`;
+  html+=`<div style="display:flex;gap:3px;align-items:center;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px"><span style="font-size:9px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">Mode :</span><button class="btn ${curMode==="base"?"btn-b":"btn-g"}" onclick="switchMode('base')" style="${curMode==="base"?"":"border-color:#93c5fd;color:#1e40af"}">📋 Base</button>${matches.map(m=>`<button class="btn ${curMode==="match"&&curMID===m.id?"btn-b":"btn-g"}" onclick="switchMode('match','${m.id}')">✏️ vs ${m.adv}</button>`).join("")}</div>`;
   if(curMode==="match"&&(curEV.type.startsWith("championnat")||curEV.type==="amical"||curEV.type==="seven")){const ind=isInd(curEV,curTID,curMID);html+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 9px;background:${ind?"#fff7ed":"var(--g50)"};border-radius:6px;border:1px solid ${ind?"#f97316":"var(--g200)"};font-size:11px"><label style="cursor:pointer;display:flex;align-items:center;gap:5px"><input type="checkbox" ${ind?"checked":""} onchange="toggleInd(this.checked)"> Compo entièrement indépendante pour ce match</label></div>`;}
   document.getElementById("ed-btns").innerHTML=html;
 }
@@ -1238,8 +1238,11 @@ function gShowClientIdPrompt(){
 }
 
 function openEMtab(id,tab){
-  // Open composition editor (not event settings modal)
   openEditor(id,null,null,"base");
+  if(tab==="match"){
+    clearInterval(_mTimer);_mRunning=false;
+    _mActiveMatchId=null;_mActiveMatchAdv="";_mSeconds=0;
+  }
   setTimeout(function(){
     var btn=document.querySelector('.stab[onclick*="'+tab+'"]');
     if(btn)btn.click();
@@ -1431,13 +1434,14 @@ function renderMatchTab(){
   if(!el)return;
   
   // Sync with curMID
-  if(curMID&&curEV){
+  // Synchro avec curMID uniquement si mode != BASE
+  if(curMID&&curEV&&curMode!=="base"){
     var allM=getMatches(curEV)||[];
     var cm=allM.find(function(m){return m.id===curMID;});
     if(cm&&cm.id!==_mActiveMatchId){
       clearInterval(_mTimer);_mRunning=false;
       _mActiveMatchId=cm.id;
-      _mActiveMatchAdv=String(cm.adv||"Adversaire");
+      _mActiveMatchAdv=String(cm.adv&&String(cm.adv).length>2?cm.adv:"Match "+cm.adv);
       var md2=_mGetMatchData(curEV,cm.id);
       _mSeconds=md2.seconds||0;
     }
