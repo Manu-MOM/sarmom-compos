@@ -751,7 +751,7 @@ function renderEvCard(ev){
   let scoreHtml="";
   if(!isTour){scoreHtml=matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("");}
   else{scoreHtml=(ev.phases||[]).map(ph=>`<div style="margin-bottom:7px"><div style="font-size:10px;font-weight:700;color:var(--tour);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;font-family:var(--fd)">📍 ${ph.name}</div>${ph.matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("")}</div>`).join("");}
-  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
+  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px" title="Modifier">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
 }
 function toggleEv(id){const el=document.getElementById("eb-"+id);el&&el.classList.toggle("open");}
 function setSc(eid,mid,side,val){const e=S.events.find(e=>e.id===eid);if(!e.scores)e.scores={};if(!e.scores[mid])e.scores[mid]={f:null,a:null};e.scores[mid][side]=val===""?null:parseInt(val);sv();}
@@ -856,7 +856,7 @@ function renderPool(){
   }).sort((a,b)=>`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`));
   pool.innerHTML=ps.map(p=>{
     const used=resolved.map(String).includes(String(p.id));
-    const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase().replace(/ /g,'-').replace(/[éè]/g,'e').replace(/û/g,'u').replace(/\//g,'-')}">${a}</span>`).join("");
+    const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase().replace(/ /g,'-').replace(/[éè]/g,'e').replace(/û/g,'u').replace(/\//g,'-')}">${a}</span><span class="cchip" onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv&&m.adv.length>2?m.adv:adv_label(ev,m.adv)}')" style="background:#6d28d9;color:#fff;padding:2px 5px;margin-left:2px" title="Suivi match">⏱</span>`).join("");
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ</span>`:"";
     const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:9px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
     return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" data-pid="${p.id}" onclick="if(!this.classList.contains('used'))pickD(this.dataset.pid)"><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
@@ -1219,6 +1219,15 @@ function _mResetActiveMatch(){
   renderMatchTab();
 }
 function _mClosePickerOverlay(){var o=document.getElementById('m-pick-overlay');if(o)o.remove();}
+function adv_label(ev,adv){
+  if(!adv)return'?';
+  if(String(adv).length>2)return String(adv);
+  return'Match '+adv;
+}
+function _mSelectMatch(el){
+  var evId=el.dataset.evid, mid=el.dataset.mid, adv=el.dataset.adv;
+  openMatchTracker(evId, mid, adv);
+}
 // MISC
 function cm(id){document.getElementById(id).classList.remove("open");}
 document.querySelectorAll(".mbg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");}));
@@ -1571,7 +1580,22 @@ function renderMatchTab(){
   var el=document.getElementById("match-content"); if(!el)return;
   var match=_mGetMatch(curEV); var cfg=match.config;
   if(!_mActiveMatchId){
-    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--g400)"><div style="font-size:40px;margin-bottom:12px">&#x23F1;</div><div style="font-size:13px">Cliquez sur &#x23F1; a cote d un match dans le Calendrier.</div></div>';
+    var matches=getMatches(curEV)||[];
+    var matchHtml=matches.map(function(m){
+      var adv=m.adv&&String(m.adv).length>2?m.adv:('Match '+m.adv);
+      var sc=curEV.scores&&curEV.scores[m.id];
+      var score=sc&&sc.f!=null?(sc.f+'-'+sc.a):'';
+      return '<div onclick="_mSelectMatch(this)" data-evid="'+curEV.id+'" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,'&quot;')+'" '
+        +'style="padding:12px 14px;margin:4px 0;background:#fff;border:1.5px solid var(--g200);'
+        +'border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--fd);display:flex;justify-content:space-between;align-items:center">'
+        +'<span><span style="font-size:16px;margin-right:8px">⏱</span><b>vs '+adv+'</b></span>'
+        +(score?'<span style="font-weight:900;color:var(--c1)">'+score+'</span>':'<span style="color:var(--g400);font-size:11px">À venir</span>')
+        +'</div>';
+    }).join('');
+    el.innerHTML='<div style="padding:16px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:10px;font-family:var(--fd)">Sélectionner un match à suivre</div>'
+      +(matchHtml||'<div style="text-align:center;padding:20px;color:var(--g400)">Aucun match dans cet événement</div>')
+      +'</div>';
     return;
   }
   var mdata=_mGetMatchData(curEV,_mActiveMatchId);
