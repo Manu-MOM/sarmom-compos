@@ -859,7 +859,7 @@ function renderPool(){
   }).sort((a,b)=>`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`));
   pool.innerHTML=ps.map(p=>{
     const used=resolved.map(String).includes(String(p.id));
-    const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase().replace(/ /g,'-').replace(/[éè]/g,'e').replace(/û/g,'u').replace(/\//g,'-')}">${a}</span><span class="cchip" onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv&&m.adv.length>2?m.adv:adv_label(ev,m.adv)}')" style="background:#6d28d9;color:#fff;padding:2px 5px;margin-left:2px" title="Suivi match">⏱</span>`).join("");
+    const tags=p.apt.slice(0,2).map(a=>`<span class="tag tag-${a.toLowerCase().replace(/ /g,'-').replace(/[éè]/g,'e').replace(/û/g,'u').replace(/\//g,'-')}">${a}</span>`).join("");
     const injLbl=p.inj?`<span class="inj-badge">BLESSÉ</span>`:"";
     const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:9px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
     return`<div class="pool-item ${used?"used":""} ${p.inj&&!used?"injured":""}" data-pid="${p.id}" onclick="if(!this.classList.contains('used'))pickD(this.dataset.pid)"><div class="pav">${photoHtml}</div><div style="flex:1;min-width:0"><div class="pname">${p.p} ${p.n}</div><div class="ppos-s">${p.pos[0]||"—"}</div></div><div style="display:flex;gap:2px;flex-wrap:wrap">${tags}${injLbl}</div></div>`;
