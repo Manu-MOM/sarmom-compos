@@ -1592,12 +1592,12 @@ function renderRapport(){
     var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
     var totalUs=md?(md.periods||[]).reduce(function(a,p){return a+(p.score_us||0);},0):0;
     var totalThem=md?(md.periods||[]).reduce(function(a,p){return a+(p.score_them||0);},0):0;
-    var played=md&&md.status&&md.status!=="idle";
+    var played=md&&((md.periods||[]).some(function(p){return(p.score_us||0)+(p.score_them||0)>0||(p.events||[]).length>0;})||md.status==="ended");
     var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
     var allEvts=[];
     if(md)(md.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
     allEvts.sort(function(a,b){return a.ts-b.ts;});
-    var bgColor=!played?"#374151":win?c1:draw?"#374151":"#991b1b";
+    var bgColor=!played?"#6b7280":win?c1:draw?"#374151":"#991b1b";
     var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
 
     return"<div style='background:white;border-radius:10px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)'>"
