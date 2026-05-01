@@ -1241,496 +1241,248 @@ function _mCorrectScore(delta){
   period.score_them=Math.max(0,(period.score_them||0)+delta);
   sv();renderMatchTab();
 }
-// MISC
-function cm(id){document.getElementById(id).classList.remove("open");}
-document.querySelectorAll(".mbg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");}));
+// ═══════════════════════════════════════════════════════════════
+// SUIVI DE MATCH
+// ═══════════════════════════════════════════════════════════════
+var _mTimer=null,_mRunning=false,_mSeconds=0;
+var _mActiveMatchId=null,_mActiveMatchAdv='',_mPickerCallback=null;
 
-// ═══════════════════════════════════════════════════════
-// LIEU AUTOCOMPLETE (OpenStreetMap Nominatim)
-// ═══════════════════════════════════════════════════════
-function initLieuAC(input){
-  const sugg=document.getElementById("me-lieu-suggestions");
-  if(!input||!sugg)return;
-  let timer=null;
-  function renderS(items){
-    if(!items.length){sugg.style.display="none";return;}
-    sugg.innerHTML=items.map(item=>{
-      const safe=(item.nom||"").replace(/'/g,"\'");
-      return`<div style="padding:7px 11px;cursor:pointer;border-bottom:1px solid var(--g100)" onmousedown="event.preventDefault();document.getElementById('me-lieu').value='${safe}';document.getElementById('me-lieu-suggestions').style.display='none'" onmouseover="this.style.background='var(--g50)'" onmouseout="this.style.background=''">
-        <div style="font-size:11px;font-weight:600;color:var(--g800)">📍 ${item.nom}</div>
-        ${item.adresse?`<div style="font-size:9px;color:var(--g400)">${item.adresse}</div>`:""}
-      </div>`;
-    }).join("");
-    sugg.style.display="block";
-  }
-  function searchNom(q){
-    const url=`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&accept-language=fr&q=${encodeURIComponent(q)}`;
-    fetch(url).then(r=>r.json()).then(data=>{
-      const osm=data.slice(0,6).map(r=>{
-        const addr=r.address||{};
-        const name=r.name||r.display_name.split(",")[0];
-        const city=addr.city||addr.town||addr.village||"";
-        const postcode=addr.postcode||"";
-        const country=(addr.country_code||"fr")!=="fr"?` (${addr.country||""})` :"";
-        return{nom:name.trim(),adresse:[postcode,city].filter(Boolean).join(" ")+country};
-      });
-      const q_low=q.toLowerCase();
-      const favs=LIEUX_FAVORIS.filter(f=>f.nom.toLowerCase().includes(q_low)||(f.adresse||"").toLowerCase().includes(q_low));
-      renderS(favs.concat(osm).slice(0,8));
-    }).catch(()=>{
-      const q_low=q.toLowerCase();
-      renderS(LIEUX_FAVORIS.filter(f=>f.nom.toLowerCase().includes(q_low)));
-    });
-  }
-  input.addEventListener("focus",()=>{if(!input.value.trim())renderS(LIEUX_FAVORIS);});
-  input.addEventListener("input",()=>{clearTimeout(timer);const q=input.value.trim();if(!q){renderS(LIEUX_FAVORIS);return;}if(q.length<2){sugg.style.display="none";return;}timer=setTimeout(()=>searchNom(q),380);});
-  input.addEventListener("blur",()=>setTimeout(()=>sugg.style.display="none",200));
-}
+function _mGetMatch(ev){if(!ev.match)ev.match={config:{periods:2,duration:20,reverse:false},byMatch:{}};if(!ev.match.byMatch)ev.match.byMatch={};return ev.match;}
+function _mGetMatchData(ev,mid){var m=_mGetMatch(ev);if(!m.byMatch[mid])m.byMatch[mid]={periods:[],currentPeriod:0,status:"idle",seconds:0};return m.byMatch[mid];}
+function _mCurrentPeriod(md){var i=md.currentPeriod||0;if(!md.periods[i])md.periods[i]={score_us:0,score_them:0,events:[]};return md.periods[i];}
+function _mTotalScore(md,key){return(md.periods||[]).reduce(function(a,p){return a+(p[key]||0);},0);}
+function _mFormatTime(secs,cfg){var dur=(cfg.duration||20)*60,t=cfg.reverse?Math.max(0,dur-secs):secs,m=Math.floor(t/60),s=t%60;return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");}
+function _mGetPlayers(){var base=getBase(curEV,curTID).filter(Boolean);return base.length>0?S.players.filter(function(p){return base.map(String).includes(String(p.id));}):S.players;}
 
-// ═══════════════════════════════════════════════════════
-// EXPORT IMAGE / PDF (html2canvas + jsPDF)
-// ═══════════════════════════════════════════════════════
-function exportImg(format){
-  const el=document.getElementById("export-preview");
-  if(!el||!el.firstElementChild){alert("Générez d'abord la composition en vue Réseaux.");return;}
-  const target=el.firstElementChild;
-  const btn=event&&event.target;const orig=btn?btn.innerHTML:"";
-  if(btn)btn.innerHTML="⏳";
-  html2canvas(target,{backgroundColor:null,scale:2,useCORS:true,allowTaint:true,logging:false}).then(canvas=>{
-    const team=S.teams.find(t=>t.id===curTID)||{label:"SAR-MOM"};
-    const evName=(curEV?.name||"compo").replace(/[^a-zA-Z0-9\-_]/g,"_");
-    const filename=`SARMOM_${team.label.replace(/\s/g,"")}_${evName}`;
-    if(format==="png"){const a=document.createElement("a");a.download=filename+".png";a.href=canvas.toDataURL("image/png");a.click();}
-    else if(format==="jpeg"){const a=document.createElement("a");a.download=filename+".jpg";a.href=canvas.toDataURL("image/jpeg",0.92);a.click();}
-    else if(format==="pdf"){
-      const imgData=canvas.toDataURL("image/png");
-      const w=canvas.width,h=canvas.height;
-      const jsPDFlib=window.jspdf?window.jspdf.jsPDF:(window.jsPDF);
-      if(!jsPDFlib){alert("jsPDF non chargé.");return;}
-      const pdf=new jsPDFlib({orientation:h>=w?"portrait":"landscape",unit:"mm"});
-      const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),mg=8;
-      const dpi=96*2;const iw=w/dpi*25.4,ih=h/dpi*25.4;
-      const ratio=Math.min((pw-mg*2)/iw,(ph-mg*2)/ih,1);
-      const fw=iw*ratio,fh=ih*ratio;
-      pdf.addImage(imgData,"PNG",(pw-fw)/2,(ph-fh)/2,fw,fh,"","FAST");
-      pdf.save(filename+".pdf");
-    }
-    if(btn)btn.innerHTML=orig;
-  }).catch(err=>{console.error(err);alert("Erreur export. Réessayez.");if(btn)btn.innerHTML=orig;});
-}
-
-// ═══════════════════════════════════════════════════════
-// FEUILLE DE MATCH PDF (impression A4)
-// ═══════════════════════════════════════════════════════
-function exportMatchSheet(evId){
-  const ev=S.events.find(e=>e.id===evId)||curEV;
-  if(!ev)return;
-  const Ps=postes(ev);const ss=subsStart(ev);
-  const ms=getMatches(ev);
-  const dateStr=ev.date?new Date(ev.date+"T00:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):"";
-  const logo=document.querySelector(".nav-logo")||{src:""};
-  const c1=S.settings.c1||"#1a3a6b";const c2=S.settings.c2||"#f0c500";
-  
-  let h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Feuille de match — ${ev.name}</title><style>
-    @page{size:A4 portrait;margin:10mm 12mm}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:9px;color:#1a1a14;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .hdr{background:${c1};color:#fff;display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:6px;margin-bottom:10px}
-    .ev-name{font-size:16px;font-weight:900;line-height:1}
-    .ev-sub{font-size:9px;opacity:.7;margin-top:2px}
-    .badge{background:${c2};color:${c1};font-size:8px;font-weight:900;padding:2px 8px;border-radius:10px;white-space:nowrap}
-    .match-block{border:1.5px solid ${c1};border-radius:6px;overflow:hidden;margin-bottom:10px;break-inside:avoid}
-    .match-hdr{background:${c1};color:#fff;padding:5px 10px;display:flex;align-items:center;gap:10px}
-    .match-vs{font-size:13px;font-weight:900;flex:1}
-    .score-box{background:${c2};color:${c1};font-size:11px;font-weight:900;padding:2px 8px;border-radius:4px;min-width:50px;text-align:center}
-    .team-section{padding:6px 10px;border-bottom:1px solid #e8e8e0}
-    .team-lbl{font-size:9px;font-weight:900;color:${c1};text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
-    .players-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
-    .player-row{display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:3px}
-    .player-row.fwd{background:#e3f2fd}.player-row.bck{background:#e8f5e9}.player-row.sub{background:#f5f5f0;opacity:.85}
-    .pnum{width:18px;height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:9px;color:#fff;flex-shrink:0}
-    .pnum.fwd{background:#1a3a6b}.pnum.bck{background:#1a6b3a}.pnum.sub{background:#888}
-    .pname{flex:1;font-size:9px;font-weight:600}.ppos{font-size:7px;color:#888;min-width:60px;text-align:right}
-    .footer{margin-top:8px;display:flex;justify-content:space-between;font-size:7px;color:#aaa;border-top:1px solid #e0e0d8;padding-top:5px}
-  </style></head><body>`;
-  
-  h+=`<div class="hdr"><div><div class="ev-name">${ev.name}</div><div class="ev-sub">${dateStr}${ev.lieu?" · "+ev.lieu:""}</div></div><div class="badge">${TYPE_LABELS[ev.type]||ev.type}</div></div>`;
-  
-  ms.forEach(m=>{
-    const score=ev.scores&&ev.scores[m.id];
-    const scoreStr=score&&score.f!==null?score.f+" — "+score.a:"__ — __";
-    h+=`<div class="match-block"><div class="match-hdr"><div class="match-vs">vs ${m.adv}${m.phaseName?` <span style="font-size:9px;opacity:.6">· ${m.phaseName}</span>`:""}</div><div style="font-size:8px;opacity:.7;margin-right:8px">Score</div><div class="score-box">${scoreStr}</div></div>`;
-    (ev.teams||[]).forEach(tid=>{
-      const team=S.teams.find(t=>t.id===tid)||{label:tid};
-      const resolved=getResolved(ev,tid,m.id);
-      h+=`<div class="team-section"><div class="team-lbl">${team.label}</div><div class="players-grid">`;
-      resolved.slice(0,ss).forEach((pid,i)=>{
-        const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
-        const fwd=i<8;
-        h+=`<div class="player-row ${fwd?"fwd":"bck"}"><div class="pnum ${fwd?"fwd":"bck"}">${i+1}</div><div class="pname">${pl?(pl.n||"").toUpperCase()+" "+(pl.p||"")[0]+".":"—"}${pl&&pl.inj?' <span style="font-size:7px;background:#fee2e2;color:#dc2626;padding:0 3px;border-radius:2px">BL.</span>':""}</div><div class="ppos">${Ps[i]||""}</div></div>`;
-      });
-      resolved.slice(ss).forEach((pid,i)=>{
-        const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
-        if(!pl)return;
-        h+=`<div class="player-row sub"><div class="pnum sub">${ss+i+1}</div><div class="pname">${(pl.n||"").toUpperCase()} ${(pl.p||"")[0]}.</div><div class="ppos">Rem.</div></div>`;
-      });
-      h+=`</div></div>`;
-    });
-    if((S.coaches||[]).length){
-      const evCoaches=Array.isArray(ev.staff)&&ev.staff.length?S.coaches.filter(c=>ev.staff.includes(c.id)):Array.isArray(ev.staff)&&ev.staff.length===0?[]:S.coaches;
-      if(evCoaches.length)h+=`<div style="padding:4px 10px;background:#f9f9f5;border-top:1px solid #e8e8e0;font-size:8px;color:#555"><b>Staff :</b> ${evCoaches.map(c=>c.role+" : "+c.name).join(" | ")}</div>`;
-    }
-    h+=`</div>`;
-  });
-  
-  h+=`<div class="footer"><div><b>${S.settings.name||"SAR×MOM M14"}</b> · Saison ${S.settings.season||"2025/2026"}</div><div>Généré le ${new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
-  
-  const win=window.open("","_blank","width=800,height=1000");
-  if(win){win.document.write(h);win.document.close();setTimeout(()=>win.print(),500);}
-}
-
-// ═══════════════════════════════════════════════════════
-// EFFECTIF — vue joueurs avec statistiques
-// ═══════════════════════════════════════════════════════
-function computePlayerStats(){
-  const stats={};
-  (S.events||[]).forEach(ev=>{
-    const ms=getMatches(ev);
-    const Ps=postes(ev);
-    (ev.teams||[]).forEach(tid=>{
-      ms.forEach(m=>{
-        const res=getResolved(ev,tid,m.id);
-        res.forEach((pid,idx)=>{
-          if(!pid)return;
-          if(!stats[pid])stats[pid]={matchs:0,postes:{},events:[]};
-          stats[pid].matchs++;
-          const poste=Ps[idx]||"Remplaçant";
-          stats[pid].postes[poste]=(stats[pid].postes[poste]||0)+1;
-          if(!stats[pid].events.includes(ev.name))stats[pid].events.push(ev.name);
-        });
-      });
-    });
-  });
-  return stats;
-}
-
-function renderEffectif(){
-  const el=document.getElementById("effectif-content");
-  if(!el)return;
-  const stats=computePlayerStats();
-  const cc={SAR:"#1a3a6b",MOM:"#1a6b1a",ASCS:"#374151"};
-  const tagcols={Tank:["#fce7f3","#9d174d"],Driver:["#dbeafe","#1e40af"],Runner:["#fef3c7","#92400e"],Botteur:["#d1fae5","#065f46"],Lanceur:["#ede9fe","#4c1d95"],Sauteur:["#ffedd5","#9a3412"],Lifteur:["#f0fdf4","#14532d"]};
-  
-  let search=(document.getElementById("eff-search")||{}).value||"";
-  let players=[...S.players].filter(p=>!search||`${p.p} ${p.n}`.toLowerCase().includes(search.toLowerCase()));
-  players.sort((a,b)=>{
-    const sa=stats[a.id]||{matchs:0};const sb=stats[b.id]||{matchs:0};
-    if(sb.matchs!==sa.matchs)return sb.matchs-sa.matchs;
-    return `${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`);
-  });
-  
-  let h=`<div style="padding:12px 0">`;
-  h+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">`;
-  h+=`<input id="eff-search" placeholder="🔍 Rechercher…" value="${search}" oninput="renderEffectif()" style="flex:1;padding:7px 10px;border:1.5px solid var(--g200);border-radius:8px;font-size:12px">`;
-  h+=`</div>`;
-  h+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">`;
-  
-  players.forEach(p=>{
-    const jstat=stats[p.id]||{matchs:0,postes:{},events:[]};
-    const color=cc[p.club]||"#374151";
-    const photoHtml=p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:14px;font-weight:700">${p.p[0]||""}${p.n[0]||""}</span>`;
-    const tags=(p.apt||[]).map(a=>{const tc=tagcols[a]||["#f3f4f6","#374151"];return`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${tc[0]};color:${tc[1]};font-weight:700">${a}</span>`;}).join("");
-    const topPostes=Object.keys(jstat.postes).sort((a,b)=>jstat.postes[b]-jstat.postes[a]).slice(0,3);
-    const posBar=topPostes.length?`<div style="margin:5px 0;padding:5px 7px;background:var(--g50);border-radius:6px;border:1px solid var(--g100)">
-      <div style="font-size:8px;font-weight:700;color:var(--g600);margin-bottom:3px">Postes occupés</div>
-      ${topPostes.map(pos=>{const cnt=jstat.postes[pos];const pct=Math.round(cnt/jstat.matchs*100);return`<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px"><span style="font-size:8px;color:var(--g400);min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pos}</span><div style="flex:1;height:5px;background:var(--g200);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--c1);width:${pct}%"></div></div><span style="font-size:8px;font-weight:700;color:var(--c1);min-width:16px;text-align:right">${cnt}</span></div>`;}).join("")}
-    </div>`:"";
-    const jddLbl=p.jdd==="oui"?`<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">JDD ✓</span>`:"";
-    const arbLbl=p.arb==="oui"?`<span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">ARB ✓</span>`:"";
-    
-    h+=`<div style="background:var(--w);border:${p.inj?"1px solid #fca5a5":"0.5px solid var(--g200)"};border-radius:var(--rl);padding:11px;position:relative;background:${p.inj?"#fff5f5":"var(--w)"}">
-      ${p.inj?`<div style="position:absolute;top:8px;right:8px"><span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">🏥 BLESSÉ</span></div>`:""}
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-        <div style="width:40px;height:40px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:14px;font-weight:700;flex-shrink:0;overflow:hidden">${photoHtml}</div>
-        <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.p} ${p.n}</div>
-          <div style="font-size:10px;color:var(--g400)"><span style="background:${color}22;color:${color};padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">${p.club}</span> ${p.cat}</div>
-        </div>
-        <div style="text-align:center;min-width:44px">
-          <div style="font-family:var(--bebas);font-size:24px;color:${jstat.matchs>0?"var(--c1)":"var(--g200)"};line-height:1">${jstat.matchs}</div>
-          <div style="font-size:7px;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">match${jstat.matchs>1?"s":""}</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">${(p.pos||[]).map(pp=>`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#e8f0fb;color:var(--c1);font-family:var(--fd)">${pp}</span>`).join("")||`<span style="font-size:10px;color:var(--g400)">Postes non définis</span>`}</div>
-      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:3px">${tags}</div>
-      <div style="display:flex;gap:3px;flex-wrap:wrap">${jddLbl}${arbLbl}</div>
-      ${posBar}
-      ${p.h?`<div style="font-size:10px;color:var(--g400);margin-top:4px">📏 ${p.h}m · ⚖️ ${p.w}kg</div>`:""}
-    </div>`;
-  });
-  
-  h+=`</div></div>`;
-  el.innerHTML=h;
-}
-
-
-var _mActiveMatchId = null;
-var _mActiveMatchAdv = '';
-var _mTimer = null;
-var _mRunning = false;
-var _mSeconds = 0;
-var _mPickerCallback = null;
-
-function openMatchTracker(evId, mid, adv){
-  var ev = S.events.find(function(e){ return e.id === evId; });
-  if (!ev) return;
-  curEV = ev;
-  curTID = (ev.teams || ['t1'])[0];
-  _mActiveMatchId = mid;
-  _mActiveMatchAdv = adv || '';
-  openEMtab(evId, 'match');
-}
-
-function _mGetMatch(ev){
-  if (!ev.match) ev.match = { config:{periods:2,duration:20,reverse:false}, byMatch:{} };
-  if (!ev.match.byMatch) ev.match.byMatch = {};
-  return ev.match;
-}
-function _mGetMatchData(ev, mid){
-  var match = _mGetMatch(ev);
-  if (!match.byMatch[mid]) match.byMatch[mid] = {periods:[],currentPeriod:0,status:"idle",_seconds:0};
-  return match.byMatch[mid];
-}
-function _mGetPlayers(){
-  var base = getBase(curEV, curTID).filter(Boolean);
-  if (base.length > 0) return S.players.filter(function(p){ return base.map(String).includes(String(p.id)); });
-  return S.players;
-}
-function _mFormatTime(secs, cfg){
-  var dur = (cfg.duration||20)*60;
-  var t = cfg.reverse ? Math.max(0,dur-secs) : secs;
-  var m = Math.floor(t/60), s = t%60;
-  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-}
-function _mTotalScore(mdata, key){
-  return (mdata.periods||[]).reduce(function(acc,p){return acc+(p[key]||0);},0);
-}
-function _mCurrentPeriod(mdata){
-  var idx = mdata.currentPeriod||0;
-  if (!mdata.periods[idx]) mdata.periods[idx]={score_us:0,score_them:0,events:[]};
-  return mdata.periods[idx];
-}
-function _mAddEvent(type, data){
-  if (!_mActiveMatchId) return;
-  var match = _mGetMatch(curEV);
-  var mdata = _mGetMatchData(curEV, _mActiveMatchId);
-  var cfg = match.config;
-  var dur = (cfg.duration||20)*60;
-  var t = cfg.reverse ? Math.max(0,dur-_mSeconds) : _mSeconds;
-  var min = Math.floor(t/60);
-  var period = _mCurrentPeriod(mdata);
-  period.events = period.events||[];
-  var evt = {type:type,min:min,ts:Date.now()};
-  Object.keys(data).forEach(function(k){evt[k]=data[k];});
-  period.events.push(evt);
-  sv(); renderMatchTab();
-}
-function _mScore(type, forUs){
-  if (!_mActiveMatchId) return;
-  var pts = {essai:5,transfo:2,penalite:3,drop:3}[type]||0;
-  var mdata = _mGetMatchData(curEV, _mActiveMatchId);
-  var period = _mCurrentPeriod(mdata);
-  if (forUs) period.score_us=(period.score_us||0)+pts;
-  else period.score_them=(period.score_them||0)+pts;
-  sv(); renderMatchTab();
-}
-function initMatchTab(){
-  if (_mActiveMatchId){
-    var mdata = _mGetMatchData(curEV, _mActiveMatchId);
-    _mSeconds = mdata._seconds||0;
-  } else { _mSeconds=0; }
-  _mRunning=false; renderMatchTab();
+function _mUpdateDisplay(){
+  if(!_mActiveMatchId)return;
+  var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
+  var el=document.getElementById("m-time");if(el)el.textContent=_mFormatTime(_mSeconds,cfg);
+  var eu=document.getElementById("m-score-us");if(eu)eu.textContent=_mTotalScore(md,"score_us");
+  var et=document.getElementById("m-score-them");if(et)et.textContent=_mTotalScore(md,"score_them");
 }
 function _mStartStop(){
-  var match=_mGetMatch(curEV);
+  if(!_mActiveMatchId){alert("Selectionnez un match.");return;}
+  var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
   if(_mRunning){
-    clearInterval(_mTimer);_mRunning=false;
-    match._seconds=_mSeconds;match.status="paused";
-    sv();
-    var btn=document.getElementById("btn-startstop");
-    if(btn){btn.textContent="▶ Démarrer";btn.style.background="rgba(255,255,255,.95)";btn.style.color="var(--c1)";}
+    clearInterval(_mTimer);_mRunning=false;md.seconds=_mSeconds;md.status="paused";sv();
+    var b=document.getElementById("m-btn-ss");
+    if(b){b.textContent="▶ Démarrer";b.style.background="rgba(255,255,255,.95)";b.style.color="var(--c1)";}
   } else {
-    match.status="running";_mRunning=true;
-    var btn=document.getElementById("btn-startstop");
-    if(btn){btn.textContent="⏸ Pause";btn.style.background="rgba(255,255,255,.25)";btn.style.color="#fff";}
+    _mRunning=true;md.status="running";
+    var b=document.getElementById("m-btn-ss");
+    if(b){b.textContent="⏸ Pause";b.style.background="rgba(255,255,255,.2)";b.style.color="#fff";}
+    var dur=(cfg.duration||20)*60;
     _mTimer=setInterval(function(){
-      _mSeconds++;match._seconds=_mSeconds;
-      var dur=(match.config.duration||20)*60;
-      if(_mSeconds>=dur){
-        clearInterval(_mTimer);_mRunning=false;match.status="paused";
-        match._seconds=_mSeconds;sv();renderMatchTab();
-      } else {
-        _mUpdateChronoDisplay();
-      }
+      _mSeconds++;md.seconds=_mSeconds;
+      if(_mSeconds>=dur){clearInterval(_mTimer);_mRunning=false;md.status="ended";md.seconds=_mSeconds;sv();renderMatchTab();}
+      else{_mUpdateDisplay();}
     },1000);
     sv();
   }
 }
-
 function _mNextPeriod(){
-  if (!_mActiveMatchId) return;
-  var match=_mGetMatch(curEV); var mdata=_mGetMatchData(curEV,_mActiveMatchId);
-  clearInterval(_mTimer); _mRunning=false;
-  var total=match.config.periods||2;
-  if((mdata.currentPeriod||0)<total-1){mdata.currentPeriod=(mdata.currentPeriod||0)+1;_mSeconds=0;mdata._seconds=0;mdata.status="idle";}
-  else{mdata.status="ended";}
-  sv(); renderMatchTab();
-}
-function _mSaveConfig(){
-  var match=_mGetMatch(curEV);
-  match.config.periods=parseInt(document.getElementById("mc-periods").value)||2;
-  match.config.duration=parseInt(document.getElementById("mc-duration").value)||20;
-  match.config.reverse=document.getElementById("mc-reverse").checked;
-  sv(); renderMatchTab();
+  if(!_mActiveMatchId)return;
+  var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
+  clearInterval(_mTimer);_mRunning=false;
+  if((md.currentPeriod||0)<(cfg.periods||2)-1){md.currentPeriod=(md.currentPeriod||0)+1;}
+  else{md.status="ended";}
+  _mSeconds=0;md.seconds=0;sv();renderMatchTab();
 }
 function _mReset(){
-  if(!_mActiveMatchId||!confirm("Reinitialiser le suivi ?")) return;
-  var match=_mGetMatch(curEV); delete match.byMatch[_mActiveMatchId];
-  clearInterval(_mTimer); _mRunning=false; _mSeconds=0; sv(); renderMatchTab();
+  if(!_mActiveMatchId||!confirm("Reinitialiser ce match ?"))return;
+  clearInterval(_mTimer);_mRunning=false;_mSeconds=0;
+  delete _mGetMatch(curEV).byMatch[_mActiveMatchId];
+  sv();renderMatchTab();
 }
+function _mSaveConfig(){
+  var m=_mGetMatch(curEV);
+  m.config.periods=parseInt(document.getElementById("mc-periods").value)||2;
+  m.config.duration=parseInt(document.getElementById("mc-duration").value)||20;
+  m.config.reverse=document.getElementById("mc-reverse").checked;
+  sv();renderMatchTab();
+}
+function _mScore(type,forUs){
+  if(!_mActiveMatchId)return;
+  var pts={essai:5,transfo:2,penalite:3,drop:3}[type]||0;
+  var md=_mGetMatchData(curEV,_mActiveMatchId),p=_mCurrentPeriod(md);
+  if(forUs)p.score_us=(p.score_us||0)+pts;else p.score_them=(p.score_them||0)+pts;
+  sv();_mUpdateDisplay();_mRefreshHistory();
+}
+function _mAddEvt(type,data){
+  if(!_mActiveMatchId)return;
+  var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
+  var dur=(cfg.duration||20)*60,t=cfg.reverse?Math.max(0,dur-_mSeconds):_mSeconds;
+  var p=_mCurrentPeriod(md);p.events=p.events||[];
+  var ev={type:type,min:Math.floor(t/60),ts:Date.now()};
+  Object.keys(data).forEach(function(k){ev[k]=data[k];});
+  p.events.push(ev);sv();_mRefreshHistory();
+}
+function _mCorrectScore(delta){
+  if(!_mActiveMatchId)return;
+  var md=_mGetMatchData(curEV,_mActiveMatchId),p=_mCurrentPeriod(md);
+  p.score_them=Math.max(0,(p.score_them||0)+delta);sv();_mUpdateDisplay();
+}
+function _mDoEssai(){_mShowPicker("Essai - Qui marque ?",function(pid,n){_mScore("essai",true);_mAddEvt("essai",{pid:pid,name:n,pts:5,forUs:true});});}
+function _mDoTransfo(){_mShowPicker("Transformation ?",function(pid,n){_mScore("transfo",true);_mAddEvt("transfo",{pid:pid,name:n,pts:2,forUs:true});});}
+function _mDoPenalite(){_mShowPicker("Penalite ?",function(pid,n){_mScore("penalite",true);_mAddEvt("penalite",{pid:pid,name:n,pts:3,forUs:true});});}
+function _mDoDrop(){_mShowPicker("Drop ?",function(pid,n){_mScore("drop",true);_mAddEvt("drop",{pid:pid,name:n,pts:3,forUs:true});});}
+function _mDoAdvEssai(){_mScore("essai",false);_mAddEvt("essai",{forUs:false,pts:5,name:"Adv"});}
+function _mDoAdvTransfo(){_mScore("transfo",false);_mAddEvt("transfo",{forUs:false,pts:2,name:"Adv"});}
+function _mDoAdvPenalite(){_mScore("penalite",false);_mAddEvt("penalite",{forUs:false,pts:3,name:"Adv"});}
+function _mDoAdvDrop(){_mScore("drop",false);_mAddEvt("drop",{forUs:false,pts:3,name:"Adv"});}
+function _mDoRemplacement(){_mShowPicker("Sort - Qui ?",function(p1,n1){_mShowPicker("Entre - Qui ?",function(p2,n2){_mAddEvt("remplacement",{out:p1,outName:n1,in:p2,inName:n2});});});}
+function _mDoAvertissement(){_mShowPicker("Avertissement ?",function(pid,n){_mAddEvt("avertissement",{pid:pid,name:n});});}
+function _mDoCartonJ(){_mShowPicker("Carton jaune ?",function(pid,n){_mAddEvt("carton_jaune",{pid:pid,name:n});});}
+function _mDoCartonR(){_mShowPicker("Carton rouge ?",function(pid,n){_mAddEvt("carton_rouge",{pid:pid,name:n});});}
+function _mDoBlessure(){_mShowPicker("Blessure ?",function(pid,n){var nat=prompt("Nature :","");_mAddEvt("blessure",{pid:pid,name:n,nat:nat||"-"});});}
+
+function _mShowPicker(label,cb){
+  _mPickerCallback=cb;
+  var players=_mGetPlayers(),old=document.getElementById("m-pick-ov");if(old)old.remove();
+  var ov=document.createElement("div");ov.id="m-pick-ov";
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px";
+  var listHTML=players.map(function(p){
+    var safeName=p.p.replace(/"/g,"")+"-"+p.n.replace(/"/g,"");
+    return'<button data-pid="'+p.id+'" data-name="'+safeName+'" onclick="_mPickPlayer(this.dataset.pid,this.dataset.name)" style="display:block;width:100%;text-align:left;padding:10px 12px;margin:2px 0;background:#fff;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;font-size:13px">'+p.p+' '+p.n+'</button>';
+  }).join("");
+  ov.innerHTML='<div style="background:#fff;border-radius:12px;width:100%;max-width:340px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.25)">'
+    +'<div style="padding:12px 16px;font-weight:700;font-size:14px;font-family:var(--fd);background:var(--c1);color:#fff;border-radius:12px 12px 0 0">'+label+'</div>'
+    +'<div style="overflow-y:auto;flex:1;padding:8px">'+listHTML+'</div>'
+    +'<div style="padding:8px"><button onclick="document.getElementById(\'m-pick-ov\').remove()" style="width:100%;padding:9px;background:#f3f4f6;border:none;border-radius:7px;cursor:pointer;font-weight:600">Annuler</button></div>'
+    +'</div>';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  document.body.appendChild(ov);
+}
+function _mPickPlayer(pid,name){
+  var ov=document.getElementById("m-pick-ov");if(ov)ov.remove();
+  if(_mPickerCallback){_mPickerCallback(pid,name);_mPickerCallback=null;}
+}
+
+function _mRefreshHistory(){
+  var el=document.getElementById("m-history");if(!el||!_mActiveMatchId)return;
+  var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
+  var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
+  var allEvts=[];
+  (md.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
+  allEvts.sort(function(a,b){return b.ts-a.ts;});
+  if(!allEvts.length){el.innerHTML='<div style="color:#9ca3af;text-align:center;padding:10px;font-size:12px">Aucun evenement</div>';return;}
+  var pCount=cfg.periods||2;
+  el.innerHTML=allEvts.map(function(e){
+    var pL=pCount===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
+    var desc=e.type==="remplacement"?(e.outName+" <> "+e.inName):(e.forUs===false?_mActiveMatchAdv:e.name||"");
+    if(e.nat)desc+=" ("+e.nat+")";if(e.pts&&e.forUs!==false)desc+=" +"+e.pts;
+    return'<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid #f3f4f6">'
+      +'<span>'+(icons[e.type]||"•")+'</span>'
+      +'<span style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">'+pL+" "+e.min+"'</span>"
+      +'<span style="flex:1;color:#374151;font-size:11px">'+desc+'</span>'
+      +'</div>';
+  }).join("");
+}
+
+function openMatchTracker(evId,mid,adv){
+  var ev=S.events.find(function(e){return e.id===evId;});if(!ev)return;
+  clearInterval(_mTimer);_mRunning=false;
+  curEV=ev;curTID=(ev.teams||["t1"])[0];
+  _mActiveMatchId=mid;_mActiveMatchAdv=adv||"Adversaire";
+  var md=_mGetMatchData(ev,mid);_mSeconds=md.seconds||0;
+  openEMtab(evId,"match");
+}
+function _mSelectMatch(el){
+  var mid=el.dataset.mid,adv=el.dataset.adv;
+  clearInterval(_mTimer);_mRunning=false;
+  _mActiveMatchId=mid;_mActiveMatchAdv=adv;
+  var md=_mGetMatchData(curEV,mid);_mSeconds=md.seconds||0;
+  renderMatchTab();
+}
+function _mResetActiveMatch(){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=null;_mActiveMatchAdv="";_mSeconds=0;renderMatchTab();}
+
 function renderMatchTab(){
   var el=document.getElementById("match-content");if(!el)return;
-  // Always sync to current match tab
   if(curMID){
     var cm=getMatches(curEV).find(function(m){return m.id===curMID;});
-    if(cm){_mActiveMatchId=curMID;_mActiveMatchAdv=cm.adv&&String(cm.adv).length>2?cm.adv:'Match '+cm.adv;}
+    if(cm&&cm.id!==_mActiveMatchId){
+      clearInterval(_mTimer);_mRunning=false;
+      _mActiveMatchId=cm.id;
+      _mActiveMatchAdv=cm.adv&&String(cm.adv).length>2?cm.adv:"Match "+cm.adv;
+      var md2=_mGetMatchData(curEV,cm.id);_mSeconds=md2.seconds||0;
+    }
   }
   if(!_mActiveMatchId){
     var ms=getMatches(curEV)||[];
-    el.innerHTML='<div style="padding:12px">'
-      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:8px">Sélectionner un match</div>'
+    el.innerHTML='<div style="padding:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px">Selectionner un match</div>'
       +ms.map(function(m){
-        var adv=m.adv&&String(m.adv).length>2?m.adv:'Match '+m.adv;
-        return '<div onclick="_mSelectMatch(this)" data-evid="'+curEV.id+'" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,'&quot;')+'" '
-          +'style="padding:10px 12px;margin:3px 0;background:#fff;border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center">'
-          +'<b>vs '+adv+'</b><span style="color:var(--g400);font-size:11px">⏱</span></div>';
-      }).join('')+'</div>';
+        var adv=m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv;
+        return'<div onclick="_mSelectMatch(this)" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,"&quot;")+'" style="padding:10px 12px;margin:3px 0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center"><b>vs '+adv+'</b><span style="color:#9ca3af;font-size:11px">▶</span></div>';
+      }).join("")
+      +(ms.length===0?'<p style="color:#9ca3af;text-align:center">Aucun match</p>':"")+"</div>";
     return;
   }
-  var match=_mGetMatch(curEV);
-  var mdata=_mGetMatchData(curEV,_mActiveMatchId);
-  var cfg=match.config;
-  var totalUs=_mTotalScore(mdata,"score_us"),totalThem=_mTotalScore(mdata,"score_them");
-  var pidx=mdata.currentPeriod||0,ended=mdata.status==="ended";
-  var pCount=cfg.periods||2;
-  var pLabel=pCount===2?(pidx===0?"1ère mi-temps":"2ème mi-temps"):("Tiers-temps "+(pidx+1));
-  var allEvts=[];
-  (mdata.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(ev){allEvts.push(Object.assign({},ev,{periodIdx:pi}));});});
-  allEvts.sort(function(a,b){return a.ts-b.ts;});
-
+  var match=_mGetMatch(curEV),md=_mGetMatchData(curEV,_mActiveMatchId),cfg=match.config;
+  var totalUs=_mTotalScore(md,"score_us"),totalThem=_mTotalScore(md,"score_them");
+  var pidx=md.currentPeriod||0,ended=md.status==="ended",pCount=cfg.periods||2;
+  var pLabel=pCount===2?(pidx===0?"1ere mi-temps":"2eme mi-temps"):("Tiers-temps "+(pidx+1));
   el.innerHTML=
-  // Header - minimal
-  '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--g200)">'
-    +'<span style="font-family:var(--fd);font-size:14px;font-weight:700;color:var(--c1)">vs '+_mActiveMatchAdv+'</span>'
-    +'<button onclick="_mResetActiveMatch()" style="background:none;border:1px solid var(--g300);color:var(--g600);padding:2px 8px;border-radius:5px;cursor:pointer;font-size:11px">↩ Changer</button>'
-  +'</div>'
-  // Config - compact collapsible
-  +'<details style="margin-bottom:8px"><summary style="font-size:11px;color:var(--g500);cursor:pointer;padding:4px 0">⚙️ Configuration</summary>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 0;align-items:end">'
-      +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Périodes</label>'
-        +'<input id="mc-periods" type="number" min="1" max="5" value="'+(cfg.periods||2)+'" style="width:100%;padding:5px;border:1px solid var(--g200);border-radius:5px;font-size:13px;text-align:center"></div>'
-      +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Durée (min)</label>'
-        +'<input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:5px;border:1px solid var(--g200);border-radius:5px;font-size:13px;text-align:center"></div>'
-      +'<div><label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding-top:14px">'
-        +'<input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inversé</label></div>'
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px">'
+      +'<span style="font-family:var(--fd);font-size:15px;font-weight:900;color:var(--c1)">vs '+_mActiveMatchAdv+'</span>'
+      +'<button onclick="_mResetActiveMatch()" style="background:none;border:1px solid #d1d5db;color:#6b7280;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px">Changer</button>'
     +'</div>'
-    +'<button onclick="_mSaveConfig()" style="width:100%;padding:6px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button>'
-  +'</details>'
-  // Score + Chrono - clean dark panel
-  +'<div style="background:var(--c1);border-radius:10px;padding:12px 16px;margin-bottom:8px;color:#fff">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.7;text-align:center;margin-bottom:4px">'+(ended?"TERMINÉ":pLabel)+'</div>'
-    +'<div id="match-chrono-time" style="font-size:44px;font-weight:900;font-family:var(--fd);letter-spacing:2px;text-align:center;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>'
-    +'<div style="display:flex;align-items:center;justify-content:center;gap:24px;margin:10px 0">'
-      +'<div style="text-align:center">'
-        +'<div style="font-size:9px;opacity:.6;text-transform:uppercase">SAR/MOM</div>'
-        +'<div id="match-score-us" style="font-size:32px;font-weight:900;font-family:var(--fd)">'+totalUs+'</div>'
+    +'<details style="margin-bottom:10px"><summary style="font-size:11px;color:#6b7280;cursor:pointer;list-style:none">Parametres du chrono</summary>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 0;align-items:end">'
+        +'<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Periodes</label><input id="mc-periods" type="number" min="1" max="5" value="'+( cfg.periods||2)+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>'
+        +'<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Duree (min)</label><input id="mc-duration" type="number" min="1" max="60" value="'+( cfg.duration||20)+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>'
+        +'<div><label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-top:14px"><input id="mc-reverse" type="checkbox" '+( cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inverse</label></div>'
       +'</div>'
-      +'<div style="font-size:20px;opacity:.4">—</div>'
-      +'<div style="text-align:center">'
-        +'<div style="font-size:9px;opacity:.6;text-transform:uppercase">'+_mActiveMatchAdv+'</div>'
-        +'<div id="match-score-them" style="font-size:32px;font-weight:900;font-family:var(--fd)">'+totalThem+'</div>'
+      +'<button onclick="_mSaveConfig()" style="width:100%;padding:7px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button>'
+    +'</details>'
+    +'<div style="background:var(--c1);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center">'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.65;margin-bottom:2px">'+( ended?"TERMINE":pLabel+" ("+(pidx+1)+"/"+pCount+")")+'</div>'
+      +'<div id="m-time" style="font-size:52px;font-weight:900;font-family:var(--fd);letter-spacing:3px;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>'
+      +'<div style="display:flex;justify-content:center;align-items:center;gap:28px;margin:10px 0 12px">'
+        +'<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">SAR/MOM</div><div id="m-score-us" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalUs+'</div></div>'
+        +'<div style="font-size:22px;opacity:.35;font-weight:900">-</div>'
+        +'<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">'+_mActiveMatchAdv+'</div><div id="m-score-them" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalThem+'</div></div>'
       +'</div>'
+      +(!ended
+        ?'<div style="display:flex;gap:8px"><button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+(_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)")+';color:'+(_mRunning?"#fff":"var(--c1)")+'">'+(_mRunning?"Pause":"Demarrer")+'</button><button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+( pidx<pCount-1?"Fin periode":"Fin match")+'</button></div>'
+        :'<button onclick="_mReset()" style="padding:9px 20px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">Nouveau match</button>')
     +'</div>'
-    +(!ended
-      ?'<div style="display:flex;gap:6px">'
-        +'<button id="btn-startstop" onclick="_mStartStop()" style="flex:2;padding:10px;border:none;border-radius:7px;font-weight:700;font-size:14px;cursor:pointer;background:'+(_mRunning?"rgba(255,255,255,.25)":"rgba(255,255,255,.95)")+';color:'+(_mRunning?"#fff":"var(--c1)")+'">'+(_mRunning?"⏸ Pause":"▶ Démarrer")+'</button>'
-        +'<button onclick="_mNextPeriod()" style="flex:1;padding:10px;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+(pidx<pCount-1?"⏭":"🏁")+'</button>'
-      +'</div>'
-      :'<button onclick="_mReset()" style="width:100%;padding:8px;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">↺ Nouveau match</button>')
-  +'</div>'
-  // Score buttons - minimal style
-  +'<div style="margin-bottom:6px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px">⚡ SAR/MOM</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'
-      +'<button onclick="_mShowPlayerPicker(\'essai\',\'Essai — Qui marque ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'essai\',true,pid,p?p.p+\' \'+p.n:\'?\',5);})" '
-        +'style="padding:9px;border:1.5px solid #16a34a;color:#16a34a;background:#fff;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">🏉 Essai +5</button>'
-      +'<button onclick="_mShowPlayerPicker(\'transfo\',\'Transformation ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'transfo\',true,pid,p?p.p+\' \'+p.n:\'?\',2);})" '
-        +'style="padding:9px;border:1.5px solid #2563eb;color:#2563eb;background:#fff;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">🥾 Transfo +2</button>'
-      +'<button onclick="_mShowPlayerPicker(\'penalite\',\'Pénalité ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'penalite\',true,pid,p?p.p+\' \'+p.n:\'?\',3);})" '
-        +'style="padding:9px;border:1.5px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">🎯 Pénalité +3</button>'
-      +'<button onclick="_mShowPlayerPicker(\'drop\',\'Drop ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'drop\',true,pid,p?p.p+\' \'+p.n:\'?\',3);})" '
-        +'style="padding:9px;border:1.5px solid #d97706;color:#d97706;background:#fff;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">💥 Drop +3</button>'
-    +'</div>'
-  +'</div>'
-  // Adversaire - very compact
-  +'<div style="margin-bottom:6px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px">🆚 '+_mActiveMatchAdv+'</div>'
-    +'<div style="display:flex;gap:4px;align-items:center">'
-      +'<button onclick="_mScoreAndLog(\'essai\',false,null,\'Adv\',5)" style="flex:1;padding:8px;background:var(--g100);border:1px solid var(--g300);border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">+5</button>'
-      +'<button onclick="_mScoreAndLog(\'transfo\',false,null,\'Adv\',2)" style="flex:1;padding:8px;background:var(--g100);border:1px solid var(--g300);border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">+2</button>'
-      +'<button onclick="_mScoreAndLog(\'penalite\',false,null,\'Adv\',3)" style="flex:1;padding:8px;background:var(--g100);border:1px solid var(--g300);border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
-      +'<button onclick="_mScoreAndLog(\'drop\',false,null,\'Adv\',3)" style="flex:1;padding:8px;background:var(--g100);border:1px solid var(--g300);border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
-      +'<button onclick="_mCorrectScore(-1)" style="padding:8px 10px;background:var(--g100);border:1px solid var(--g300);border-radius:6px;font-size:12px;cursor:pointer;color:var(--g600)" title="Corriger −1">−1</button>'
-    +'</div>'
-  +'</div>'
-  // Events
-  +'<div style="margin-bottom:6px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px">📋 Événements</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'
-      +'<button onclick="_mShowPlayerPicker(\'r\',\'Sort — Qui ?\',function(p1){_mShowPlayerPicker(\'r\',\'Entre — Qui ?\',function(p2){var pl1=S.players.find(function(x){return String(x.id)===String(p1);});var pl2=S.players.find(function(x){return String(x.id)===String(p2);});_mAddEvent(\'remplacement\',{out:p1,outName:pl1?pl1.p+\' \'+pl1.n:\'?\',in:p2,inName:pl2?pl2.p+\' \'+pl2.n:\'?\'});});})" '
-        +'style="padding:8px;border:1px solid var(--g300);color:var(--g700);background:#fff;border-radius:6px;font-weight:600;font-size:11px;cursor:pointer">🔄 Remplacement</button>'
-      +'<button onclick="_mShowPlayerPicker(\'a\',\'Avertissement ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mAddEvent(\'avertissement\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\'});})" '
-        +'style="padding:8px;border:1px solid var(--g300);color:var(--g700);background:#fff;border-radius:6px;font-weight:600;font-size:11px;cursor:pointer">⚠️ Avertissement</button>'
-      +'<button onclick="_mShowPlayerPicker(\'cj\',\'Carton jaune ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mAddEvent(\'carton_jaune\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\'});})" '
-        +'style="padding:8px;border:1px solid var(--g300);color:var(--g700);background:#fff;border-radius:6px;font-weight:600;font-size:11px;cursor:pointer">🟡 Carton jaune</button>'
-      +'<button onclick="_mShowPlayerPicker(\'cr\',\'Carton rouge ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mAddEvent(\'carton_rouge\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\'});})" '
-        +'style="padding:8px;border:1px solid var(--g300);color:var(--g700);background:#fff;border-radius:6px;font-weight:600;font-size:11px;cursor:pointer">🔴 Carton rouge</button>'
-      +'<button onclick="_mShowPlayerPicker(\'b\',\'Blessure ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});var nat=prompt(\'Nature :\',\'\');_mAddEvent(\'blessure\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\',nat:nat||\'—\'});})" '
-        +'style="padding:8px;border:1px solid var(--g300);color:var(--g700);background:#fff;border-radius:6px;font-weight:600;font-size:11px;cursor:pointer;grid-column:span 2">🤕 Blessure</button>'
-    +'</div>'
-  +'</div>'
-  // Historique
-  +(allEvts.length>0
-    ?'<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:4px">📜 Historique</div>'
-      +'<div style="border:1px solid var(--g200);border-radius:7px;overflow:hidden;max-height:160px;overflow-y:auto;font-size:11px">'
-        +allEvts.slice().reverse().map(function(ev){
-          var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
-          var pL=(cfg.periods||2)===2?(ev.periodIdx===0?"1MT":"2MT"):("T"+(ev.periodIdx+1));
-          var desc=ev.type==="remplacement"?(ev.outName+"↔"+ev.inName):(ev.forUs===false?_mActiveMatchAdv:ev.name||"");
-          if(ev.nat)desc+=" ("+ev.nat+")";
-          if(ev.pts&&ev.forUs!==false)desc+=" +"+ev.pts;
-          return "<div style='display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--g100)'>"
-            +"<span>"+(icons[ev.type]||"•")+"</span>"
-            +"<span style='background:var(--g100);padding:1px 4px;border-radius:3px;font-size:9px;font-weight:700'>"+pL+" "+ev.min+"'</span>"
-            +"<span style='flex:1;color:var(--g700)'>"+desc+"</span>"
-            +"</div>";
-        }).join("")
-      +"</div></div>"
-    :"");
+    +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'
+        +'<button onclick="_mDoEssai()" style="padding:10px;border:2px solid #16a34a;color:#16a34a;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>'
+        +'<button onclick="_mDoTransfo()" style="padding:10px;border:2px solid #2563eb;color:#2563eb;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>'
+        +'<button onclick="_mDoPenalite()" style="padding:10px;border:2px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>'
+        +'<button onclick="_mDoDrop()" style="padding:10px;border:2px solid #d97706;color:#d97706;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>'
+      +'</div></div>'
+    +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">'+_mActiveMatchAdv+'</div>'
+      +'<div style="display:flex;gap:4px">'
+        +'<button onclick="_mDoAdvEssai()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+5</button>'
+        +'<button onclick="_mDoAdvTransfo()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+2</button>'
+        +'<button onclick="_mDoAdvPenalite()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
+        +'<button onclick="_mDoAdvDrop()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
+        +'<button onclick="_mCorrectScore(-1)" style="padding:9px 10px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-size:12px;cursor:pointer;color:#6b7280">-1</button>'
+      +'</div></div>'
+    +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">Evenements</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'
+        +'<button onclick="_mDoRemplacement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Remplacement</button>'
+        +'<button onclick="_mDoAvertissement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Avertissement</button>'
+        +'<button onclick="_mDoCartonJ()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton jaune</button>'
+        +'<button onclick="_mDoCartonR()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton rouge</button>'
+        +'<button onclick="_mDoBlessure()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>'
+      +'</div></div>'
+    +'<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Historique</div>'
+      +'<div id="m-history" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;min-height:36px"></div>'
+    +'</div>';
+  _mRefreshHistory();
 }
+
+// MISC
+function cm(id){document.getElementById(id)?.classList.remove("open");}
+function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`${dd}/${m}/${y}`;}
 
 // INIT
 ['sm5','sm6'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
-try{var _ld=JSON.parse(localStorage.getItem('sm7')||'null');if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem('sm7');}catch(e){localStorage.removeItem('sm7');}
+try{var _ld=JSON.parse(localStorage.getItem('sm7')||'null');if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem('sm7');}catch(e){}
 if(S.players.length<60)S.players=INIT_PL;
 (function(){var ns=document.getElementById('nav-sub-txt');if(ns&&S.settings&&S.settings.season)ns.textContent='Entente M14 · Saison '+S.settings.season;})();
 _gCheckRedirectToken();
