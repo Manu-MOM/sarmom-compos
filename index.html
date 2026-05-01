@@ -1618,6 +1618,25 @@ function renderRapport(){
 }
 
 
+function _mExportMatch(){
+  var b=document.querySelector('.stab[onclick*="rapport"]');
+  if(b)b.click();
+}
+function _mExportRapportPDF(){
+  var el=document.getElementById("rapport-content");if(!el)return;
+  if(typeof html2canvas==="undefined"){alert("Librairie PDF non disponible");return;}
+  html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#f9fafb"}).then(function(canvas){
+    var imgData=canvas.toDataURL("image/jpeg",0.92);
+    var pdf=new jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    var pdfW=pdf.internal.pageSize.getWidth();
+    var ratio=canvas.height/canvas.width;
+    var imgH=pdfW*ratio;
+    pdf.addImage(imgData,"JPEG",0,0,pdfW,imgH);
+    pdf.save("rapport_"+curEV.name.replace(/\s+/g,"_")+".pdf");
+  });
+}
+
+
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 try{var _ld=JSON.parse(localStorage.getItem("sm7")||"null");if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem("sm7");}catch(e){}
 if(S.players.length<60)S.players=INIT_PL;
