@@ -846,8 +846,12 @@ function openEditor(eid,tid,mid,mode){
   const mStr=curMode==="base"?"Compo de base":`Match vs ${m?.adv||"?"}${m?.phaseName?" · "+m.phaseName:""}`;
   document.getElementById("ed-sub").textContent=`${fd(curEV.date)} · ${curEV.lieu} · ${mStr}`;
   renderEdBtns();renderPool();renderSlots();
-  // Si l'onglet Match est actif, le rafraîchir avec le nouveau match
-  if(curEVview==="match")renderMatchTab();
+  // Rafraîchir l'onglet actif si c'est Match ou Rapport
+  var activeStab=document.querySelector(".stab.active");
+  if(activeStab&&activeStab.getAttribute("onclick")){
+    if(activeStab.getAttribute("onclick").indexOf("match")>=0)renderMatchTab();
+    if(activeStab.getAttribute("onclick").indexOf("rapport")>=0)renderRapport();
+  }
   // Switch to appropriate tab
   var targetTab=curMode==="base"?"liste":"match";
   var targetBtn=document.querySelector('.stab[onclick*="'+targetTab+'"]');
@@ -861,6 +865,10 @@ function openEditor(eid,tid,mid,mode){
     });
     if(targetTab==="match")renderMatchTab();
   }
+  // Si l'onglet Match est déjà actif et qu'on change de mode, forcer le refresh
+  if(curEVview==="match" && targetTab!=="match"){
+    setTimeout(renderMatchTab, 50);
+  }
 }
 function renderEdBtns(){
   const matches=getMatches(curEV);
@@ -870,7 +878,7 @@ function renderEdBtns(){
   document.getElementById("ed-btns").innerHTML=html;
 }
 function switchTeam(tid){curTID=tid;renderEdBtns();renderPool();renderSlots();}
-function switchMode(mode,mid=null){curMode=mode;if(mid)curMID=mid;renderEdBtns();renderPool();renderSlots();}
+function switchMode(mode,mid=null){curMode=mode;if(mid)curMID=mid;renderEdBtns();renderPool();renderSlots();if(curEVview==="match")renderMatchTab();}
 function toggleInd(val){setInd(curEV,curTID,curMID,val);sv();renderEdBtns();renderPool();renderSlots();}
 
 function renderPool(){
@@ -1443,10 +1451,9 @@ function _mSelectMatch(el){
 function _mResetActiveMatch(){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=null;_mActiveMatchAdv="";_mSeconds=0;renderMatchTab();}
 
 function renderMatchTab(){
-  var el=document.getElementById("match-content");
-  if(!el)return;
-  
-  // En mode BASE : message d'invite
+  var el=document.getElementById("match-content");if(!el)return;
+
+  // Mode BASE : invitation à sélectionner un match
   if(!curMode||curMode==="base"){
     el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#9ca3af">'
       +'<div style="font-size:36px;margin-bottom:12px">⏱</div>'
@@ -1455,38 +1462,29 @@ function renderMatchTab(){
       +'</div>';
     return;
   }
-  
-  // Synchro avec curMID uniquement si mode != BASE
-  if(curMID&&curEV&&curMode!=="base"){
+
+  // Toujours synchro avec curMID
+  if(curMID&&curEV){
     var allM=getMatches(curEV)||[];
     var cm=allM.find(function(m){return m.id===curMID;});
-    if(cm&&cm.id!==_mActiveMatchId){
-      clearInterval(_mTimer);_mRunning=false;
+    if(cm){
+      if(cm.id!==_mActiveMatchId){
+        clearInterval(_mTimer);_mRunning=false;
+        _mSeconds=0;
+      }
       _mActiveMatchId=cm.id;
       _mActiveMatchAdv=String(cm.adv&&String(cm.adv).length>2?cm.adv:"Match "+cm.adv);
-      var md2=_mGetMatchData(curEV,cm.id);
-      _mSeconds=md2.seconds||0;
+      var mdata=_mGetMatchData(curEV,cm.id);
+      if(cm.id!==_mActiveMatchId)_mSeconds=mdata.seconds||0;
     }
   }
-  
-  // No match selected - show selector
+
   if(!_mActiveMatchId){
-    var ms=(curEV?getMatches(curEV):[])||[];
-    var html='<div style="padding:12px">';
-    html+='<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Selectionner un match</div>';
-    ms.forEach(function(m){
-      var adv=String(m.adv&&m.adv.length>2?m.adv:"Match "+m.adv);
-      html+='<div onclick="_mSelectMatch(this)" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,"&quot;")+'" ';
-      html+='style="padding:10px 12px;margin:3px 0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center">';
-      html+='<b>vs '+adv+'</b><span style="color:#9ca3af;font-size:11px">▶</span></div>';
-    });
-    if(!ms.length)html+='<p style="color:#9ca3af;text-align:center">Aucun match</p>';
-    html+='</div>';
-    el.innerHTML=html;
+    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#9ca3af">'
+      +'<div style="font-size:11px">Aucun match disponible</div></div>';
     return;
   }
-  
-  // Match selected - render UI
+
   var match=_mGetMatch(curEV);
   var md=_mGetMatchData(curEV,_mActiveMatchId);
   var cfg=match.config||{periods:2,duration:20,reverse:false};
@@ -1498,15 +1496,12 @@ function renderMatchTab(){
   var pLabel=pCount===2?(pidx===0?"1ere mi-temps":"2eme mi-temps"):("Tiers-temps "+(pidx+1));
   var adv=String(_mActiveMatchAdv||"Adversaire");
   var c1=S.settings.c1||"#1a3a6b";
-  
-  var html='';
-  // Header
+
+  var html="";
   html+='<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px">';
   html+='<span style="font-family:var(--fd);font-size:15px;font-weight:900;color:'+c1+'">vs '+adv+'</span>';
-  html+='<button onclick="_mResetActiveMatch()" style="background:none;border:1px solid #d1d5db;color:#6b7280;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px">Changer</button>';
   html+='</div>';
-  
-  // Config
+
   html+='<details style="margin-bottom:10px"><summary style="font-size:11px;color:#6b7280;cursor:pointer;list-style:none">Parametres du chrono</summary>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 0;align-items:end">';
   html+='<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Periodes</label>';
@@ -1516,8 +1511,7 @@ function renderMatchTab(){
   html+='<div><label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-top:14px">';
   html+='<input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inverse</label></div>';
   html+='</div><button onclick="_mSaveConfig()" style="width:100%;padding:7px;background:'+c1+';color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button></details>';
-  
-  // Chrono
+
   html+='<div style="background:'+c1+';color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center">';
   html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.65;margin-bottom:2px">'+(ended?"TERMINE":pLabel+" ("+(pidx+1)+"/"+pCount+")")+'</div>';
   html+='<div id="m-time" style="font-size:52px;font-weight:900;font-family:var(--fd);letter-spacing:3px;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>';
@@ -1529,13 +1523,9 @@ function renderMatchTab(){
   html+='<div id="m-score-them" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalThem+'</div></div>';
   html+='</div>';
   if(!ended){
-    var btnBg=_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)";
-    var btnCol=_mRunning?"#fff":"var(--c1)";
-    var btnTxt=_mRunning?"Pause":"Demarrer";
-    var nxtTxt=pidx<pCount-1?"Fin periode":"Fin match";
     html+='<div style="display:flex;gap:8px">';
-    html+='<button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+btnBg+';color:'+btnCol+'">'+btnTxt+'</button>';
-    html+='<button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+nxtTxt+'</button>';
+    html+='<button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+(_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)")+';color:'+(_mRunning?"#fff":"var(--c1)")+'">'+(_mRunning?"Pause":"Demarrer")+'</button>';
+    html+='<button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+(pidx<pCount-1?"Fin periode":"Fin match")+'</button>';
     html+='</div>';
   } else {
     html+='<div style="display:flex;gap:8px">';
@@ -1544,20 +1534,16 @@ function renderMatchTab(){
     html+='</div>';
   }
   html+='</div>';
-  
-  // SAR/MOM buttons
-  html+='<div style="margin-bottom:8px">';
-  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>';
+
+  html+='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
   html+='<button onclick="_mDoEssai()" style="padding:10px;border:2px solid #16a34a;color:#16a34a;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>';
   html+='<button onclick="_mDoTransfo()" style="padding:10px;border:2px solid #2563eb;color:#2563eb;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>';
   html+='<button onclick="_mDoPenalite()" style="padding:10px;border:2px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>';
   html+='<button onclick="_mDoDrop()" style="padding:10px;border:2px solid #d97706;color:#d97706;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>';
   html+='</div></div>';
-  
-  // Adversaire
-  html+='<div style="margin-bottom:8px">';
-  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">'+adv+'</div>';
+
+  html+='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">'+adv+'</div>';
   html+='<div style="display:flex;gap:4px">';
   html+='<button onclick="_mDoAdvEssai()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+5</button>';
   html+='<button onclick="_mDoAdvTransfo()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+2</button>';
@@ -1565,10 +1551,8 @@ function renderMatchTab(){
   html+='<button onclick="_mDoAdvDrop()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>';
   html+='<button onclick="_mCorrectScore(-1)" style="padding:9px 10px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-size:12px;cursor:pointer;color:#6b7280">-1</button>';
   html+='</div></div>';
-  
-  // Evenements
-  html+='<div style="margin-bottom:8px">';
-  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">Evenements</div>';
+
+  html+='<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">Evenements</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
   html+='<button onclick="_mDoRemplacement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Remplacement</button>';
   html+='<button onclick="_mDoAvertissement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Avertissement</button>';
@@ -1576,134 +1560,15 @@ function renderMatchTab(){
   html+='<button onclick="_mDoCartonR()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton rouge</button>';
   html+='<button onclick="_mDoBlessure()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>';
   html+='</div></div>';
-  
-  // Historique
-  html+='<div>';
-  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Historique</div>';
+
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Historique</div>';
   html+='<div id="m-history" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;min-height:36px"></div>';
   html+='</div>';
-  
+
   el.innerHTML=html;
   _mRefreshHistory();
 }
 
-
-// INIT
-function renderRapport(){
-  var el=document.getElementById("rapport-content");if(!el)return;
-  if(!curEV){el.innerHTML='<p style="color:#9ca3af;text-align:center;padding:20px">Aucun evenement</p>';return;}
-  var c1=S.settings.c1||"#1a3a6b";
-  var allMatches=getMatches(curEV)||[];
-  var byMatch=(curEV.match&&curEV.match.byMatch)||{};
-  var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
-  var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
-  var html='<div style="padding:10px">';
-  html+='<div style="background:'+c1+';color:white;border-radius:10px;padding:12px 14px;margin-bottom:12px">';
-  html+='<div style="font-size:10px;opacity:.7">'+curEV.date+" · "+curEV.lieu+'</div>';
-  html+='<div style="font-size:15px;font-weight:900;font-family:var(--fd)">'+curEV.name+'</div></div>';
-  var hasData=false;
-  allMatches.forEach(function(m){
-    var adv=String(m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv);
-    var md=byMatch[m.id];
-    var totalUs=0,totalThem=0;
-    if(md)(md.periods||[]).forEach(function(p){if(p){totalUs+=(p.score_us||0);totalThem+=(p.score_them||0);}});
-    var allEvts=[];
-    if(md)(md.periods||[]).forEach(function(p,pi){if(p)(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
-    allEvts.sort(function(a,b){return a.ts-b.ts;});
-    var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended");
-    if(played)hasData=true;
-    var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
-    var bgColor=!played?"#6b7280":win?c1:draw?"#374151":"#991b1b";
-    var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
-    html+='<div style="background:white;border-radius:10px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.1)">';
-    html+='<div style="background:'+c1+';color:white;padding:10px 14px"><b>vs '+adv+'</b></div>';
-    html+='<div style="background:'+bgColor+';color:white;padding:10px;text-align:center">';
-    html+='<div style="font-size:9px;opacity:.7;text-transform:uppercase;margin-bottom:3px">'+resultLabel+'</div>';
-    html+='<div style="display:flex;justify-content:center;align-items:center;gap:20px">';
-    html+='<div><div style="font-size:8px;opacity:.6;text-transform:uppercase">SAR/MOM</div><div style="font-size:34px;font-weight:900;font-family:var(--fd)">'+totalUs+'</div></div>';
-    html+='<div style="opacity:.4">—</div>';
-    html+='<div><div style="font-size:8px;opacity:.6;text-transform:uppercase">'+adv+'</div><div style="font-size:34px;font-weight:900;font-family:var(--fd)">'+totalThem+'</div></div>';
-    html+='</div></div>';
-    if(allEvts.length){
-      html+='<div style="padding:8px 12px">';
-      allEvts.forEach(function(e){
-        var pL=(cfg.periods||2)===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
-        var desc=e.type==="remplacement"?(e.outName+" > "+e.inName):(e.forUs===false?"["+adv+"]":e.name||"");
-        if(e.nat)desc+=" ("+e.nat+")";
-        html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #f3f4f6;font-size:11px">';
-        html+='<span style="background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:700">'+pL+" "+e.min+"'</span>";
-        html+='<span>'+(icons[e.type]||"•")+'</span>';
-        html+='<span style="flex:1">'+desc+'</span>';
-        if(e.pts&&e.forUs!==false)html+='<span style="font-weight:700;color:'+c1+';font-size:10px">+'+e.pts+'</span>';
-        html+='</div>';
-      });
-      html+='</div>';
-    }
-    html+='</div>';
-  });
-  if(hasData)html+='<button onclick="_mExportRapportPDF()" style="width:100%;margin-top:4px;padding:11px;background:'+c1+';color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Exporter en PDF</button>';
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-
-function _mExportMatch(){
-  var b=document.querySelector('.stab[onclick*="rapport"]');
-  if(b)b.click();
-}
-function _mExportRapportPDF(){
-  var el=document.getElementById("rapport-content");if(!el)return;
-  if(typeof html2canvas==="undefined"){alert("Librairie PDF non disponible");return;}
-  html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#f9fafb"}).then(function(canvas){
-    var imgData=canvas.toDataURL("image/jpeg",0.92);
-    var pdf=new jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-    var pdfW=pdf.internal.pageSize.getWidth();
-    var ratio=canvas.height/canvas.width;
-    var imgH=pdfW*ratio;
-    pdf.addImage(imgData,"JPEG",0,0,pdfW,imgH);
-    pdf.save("rapport_"+curEV.name.replace(/\s+/g,"_")+".pdf");
-  });
-}
-
-
-function impFromDrive(){
-  if(!_gAccessToken){
-    alert("Connectez d'abord Google Drive dans les Réglages.");
-    return;
-  }
-  // Search for sarmom_compos.json in Drive
-  var q="name='sarmom_compos.json' and trashed=false";
-  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)",{
-    headers:{Authorization:"Bearer "+_gAccessToken}
-  }).then(function(r){return r.json();})
-  .then(function(data){
-    if(!data.files||!data.files.length){
-      alert("Fichier sarmom_compos.json introuvable sur Drive.");
-      return;
-    }
-    var fileId=data.files[0].id;
-    return fetch("https://www.googleapis.com/drive/v3/files/"+fileId+"?alt=media",{
-      headers:{Authorization:"Bearer "+_gAccessToken}
-    });
-  }).then(function(r){if(r)return r.json();})
-  .then(function(json){
-    if(!json)return;
-    var merged=Object.assign({players:INIT_PL,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}},json);
-    if(!merged.players||merged.players.length<60)merged.players=INIT_PL;
-    S=merged;sv();rdash();revents();rsettings();
-    alert("Données importées depuis Drive !");
-  }).catch(function(e){
-    alert("Erreur import Drive : "+e.message);
-  });
-}
-
-
-["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
-try{var _ld=JSON.parse(localStorage.getItem("sm7")||"null");if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem("sm7");}catch(e){}
-if(S.players.length<60)S.players=INIT_PL;
-(function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
-_gCheckRedirectToken();
-rdash();revents();
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 if(S.players.length<60)S.players=INIT_PL;
 (function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
