@@ -1276,7 +1276,7 @@ var _mActiveMatchId=null,_mActiveMatchAdv='',_mPickerCallback=null;
 function _mGetMatch(ev){if(!ev.match)ev.match={config:{periods:2,duration:20,reverse:false},byMatch:{}};if(!ev.match.byMatch)ev.match.byMatch={};return ev.match;}
 function _mGetMatchData(ev,mid){var m=_mGetMatch(ev);if(!m.byMatch[mid])m.byMatch[mid]={periods:[],currentPeriod:0,status:"idle",seconds:0};return m.byMatch[mid];}
 function _mCurrentPeriod(md){var i=md.currentPeriod||0;if(!md.periods[i])md.periods[i]={score_us:0,score_them:0,events:[]};return md.periods[i];}
-function _mTotalScore(md,key){return(md.periods||[]).reduce(function(a,p){return a+(p[key]||0);},0);}
+function _mTotalScore(md,key){return(md.periods||[]).reduce(function(a,p){return a+(p&&p[key]||0);},0);}
 function _mFormatTime(secs,cfg){var dur=(cfg.duration||20)*60,t=cfg.reverse?Math.max(0,dur-secs):secs,m=Math.floor(t/60),s=t%60;return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");}
 function _mGetPlayers(){var base=getBase(curEV,curTID).filter(Boolean);return base.length>0?S.players.filter(function(p){return base.map(String).includes(String(p.id));}):S.players;}
 
@@ -1560,8 +1560,71 @@ function renderMatchTab(){
 
 
 // INIT
+function renderRapport(){
+  var el=document.getElementById("rapport-content");if(!el)return;
+  if(!curEV){el.innerHTML='<p style="color:#9ca3af;text-align:center;padding:20px">Aucun evenement</p>';return;}
+  var c1=S.settings.c1||"#1a3a6b";
+  var allMatches=getMatches(curEV)||[];
+  var byMatch=(curEV.match&&curEV.match.byMatch)||{};
+  var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
+  var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
+  var html='<div style="padding:10px">';
+  html+='<div style="background:'+c1+';color:white;border-radius:10px;padding:12px 14px;margin-bottom:12px">';
+  html+='<div style="font-size:10px;opacity:.7">'+curEV.date+" · "+curEV.lieu+'</div>';
+  html+='<div style="font-size:15px;font-weight:900;font-family:var(--fd)">'+curEV.name+'</div></div>';
+  var hasData=false;
+  allMatches.forEach(function(m){
+    var adv=String(m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv);
+    var md=byMatch[m.id];
+    var totalUs=0,totalThem=0;
+    if(md)(md.periods||[]).forEach(function(p){if(p){totalUs+=(p.score_us||0);totalThem+=(p.score_them||0);}});
+    var allEvts=[];
+    if(md)(md.periods||[]).forEach(function(p,pi){if(p)(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
+    allEvts.sort(function(a,b){return a.ts-b.ts;});
+    var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended");
+    if(played)hasData=true;
+    var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
+    var bgColor=!played?"#6b7280":win?c1:draw?"#374151":"#991b1b";
+    var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
+    html+='<div style="background:white;border-radius:10px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.1)">';
+    html+='<div style="background:'+c1+';color:white;padding:10px 14px"><b>vs '+adv+'</b></div>';
+    html+='<div style="background:'+bgColor+';color:white;padding:10px;text-align:center">';
+    html+='<div style="font-size:9px;opacity:.7;text-transform:uppercase;margin-bottom:3px">'+resultLabel+'</div>';
+    html+='<div style="display:flex;justify-content:center;align-items:center;gap:20px">';
+    html+='<div><div style="font-size:8px;opacity:.6;text-transform:uppercase">SAR/MOM</div><div style="font-size:34px;font-weight:900;font-family:var(--fd)">'+totalUs+'</div></div>';
+    html+='<div style="opacity:.4">—</div>';
+    html+='<div><div style="font-size:8px;opacity:.6;text-transform:uppercase">'+adv+'</div><div style="font-size:34px;font-weight:900;font-family:var(--fd)">'+totalThem+'</div></div>';
+    html+='</div></div>';
+    if(allEvts.length){
+      html+='<div style="padding:8px 12px">';
+      allEvts.forEach(function(e){
+        var pL=(cfg.periods||2)===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
+        var desc=e.type==="remplacement"?(e.outName+" > "+e.inName):(e.forUs===false?"["+adv+"]":e.name||"");
+        if(e.nat)desc+=" ("+e.nat+")";
+        html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #f3f4f6;font-size:11px">';
+        html+='<span style="background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:700">'+pL+" "+e.min+"'</span>";
+        html+='<span>'+(icons[e.type]||"•")+'</span>';
+        html+='<span style="flex:1">'+desc+'</span>';
+        if(e.pts&&e.forUs!==false)html+='<span style="font-weight:700;color:'+c1+';font-size:10px">+'+e.pts+'</span>';
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  if(hasData)html+='<button onclick="_mExportRapportPDF()" style="width:100%;margin-top:4px;padding:11px;background:'+c1+';color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Exporter en PDF</button>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 try{var _ld=JSON.parse(localStorage.getItem("sm7")||"null");if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem("sm7");}catch(e){}
+if(S.players.length<60)S.players=INIT_PL;
+(function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
+_gCheckRedirectToken();
+rdash();revents();
+["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 if(S.players.length<60)S.players=INIT_PL;
 (function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
 _gCheckRedirectToken();
