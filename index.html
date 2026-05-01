@@ -1206,11 +1206,12 @@ function gShowClientIdPrompt(){
 }
 
 function openEMtab(id,tab){
-  openEM(id);
+  // Open composition editor (not event settings modal)
+  openEditor(id,null,null,"base");
   setTimeout(function(){
     var btn=document.querySelector('.stab[onclick*="'+tab+'"]');
     if(btn)btn.click();
-  },200);
+  },300);
 }
 function _mResetActiveMatch(){
   _mActiveMatchId=null;_mActiveMatchAdv='';
