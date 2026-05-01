@@ -1763,6 +1763,10 @@ function impFromDrive(){
 }
 
 
+function cm(id){var el=document.getElementById(id);if(el)el.classList.remove("open");}
+function fd(d){if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
+
+
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 if(S.players.length<60)S.players=INIT_PL;
 (function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
