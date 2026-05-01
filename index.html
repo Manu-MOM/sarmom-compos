@@ -1800,6 +1800,49 @@ function renderPlayerStats(pid){
 }
 
 
+function exportImg(fmt){
+  var el=document.getElementById("export-preview");
+  if(!el){alert("Aucun apercu disponible. Ouvrez l'onglet Reseaux sociaux d'abord.");return;}
+  // SVG to canvas conversion
+  var svg=el.querySelector("svg");
+  if(svg){
+    var svgData=new XMLSerializer().serializeToString(svg);
+    var svgBlob=new Blob([svgData],{type:"image/svg+xml;charset=utf-8"});
+    var url=URL.createObjectURL(svgBlob);
+    var img=new Image();
+    var w=svg.getAttribute("width")||svg.viewBox.baseVal.width||800;
+    var h=svg.getAttribute("height")||svg.viewBox.baseVal.height||800;
+    img.onload=function(){
+      var c=document.createElement("canvas");
+      c.width=w*2;c.height=h*2;
+      var ctx=c.getContext("2d");
+      ctx.scale(2,2);
+      ctx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      _doExportImg(c,fmt);
+    };
+    img.src=url;
+    return;
+  }
+  // Fallback html2canvas
+  if(typeof html2canvas==="undefined"){alert("Librairie non chargee.");return;}
+  html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#1a1a2e"}).then(function(c){_doExportImg(c,fmt);});
+}
+
+function _doExportImg(canvas,fmt){
+  var mimeType=fmt==="jpg"?"image/jpeg":"image/png";
+  var ext=fmt==="jpg"?"jpg":"png";
+  var dataUrl=canvas.toDataURL(mimeType,0.95);
+  var a=document.createElement("a");
+  a.href=dataUrl;
+  a.download="sarmom_compo_"+(curEV?curEV.name.replace(/\s+/g,"_"):"export")+"."+ext;
+  a.click();
+}
+
+function exportInstagram(){exportImg("jpg");}
+function exportPNG(){exportImg("png");}
+
+
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 if(S.players.length<60)S.players=INIT_PL;
 (function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
