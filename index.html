@@ -300,7 +300,6 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
           <button class="stab active" onclick="switchEV('liste',this)">Liste</button>
           <button class="stab" onclick="switchEV('terrain',this)">Terrain</button>
           <button class="stab" onclick="switchEV('export',this)">Réseaux sociaux</button>
-          <button class="stab" onclick="switchEV('effectif',this)">Effectif</button>
           <button class="stab" onclick="switchEV('match',this)">⏱ Match</button>
           <button class="stab" onclick="switchEV('rapport',this)">📊 Rapport</button>
         </div>
@@ -828,10 +827,10 @@ function openEditor(eid,tid,mid,mode){
     if(_cm){
       if(_mActiveMatchId!==curMID){
         clearInterval(_mTimer);_mRunning=false;
-        _mActiveMatchId=curMID;
-        _mActiveMatchAdv=_cm.adv&&String(_cm.adv).length>2?_cm.adv:"Match "+_cm.adv;
-        var _md=_mGetMatchData(curEV,curMID);_mSeconds=_md.seconds||0;
       }
+      _mActiveMatchId=curMID;
+      _mActiveMatchAdv=_cm.adv&&String(_cm.adv).length>2?_cm.adv:"Match "+_cm.adv;
+      var _md=_mGetMatchData(curEV,curMID);_mSeconds=_md.seconds||0;
     }
   } else if(curMode==="base"){
     _mActiveMatchId=null;_mActiveMatchAdv="";
@@ -844,7 +843,7 @@ function openEditor(eid,tid,mid,mode){
   renderEdBtns();renderPool();renderSlots();
   // Reset to liste tab
   const listeBtn=document.querySelector('.stab[onclick*="liste"]');
-  if(listeBtn){document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));listeBtn.classList.add("active");["liste","terrain","export","effectif","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v==="liste"?"block":"none";});}
+  if(listeBtn){document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));listeBtn.classList.add("active");["liste","terrain","export","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v==="liste"?"block":"none";});}
 }
 function renderEdBtns(){
   const matches=getMatches(curEV);
@@ -911,7 +910,7 @@ function renderPick(){
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif","match"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="effectif")renderEffectif();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif","match"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
 
 // FIELD SVG
 function drawField(){
@@ -1530,19 +1529,23 @@ function computePlayerStats(){
 }
 
 function renderPlayerStats(pid){
-  var el=document.getElementById('mp-stats');if(!el)return;
+  var el=document.getElementById("mp-stats");if(!el)return;
   var stats=computePlayerStats();
-  var st=stats[String(pid)]||{matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,remplacements:0};
-  if(!st.matchs&&!st.essais){el.innerHTML='<div style="color:#9ca3af;font-size:11px;text-align:center;padding:4px">Aucune statistique</div>';return;}
-  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px">'
-    +(st.matchs?'<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.matchs+' matchs</span>':'')
-    +(st.essais?'<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.essais+' essai'+(st.essais>1?'s':'')+'</span>':'')
-    +(st.cartons_j?'<span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.cartons_j+' 🟡</span>':'')
-    +(st.cartons_r?'<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.cartons_r+' 🔴</span>':'')
-    +(st.blessures?'<span style="background:#f3e8ff;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.blessures+' 🤕</span>':'')
-    +(st.remplacements?'<span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.remplacements+' 🔄</span>':'')
-    +'</div>';
+  var st=stats[String(pid)];
+  if(!st||!st.matchs){
+    el.innerHTML="<span style='font-size:11px;color:#9ca3af'>Aucune donnee de match pour ce joueur</span>";
+    return;
+  }
+  var html="<div style='display:flex;flex-wrap:wrap;gap:5px'>";
+  html+="<span style='background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.matchs+" match"+(st.matchs>1?"s":"")+"</span>";
+  if(st.essais)html+="<span style='background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.essais+" essai"+(st.essais>1?"s":"")+"</span>";
+  if(st.cartons_j)html+="<span style='background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.cartons_j+" 🟡</span>";
+  if(st.cartons_r)html+="<span style='background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.cartons_r+" 🔴</span>";
+  if(st.blessures)html+="<span style='background:#f3e8ff;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.blessures+" 🤕</span>";
+  html+="</div>";
+  el.innerHTML=html;
 }
+
 
 function _mExportMatch(){var b=document.querySelector('.stab[onclick*=rapport]');if(b)b.click();}
 
@@ -1577,98 +1580,72 @@ function renderEffectif(){
 
 function renderRapport(){
   var el=document.getElementById("rapport-content");if(!el)return;
-  var c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
-  // Collect all match data for curEV
+  if(!curEV){el.innerHTML='<p style="color:#9ca3af;text-align:center;padding:20px">Aucun evenement</p>';return;}
+  var c1=S.settings.c1||"#1a3a6b";
   var allMatches=getMatches(curEV)||[];
-  var matchData=curEV.match&&curEV.match.byMatch||{};
+  var matchData=(curEV.match&&curEV.match.byMatch)||{};
   var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
 
-  // Build HTML for each match that has data
   var matchesHTML=allMatches.map(function(m){
-    var md=matchData[m.id];
-    if(!md||(!md.periods||!md.periods.length))return"";
     var adv=m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv;
-    var cfg=curEV.match&&curEV.match.config||{periods:2,duration:20};
-    var totalUs=(md.periods||[]).reduce(function(a,p){return a+(p.score_us||0);},0);
-    var totalThem=(md.periods||[]).reduce(function(a,p){return a+(p.score_them||0);},0);
-    var win=totalUs>totalThem,draw=totalUs===totalThem;
+    var md=matchData[m.id];
+    var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
+    var totalUs=md?(md.periods||[]).reduce(function(a,p){return a+(p.score_us||0);},0):0;
+    var totalThem=md?(md.periods||[]).reduce(function(a,p){return a+(p.score_them||0);},0):0;
+    var played=md&&md.status&&md.status!=="idle";
+    var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
     var allEvts=[];
-    (md.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
+    if(md)(md.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
     allEvts.sort(function(a,b){return a.ts-b.ts;});
-    // Player stats
-    var playerStats={};
-    allEvts.filter(function(e){return e.pid&&e.forUs!==false;}).forEach(function(e){
-      if(!playerStats[e.pid])playerStats[e.pid]={essais:0,cartons_j:0,cartons_r:0};
-      if(e.type==="essai")playerStats[e.pid].essais++;
-      if(e.type==="carton_jaune")playerStats[e.pid].cartons_j++;
-      if(e.type==="carton_rouge")playerStats[e.pid].cartons_r++;
-    });
-    var statsHTML=Object.keys(playerStats).map(function(pid){
-      var p=S.players.find(function(x){return String(x.id)===String(pid);});
-      if(!p)return"";
-      var st=playerStats[pid];
-      return"<div style='display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:11px'>"
-        +"<span style='flex:1;font-weight:600'>"+p.p+" "+p.n+"</span>"
-        +(st.essais?"<span style='background:rgba(255,255,255,.2);padding:1px 6px;border-radius:10px'>"+st.essais+" essai"+(st.essais>1?"s":"")+"</span>":"")
-        +(st.cartons_j?"<span>🟡</span>":"")+(st.cartons_r?"<span>🔴</span>":"")
-        +"</div>";
-    }).join("");
+    var bgColor=!played?"#374151":win?c1:draw?"#374151":"#991b1b";
+    var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
 
-    return"<div style='background:white;border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.12)'>"
-      // Header match
-      +"<div style='background:"+c1+";color:white;padding:12px 16px'>"
-        +"<div style='font-size:10px;opacity:.7;text-transform:uppercase;font-family:var(--fd)'>"+curEV.name+"</div>"
-        +"<div style='font-size:13px;font-weight:700;font-family:var(--fd)'>SAR/MOM vs "+adv+"</div>"
+    return"<div style='background:white;border-radius:10px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)'>"
+      // Header
+      +"<div style='background:"+c1+";color:white;padding:10px 14px;display:flex;align-items:center;justify-content:space-between'>"
+        +"<div style='font-size:13px;font-weight:700'>vs "+adv+"</div>"
+        +"<div style='font-size:10px;opacity:.7'>"+m.phaseName||""+"</div>"
       +"</div>"
       // Score
-      +"<div style='background:"+(win?c1:draw?"#374151":"#991b1b")+";color:white;padding:16px;text-align:center'>"
-        +"<div style='font-size:10px;opacity:.7;text-transform:uppercase;margin-bottom:4px'>"+(win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE")+"</div>"
+      +"<div style='background:"+bgColor+";color:white;padding:12px;text-align:center'>"
+        +"<div style='font-size:9px;opacity:.7;text-transform:uppercase;margin-bottom:4px'>"+resultLabel+"</div>"
         +"<div style='display:flex;align-items:center;justify-content:center;gap:20px'>"
-          +"<div><div style='font-size:9px;opacity:.6;text-transform:uppercase'>SAR/MOM</div><div style='font-size:40px;font-weight:900;font-family:var(--fd)'>"+totalUs+"</div></div>"
-          +"<div style='font-size:20px;opacity:.5'>—</div>"
-          +"<div><div style='font-size:9px;opacity:.6;text-transform:uppercase'>"+adv+"</div><div style='font-size:40px;font-weight:900;font-family:var(--fd)'>"+totalThem+"</div></div>"
+          +"<div><div style='font-size:9px;opacity:.6;text-transform:uppercase'>SAR/MOM</div>"
+            +"<div style='font-size:36px;font-weight:900;font-family:var(--fd)'>"+totalUs+"</div></div>"
+          +"<div style='font-size:18px;opacity:.4'>—</div>"
+          +"<div><div style='font-size:9px;opacity:.6;text-transform:uppercase'>"+adv+"</div>"
+            +"<div style='font-size:36px;font-weight:900;font-family:var(--fd)'>"+totalThem+"</div></div>"
         +"</div>"
       +"</div>"
-      // Events timeline
-      +(allEvts.length?"<div style='padding:12px 16px'>"
-        +"<div style='font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px'>Chronologie</div>"
+      // Events (if any)
+      +(allEvts.length?"<div style='padding:10px 14px'>"
         +allEvts.map(function(e){
-          var pL=(cfg.periods||2)===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
+          var pCount=cfg.periods||2;
+          var pL=pCount===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
           var desc=e.type==="remplacement"?(e.outName+" → "+e.inName):(e.forUs===false?"["+adv+"]":e.name||"");
           if(e.nat)desc+=" ("+e.nat+")";
-          return"<div style='display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:12px'>"
-            +"<span style='background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap'>"+pL+" "+e.min+"'</span>"
+          return"<div style='display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:11px'>"
+            +"<span style='background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap'>"+pL+" "+e.min+"'</span>"
             +"<span>"+(icons[e.type]||"•")+"</span>"
             +"<span style='flex:1;color:#374151'>"+desc+"</span>"
-            +(e.pts&&e.forUs!==false?"<span style='font-weight:700;color:"+(e.forUs!==false?c1:"#991b1b")+";font-size:11px'>+"+e.pts+"</span>":"")
+            +(e.pts&&e.forUs!==false?"<span style='font-weight:700;color:"+c1+";font-size:10px'>+"+e.pts+"</span>":"")
           +"</div>";
         }).join("")
-      +"</div>":"")
-      // Player stats
-      +(statsHTML?"<div style='padding:12px 16px;background:"+c1+"15'>"
-        +"<div style='font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;color:"+c1+"'>Performances</div>"
-        +statsHTML
       +"</div>":"")
     +"</div>";
   }).join("");
 
-  var hasData=matchesHTML.trim().length>0;
-
-  el.innerHTML="<div style='padding:12px'>"
-    // Event header
-    +"<div style='background:"+c1+";color:white;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between'>"
-      +"<div>"
-        +"<div style='font-size:10px;opacity:.7'>"+curEV.date+"  "+curEV.lieu+"</div>"
-        +"<div style='font-size:16px;font-weight:900;font-family:var(--fd)'>"+curEV.name+"</div>"
-      +"</div>"
-      +"<img src='"+window._LOGO_SM+"' style='height:40px;width:40px;border-radius:50%;object-fit:cover'>"
+  el.innerHTML="<div style='padding:10px'>"
+    +"<div style='background:"+c1+";color:white;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between'>"
+      +"<div><div style='font-size:10px;opacity:.7'>"+curEV.date+" · "+curEV.lieu+"</div>"
+        +"<div style='font-size:15px;font-weight:900;font-family:var(--fd)'>"+curEV.name+"</div></div>"
+      +"<img src='"+window._LOGO_SM+"' style='height:36px;width:36px;border-radius:50%;object-fit:cover'>"
     +"</div>"
-    +(hasData
-      ? matchesHTML
-        +"<button onclick='_mExportRapportPDF()' style='width:100%;padding:12px;background:"+c1+";color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd)'>Exporter en PDF</button>"
-      : "<div style='text-align:center;padding:30px;color:#9ca3af'><div style='font-size:32px;margin-bottom:8px'>📊</div>Aucune donnée de match enregistrée</div>")
+    +matchesHTML
+    +(matchesHTML?"<button onclick='_mExportRapportPDF()' style='width:100%;margin-top:4px;padding:11px;background:"+c1+";color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd)'>📄 Exporter en PDF</button>":"")
   +"</div>";
 }
+
 
 function _mExportRapportPDF(){
   var el=document.getElementById("rapport-content");if(!el)return;
