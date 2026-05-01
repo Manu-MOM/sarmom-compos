@@ -1716,6 +1716,28 @@ function _openRapport(evId){
 }
 
 
+function impFromDrive(){
+  if(!_gAccessToken){alert("Connectez d'abord Google Drive dans les Reglages.");return;}
+  var q="name='sarmom_compos.json' and trashed=false";
+  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)",{
+    headers:{Authorization:"Bearer "+_gAccessToken}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    if(!data.files||!data.files.length){alert("Fichier sarmom_compos.json introuvable sur Drive.");return;}
+    return fetch("https://www.googleapis.com/drive/v3/files/"+data.files[0].id+"?alt=media",{
+      headers:{Authorization:"Bearer "+_gAccessToken}
+    });
+  }).then(function(r){if(r)return r.json();})
+  .then(function(json){
+    if(!json)return;
+    var merged=Object.assign({players:INIT_PL,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}},json);
+    if(!merged.players||merged.players.length<60)merged.players=INIT_PL;
+    S=merged;sv();rdash();revents();rsettings();
+    alert("Données importées depuis Drive !");
+  }).catch(function(e){alert("Erreur import Drive : "+e.message);});
+}
+
+
 ["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 if(S.players.length<60)S.players=INIT_PL;
 (function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
