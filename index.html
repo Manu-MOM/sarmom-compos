@@ -496,7 +496,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       </div>
     </div>
     <div class="macts">
-      <button class="mcancel" onclick="cm('m-pl')">Annuler</button>
+      <div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:6px">Statistiques</div><div id="mp-stats"></div></div><button class="mcancel" onclick="cm('m-pl')">Annuler</button>
       <button class="msave" onclick="savePl()">Enregistrer</button>
     </div>
   </div>
@@ -819,7 +819,21 @@ let curEV=null,curTID=null,curMID=null,curMode="base",curEVview="liste",curSlot=
 function openEditor(eid,tid,mid,mode){
   curEV=S.events.find(e=>e.id===eid);if(!curEV){gp("editor");return;}
   curTID=tid||curEV.teams[0];const matches=getMatches(curEV);
-  curMID=mid||matches[0]?.id||null;curMode=mode||"base";_mActiveMatchId=null;_mActiveMatchAdv="";
+  curMID=mid||matches[0]?.id||null;curMode=mode||"base";
+  // Auto-link match tracker to current match
+  if(curMode!=="base"&&curMID){
+    var _cm=matches.find(function(m){return m.id===curMID;});
+    if(_cm){
+      if(_mActiveMatchId!==curMID){
+        clearInterval(_mTimer);_mRunning=false;
+        _mActiveMatchId=curMID;
+        _mActiveMatchAdv=_cm.adv&&String(_cm.adv).length>2?_cm.adv:"Match "+_cm.adv;
+        var _md=_mGetMatchData(curEV,curMID);_mSeconds=_md.seconds||0;
+      }
+    }
+  } else if(curMode==="base"){
+    _mActiveMatchId=null;_mActiveMatchAdv="";
+  }
   gp("editor");document.getElementById("ed-empty").style.display="none";document.getElementById("ed-main").style.display="block";
   const m=matches.find(m=>m.id===curMID);
   document.getElementById("ed-title").textContent=curEV.name;
@@ -1038,7 +1052,7 @@ function openPM(id=null){
   const photoData=p?.photo||"";document.getElementById("mp-photo-data").value=photoData;
   if(photoData){preview.src=photoData;preview.style.display="block";ph.style.display="none";}else{preview.style.display="none";ph.style.display="block";}
   document.getElementById("mp-apts").innerHTML=APTS.map(a=>`<label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer"><input type="checkbox" value="${a}" ${(p?.apt||[]).includes(a)?"checked":""}> ${a}</label>`).join("");
-  document.getElementById("m-pl").classList.add("open");
+  document.getElementById("m-pl").classList.add("open");if(id)renderPlayerStats(id);else{var ste=document.getElementById("mp-stats");if(ste)ste.innerHTML="";}
 }
 function toggleInjForm(){const inj=document.getElementById("mp-inj").checked;document.getElementById("mp-inj-fields").style.display=inj?"block":"none";}
 function loadPhoto(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{const data=e.target.result;document.getElementById("mp-photo-data").value=data;const preview=document.getElementById("mp-photo-preview");preview.src=data;preview.style.display="block";document.getElementById("mp-photo-placeholder").style.display="none";};r.readAsDataURL(file);}
@@ -1445,7 +1459,7 @@ function renderMatchTab(){
       +'</div>'
       +(!ended
         ?'<div style="display:flex;gap:8px"><button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+(_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)")+';color:'+(_mRunning?"#fff":"var(--c1)")+'">'+(_mRunning?"Pause":"Demarrer")+'</button><button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+( pidx<pCount-1?"Fin periode":"Fin match")+'</button></div>'
-        :'<button onclick="_mReset()" style="padding:9px 20px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">Nouveau match</button>')
+        :'<div style="display:flex;gap:8px"><button onclick="_mReset()" style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">Nouveau</button><button onclick="_mExportMatch()" style="flex:2;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.9);color:var(--c1)">Exporter rapport</button></div>')
     +'</div>'
     +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'
@@ -1476,6 +1490,86 @@ function renderMatchTab(){
   _mRefreshHistory();
 }
 
+// ── Statistiques joueurs ─────────────────────────────────────────
+function computePlayerStats(){
+  var stats={};
+  (S.events||[]).forEach(function(ev){
+    // Stats from lineups (matchs joués)
+    var ms=getMatches(ev);
+    (ev.teams||[]).forEach(function(tid){
+      ms.forEach(function(m){
+        var res=getResolved(ev,tid,m.id);
+        res.forEach(function(pid,idx2){
+          if(!pid)return;
+          var k=String(pid);
+          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,remplacements:0};
+          stats[k].matchs++;
+        });
+      });
+    });
+    // Stats from match events
+    var matchData=ev.match&&ev.match.byMatch||{};
+    Object.values(matchData).forEach(function(md){
+      (md.periods||[]).forEach(function(p){
+        (p.events||[]).forEach(function(evt){
+          if(!evt.pid||evt.forUs===false)return;
+          var k=String(evt.pid);
+          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,remplacements:0};
+          if(evt.type==='essai')stats[k].essais++;
+          if(evt.type==='carton_jaune')stats[k].cartons_j++;
+          if(evt.type==='carton_rouge')stats[k].cartons_r++;
+          if(evt.type==='blessure')stats[k].blessures++;
+          if(evt.type==='remplacement'&&(evt.out===evt.pid||String(evt.out)===k))stats[k].remplacements++;
+        });
+      });
+    });
+  });
+  return stats;
+}
+
+function renderPlayerStats(pid){
+  var el=document.getElementById('mp-stats');if(!el)return;
+  var stats=computePlayerStats();
+  var st=stats[String(pid)]||{matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,remplacements:0};
+  if(!st.matchs&&!st.essais){el.innerHTML='<div style="color:#9ca3af;font-size:11px;text-align:center;padding:4px">Aucune statistique</div>';return;}
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    +(st.matchs?'<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.matchs+' matchs</span>':'')
+    +(st.essais?'<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.essais+' essai'+(st.essais>1?'s':'')+'</span>':'')
+    +(st.cartons_j?'<span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.cartons_j+' 🟡</span>':'')
+    +(st.cartons_r?'<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.cartons_r+' 🔴</span>':'')
+    +(st.blessures?'<span style="background:#f3e8ff;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.blessures+' 🤕</span>':'')
+    +(st.remplacements?'<span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+st.remplacements+' 🔄</span>':'')
+    +'</div>';
+}
+
+function _mExportMatch(){
+  if(!_mActiveMatchId&&!curMID)return;
+  var mid=_mActiveMatchId||curMID;
+  var md=_mGetMatchData(curEV,mid);
+  var cfg=_mGetMatch(curEV).config;
+  var adv=_mActiveMatchAdv||mid;
+  var totalUs=_mTotalScore(md,"score_us"),totalThem=_mTotalScore(md,"score_them");
+  var allEvts=[];
+  (md.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
+  allEvts.sort(function(a,b){return a.ts-b.ts;});
+  var pCount=cfg.periods||2;
+  var lines=[];
+  lines.push("=== "+curEV.name+" ===");
+  lines.push("Match : SAR/MOM vs "+adv);
+  lines.push("Score final : "+totalUs+" - "+totalThem);
+  lines.push("");
+  allEvts.forEach(function(e){
+    var pL=pCount===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
+    var desc=e.type==="remplacement"?(e.outName+" > "+e.inName):(e.forUs===false?"["+adv+"]":e.name||"");
+    if(e.nat)desc+=" ("+e.nat+")";
+    lines.push(pL+" "+e.min+"' "+e.type.replace("_"," ")+" - "+desc+(e.pts&&e.forUs!==false?" (+"+e.pts+")":""));
+  });
+  // Download as text
+  var blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");a.href=url;a.download="match_"+adv.replace(/\s+/g,"_")+".txt";a.click();
+  URL.revokeObjectURL(url);
+}
 // MISC
 function cm(id){document.getElementById(id)?.classList.remove("open");}
 function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`${dd}/${m}/${y}`;}
