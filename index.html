@@ -849,12 +849,7 @@ function openEditor(eid,tid,mid,mode){
   // Switch to appropriate tab
   var targetTab=curMode==="base"?"liste":"match";
   var targetBtn=document.querySelector('.stab[onclick*="'+targetTab+'"]');
-  // Griser l'onglet Match en mode BASE
-  var matchStab=document.querySelector('.stab[onclick*="match"]');
-  if(matchStab){
-    matchStab.style.opacity=curMode==="base"?"0.4":"1";
-    matchStab.style.pointerEvents=curMode==="base"?"none":"auto";
-  }
+
   if(targetBtn){
     document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));
     targetBtn.classList.add("active");
