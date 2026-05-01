@@ -751,7 +751,7 @@ function renderEvCard(ev){
   let scoreHtml="";
   if(!isTour){scoreHtml=matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("");}
   else{scoreHtml=(ev.phases||[]).map(ph=>`<div style="margin-bottom:7px"><div style="font-size:10px;font-weight:700;color:var(--tour);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;font-family:var(--fd)">📍 ${ph.name}</div>${ph.matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("")}</div>`).join("");}
-  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px" title="Modifier">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
+  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px" title="Modifier l'événement">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
 }
 function toggleEv(id){const el=document.getElementById("eb-"+id);el&&el.classList.toggle("open");}
 function setSc(eid,mid,side,val){const e=S.events.find(e=>e.id===eid);if(!e.scores)e.scores={};if(!e.scores[mid])e.scores[mid]={f:null,a:null};e.scores[mid][side]=val===""?null:parseInt(val);sv();}
@@ -819,7 +819,7 @@ let curEV=null,curTID=null,curMID=null,curMode="base",curEVview="liste",curSlot=
 function openEditor(eid,tid,mid,mode){
   curEV=S.events.find(e=>e.id===eid);if(!curEV){gp("editor");return;}
   curTID=tid||curEV.teams[0];const matches=getMatches(curEV);
-  curMID=mid||matches[0]?.id||null;curMode=mode||"base";
+  curMID=mid||matches[0]?.id||null;curMode=mode||"base";_mActiveMatchId=null;_mActiveMatchAdv="";
   gp("editor");document.getElementById("ed-empty").style.display="none";document.getElementById("ed-main").style.display="block";
   const m=matches.find(m=>m.id===curMID);
   document.getElementById("ed-title").textContent=curEV.name;
@@ -1231,6 +1231,16 @@ function _mSelectMatch(el){
   var evId=el.dataset.evid, mid=el.dataset.mid, adv=el.dataset.adv;
   openMatchTracker(evId, mid, adv);
 }
+function _mScoreAndLog(type,forUs,pid,name,pts){
+  _mScore(type,forUs);
+  _mAddEvent(type,{pid:pid,name:name,pts:pts,forUs:forUs});
+}
+function _mCorrectScore(delta){
+  var match=_mGetMatch(curEV);
+  var period=_mCurrentPeriod(match);
+  period.score_them=Math.max(0,(period.score_them||0)+delta);
+  sv();renderMatchTab();
+}
 // MISC
 function cm(id){document.getElementById(id).classList.remove("open");}
 document.querySelectorAll(".mbg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");}));
@@ -1582,153 +1592,127 @@ function _mReset(){
 function renderMatchTab(){
   var el=document.getElementById("match-content"); if(!el)return;
   var match=_mGetMatch(curEV); var cfg=match.config;
+  // Auto-link to curMID
+  if(!_mActiveMatchId && curMID){
+    var cm2=getMatches(curEV).find(function(m){return m.id===curMID;});
+    if(cm2){_mActiveMatchId=curMID;_mActiveMatchAdv=cm2.adv&&String(cm2.adv).length>2?cm2.adv:'Match '+cm2.adv;}
+  }
   if(!_mActiveMatchId){
-    var matches=getMatches(curEV)||[];
-    var matchHtml=matches.map(function(m){
-      var adv=m.adv&&String(m.adv).length>2?m.adv:('Match '+m.adv);
-      var sc=curEV.scores&&curEV.scores[m.id];
-      var score=sc&&sc.f!=null?(sc.f+'-'+sc.a):'';
-      return '<div onclick="_mSelectMatch(this)" data-evid="'+curEV.id+'" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,'&quot;')+'" '
-        +'style="padding:12px 14px;margin:4px 0;background:#fff;border:1.5px solid var(--g200);'
-        +'border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--fd);display:flex;justify-content:space-between;align-items:center">'
-        +'<span><span style="font-size:16px;margin-right:8px">⏱</span><b>vs '+adv+'</b></span>'
-        +(score?'<span style="font-weight:900;color:var(--c1)">'+score+'</span>':'<span style="color:var(--g400);font-size:11px">À venir</span>')
-        +'</div>';
-    }).join('');
-    el.innerHTML='<div style="padding:16px">'
-      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:10px;font-family:var(--fd)">Sélectionner un match à suivre</div>'
-      +(matchHtml||'<div style="text-align:center;padding:20px;color:var(--g400)">Aucun match dans cet événement</div>')
+    var matches2=getMatches(curEV)||[];
+    el.innerHTML='<div style="padding:12px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:8px;font-family:var(--fd)">Sélectionner un match</div>'
+      +matches2.map(function(m){
+        var adv=m.adv&&String(m.adv).length>2?m.adv:'Match '+m.adv;
+        var sc=curEV.scores&&curEV.scores[m.id];
+        var score=sc&&sc.f!=null?' • '+sc.f+'-'+sc.a:'';
+        return '<div onclick="_mSelectMatch(this)" data-evid="'+curEV.id+'" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,'&quot;')+'" '
+          +'style="padding:10px 12px;margin:3px 0;background:#fff;border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center">'
+          +'<span style="font-weight:600">⏱ vs '+adv+'</span>'
+          +'<span style="color:var(--g400);font-size:11px">'+(score||'À venir')+'</span>'
+          +'</div>';
+      }).join('')
+      +(matches2.length===0?'<p style="color:var(--g400);text-align:center">Aucun match</p>':'')
       +'</div>';
     return;
   }
   var mdata=_mGetMatchData(curEV,_mActiveMatchId);
   var totalUs=_mTotalScore(mdata,"score_us"), totalThem=_mTotalScore(mdata,"score_them");
   var pidx=mdata.currentPeriod||0, ended=mdata.status==="ended";
-  var pLabel=cfg.periods===2?(pidx===0?"1ere mi-temps":"2eme mi-temps"):("Tiers-temps "+(pidx+1));
-  var allEvts=[]; 
-  (mdata.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(ev){var e={periodIdx:pi};Object.keys(ev).forEach(function(k){e[k]=ev[k];});allEvts.push(e);});});
+  var pCount=cfg.periods||2;
+  var pLabel=pCount===2?(pidx===0?"1ère mi-temps":"2ème mi-temps"):("Tiers-temps "+(pidx+1));
+  var allEvts=[];
+  (mdata.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(ev){allEvts.push(Object.assign({},ev,{periodIdx:pi}));});});
   allEvts.sort(function(a,b){return a.ts-b.ts;});
-  var icons={essai:"&#x1F3C9;",transfo:"&#x1F97E;",penalite:"&#x1F3AF;",drop:"&#x1F4A5;",remplacement:"&#x1F504;",carton_jaune:"&#x1F7E1;",carton_rouge:"&#x1F534;",blessure:"&#x1F915;",avertissement:"&#x26A0;"};
-  var histHTML="";
-  if(allEvts.length>0){
-    histHTML='<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">Historique</div><div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden">'
-    +allEvts.slice().reverse().map(function(ev){
-      var pL=cfg.periods===2?(ev.periodIdx===0?"1MT":"2MT"):("T"+(ev.periodIdx+1));
-      var desc=ev.type==="remplacement"?(ev.outName+" > "+ev.inName):ev.forUs===false?(_mActiveMatchAdv||"Adv"):(ev.name||"");
-      if(ev.nat) desc+=" ("+ev.nat+")";
-      if(ev.pts&&ev.forUs!==false) desc+=" +"+ev.pts+"pts";
-      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--g100);font-size:12px">'
-        +'<span style="font-size:16px">'+(icons[ev.type]||"*")+"</span>"
-        +'<span style="background:var(--g100);padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">'+pL+" "+ev.min+"'</span>"
-        +'<span style="flex:1;color:var(--g700)">'+desc+"</span></div>";
-    }).join("")+"</div></div>";
-  }
-  el.innerHTML=
-    (_mActiveMatchAdv?'<div style="background:var(--c2);color:var(--c1);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-family:var(--fd);font-weight:800;font-size:14px;text-align:center">vs '+_mActiveMatchAdv+"</div>":'')
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+'<div style="font-size:11px;color:var(--g500)">Match actif</div>'+'<button onclick="_mResetActiveMatch()" style="font-size:11px;padding:3px 8px;background:var(--g100);border:1px solid var(--g200);border-radius:5px;cursor:pointer">↩ Changer de match</button>'+'</div>'+'<div style="background:var(--g50);border:1px solid var(--g200);border-radius:10px;padding:12px;margin-bottom:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--g600);margin-bottom:8px;font-family:var(--fd)">Configuration</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
-    +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Periodes</label><input id="mc-periods" type="number" min="1" max="5" value="'+(cfg.periods||2)+'" style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:13px;text-align:center"></div>'
-    +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Duree (min)</label><input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:13px;text-align:center"></div>'
-    +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Decompte</label><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:6px 0"><input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+'> Inverse</label></div>'
-    +'</div><button onclick="_mSaveConfig()" style="margin-top:8px;width:100%;padding:6px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button></div>'
-    +'<div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;color:#fff;text-align:center">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;opacity:.7;margin-bottom:4px;font-family:var(--fd)">'+(ended?"MATCH TERMINE":pLabel+" ("+(pidx+1)+"/"+(cfg.periods||2)+")")+"</div>"
-    +(_mActiveMatchAdv?'<div style="font-size:18px;font-weight:900;font-family:var(--fd);margin:4px 0;letter-spacing:.5px">vs '+_mActiveMatchAdv+'</div>':"")
-    +'<div id="match-chrono-time" style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1;letter-spacing:2px">'+_mFormatTime(_mSeconds,cfg)+"</div>"
-    +'<div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-top:12px">'
-    +'<div style="text-align:center"><div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR/MOM</div><div id="match-score-us" style="font-size:42px;font-weight:900;font-family:var(--fd)">'+totalUs+"</div></div>"
-    +'<div style="font-size:28px;opacity:.5">-</div>'
-    +'<div style="text-align:center"><div style="font-size:11px;opacity:.7;font-family:var(--fd)">'+(_mActiveMatchAdv||"Adversaire")+'</div><div id="match-score-them" style="font-size:42px;font-weight:900;font-family:var(--fd)">'+totalThem+"</div></div>"
-    +"</div>"
-    +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:center">'
-    +(!ended
-      ?'<button onclick="_mStartStop()" style="flex:2;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;background:'+(_mRunning?"#f59e0b":"#22c55e")+';color:#fff">'+(_mRunning?"Pause":"Demarrer")+"</button>"
-       +'<button onclick="_mNextPeriod()" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.2);color:#fff">'+(pidx<(cfg.periods||2)-1?"Mi-temps":"Fin")+"</button>"
-      :'<button onclick="_mReset()" style="padding:10px 20px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.2);color:#fff">Nouveau match</button>')
-    +"</div></div>"
-    +'<div style="margin-bottom:10px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">Actions SAR/MOM</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
-    +'<button data-action="essai" style="padding:10px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>'
-    +'<button data-action="transfo" style="padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>'
-    +'<button data-action="penalite" style="padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>'
-    +'<button data-action="drop" style="padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>'
-    +'</div></div>'
-    +'<div style="margin-bottom:10px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">'+(_mActiveMatchAdv||"Adversaire")+"</div>"
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">'
-    +'<button data-action="adv-essai" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+5</button>'
-    +'<button data-action="adv-transfo" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+2</button>'
-    +'<button data-action="adv-penalite" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
-    +'<button data-action="adv-drop" style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-top:4px;align-items:center">'
-    +'<span style="font-size:11px;color:var(--g500)">Correction:</span>'
-    +'<button data-action="adv-minus" style="padding:4px 10px;background:var(--g100);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:12px">-1</button>'
-    +"</div></div>"
-    +'<div style="margin-bottom:10px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">Evenements</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
-    +'<button data-action="remplacement" style="padding:9px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Remplacement</button>'
-    +'<button data-action="avertissement" style="padding:9px;background:#f97316;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Avertissement</button>'
-    +'<button data-action="carton_jaune" style="padding:9px;background:#eab308;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Carton jaune</button>'
-    +'<button data-action="carton_rouge" style="padding:9px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Carton rouge</button>'
-    +'<button data-action="blessure" style="padding:9px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>'
-    +"</div></div>"; 
+  var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
 
-  // Set up event delegation for action buttons
-  setTimeout(function(){
-    var mc=document.getElementById("match-content");
-    if(!mc)return;
-    mc.addEventListener("click",function(e){
-      var btn=e.target.closest("[data-action]");
-      if(!btn)return;
-      var action=btn.dataset.action;
-      var labels={essai:"Essai - Qui marque ?",transfo:"Transformation - Qui ?",penalite:"Penalite - Qui ?",drop:"Drop - Qui ?",remplacement:"Sort ?",avertissement:"Avertissement - Qui ?",carton_jaune:"Carton jaune - Qui ?",carton_rouge:"Carton rouge - Qui ?",blessure:"Blessure - Qui ?"};
-      var pts={essai:5,transfo:2,penalite:3,drop:3};
-      if(action.startsWith("adv-")){
-        var t=action.replace("adv-","");
-        if(t==="minus"){var md=_mGetMatchData(curEV,_mActiveMatchId);var p=_mCurrentPeriod(md);p.score_them=Math.max(0,(p.score_them||0)-1);sv();renderMatchTab();}
-        else{_mScore(t,false);_mAddEvent(t,{forUs:false,pts:pts[t]||0,name:"Adv"});}
-      } else if(action==="remplacement"){
-        _mShowPlayerPicker("r1","Sort ?",function(p1){_mShowPlayerPicker("r2","Entre ?",function(p2){var pp1=S.players.find(function(x){return String(x.id)===String(p1);});var pp2=S.players.find(function(x){return String(x.id)===String(p2);});_mAddEvent("remplacement",{out:p1,outName:pp1?pp1.p+" "+pp1.n:"?",in:p2,inName:pp2?pp2.p+" "+pp2.n:"?"});});});
-      } else if(labels[action]){
-        _mShowPlayerPicker(action,labels[action],function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});var extras={pid:pid,name:p?p.p+" "+p.n:"?"};if(action==="blessure"){extras.nat=prompt("Nature:","");}else if(pts[action]){_mScore(action,true);extras.pts=pts[action];extras.forUs=true;}_mAddEvent(action,extras);});
-      }
-    },true);
-  },50);
+  el.innerHTML=
+  // Header adversaire
+  '<div style="background:var(--c1);color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">'
+    +'<span style="font-family:var(--fd);font-size:15px;font-weight:900">vs '+_mActiveMatchAdv+'</span>'
+    +'<button onclick="_mResetActiveMatch()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px">↩ Changer</button>'
+  +'</div>'
+  // Config
+  +'<div style="background:var(--g50);border:1px solid var(--g200);border-radius:8px;padding:10px;margin-bottom:8px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:end">'
+      +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Périodes</label>'
+        +'<input id="mc-periods" type="number" min="1" max="5" value="'+(cfg.periods||2)+'" style="width:100%;padding:5px;border:1px solid var(--g200);border-radius:5px;font-size:13px;text-align:center"></div>'
+      +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Durée (min)</label>'
+        +'<input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:5px;border:1px solid var(--g200);border-radius:5px;font-size:13px;text-align:center"></div>'
+      +'<div><label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Décompte</label>'
+        +'<label style="display:flex;align-items:center;gap:4px;font-size:12px;padding:5px 0;cursor:pointer">'
+          +'<input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inversé</label></div>'
+    +'</div>'
+    +'<button onclick="_mSaveConfig()" style="width:100%;margin-top:6px;padding:6px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--fd)">Appliquer</button>'
+  +'</div>'
+  // Chrono + Score (compact)
+  +'<div style="background:#1a1a2e;border-radius:10px;padding:12px 16px;margin-bottom:8px;color:#fff;text-align:center">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.6;margin-bottom:2px;font-family:var(--fd)">'+(ended?"TERMINÉ":pLabel+" ("+(pidx+1)+"/"+pCount+")")+'</div>'
+    +'<div id="match-chrono-time" style="font-size:48px;font-weight:900;font-family:var(--fd);line-height:1;letter-spacing:2px">'+_mFormatTime(_mSeconds,cfg)+'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:8px 0">'
+      +'<div><div style="font-size:10px;opacity:.6;font-family:var(--fd)">SAR/MOM</div><div id="match-score-us" style="font-size:36px;font-weight:900;font-family:var(--fd)">'+totalUs+'</div></div>'
+      +'<div style="font-size:24px;opacity:.4">—</div>'
+      +'<div><div style="font-size:10px;opacity:.6;font-family:var(--fd)">'+_mActiveMatchAdv+'</div><div id="match-score-them" style="font-size:36px;font-weight:900;font-family:var(--fd)">'+totalThem+'</div></div>'
+    +'</div>'
+    +(!ended
+      ?'<div style="display:flex;gap:6px">'
+        +'<button onclick="_mStartStop()" style="flex:2;padding:9px;border:none;border-radius:7px;font-weight:700;font-size:14px;cursor:pointer;background:'+(_mRunning?"#f59e0b":"#22c55e")+';color:#fff">'+(_mRunning?"⏸ Pause":"▶ Démarrer")+'</button>'
+        +'<button onclick="_mNextPeriod()" style="flex:1;padding:9px;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+(pidx<pCount-1?"⏭ Pause":"🏁 Fin")+'</button>'
+      +'</div>'
+      :'<button onclick="_mReset()" style="padding:8px 20px;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">↺ Nouveau</button>')
+  +'</div>'
+  // Actions SAR/MOM
+  +'<div style="margin-bottom:8px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px;font-family:var(--fd)">⚡ SAR/MOM</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'
+      +'<button onclick="_mShowPlayerPicker(\'essai\',\'Essai — Qui marque ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'essai\',true,pid,p?p.p+\' \'+p.n:\'?\',5);})" style="padding:9px;background:#22c55e;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🏉 Essai +5</button>'
+      +'<button onclick="_mShowPlayerPicker(\'transfo\',\'Transformation — Qui ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'transfo\',true,pid,p?p.p+\' \'+p.n:\'?\',2);})" style="padding:9px;background:#3b82f6;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🥾 Transfo +2</button>'
+      +'<button onclick="_mShowPlayerPicker(\'penalite\',\'Pénalité — Qui bute ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'penalite\',true,pid,p?p.p+\' \'+p.n:\'?\',3);})" style="padding:9px;background:#8b5cf6;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🎯 Pénalité +3</button>'
+      +'<button onclick="_mShowPlayerPicker(\'drop\',\'Drop — Qui bute ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mScoreAndLog(\'drop\',true,pid,p?p.p+\' \'+p.n:\'?\',3);})" style="padding:9px;background:#f59e0b;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">💥 Drop +3</button>'
+    +'</div>'
+  +'</div>'
+  // Adversaire
+  +'<div style="margin-bottom:8px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px;font-family:var(--fd)">🆚 '+_mActiveMatchAdv+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">'
+      +'<button onclick="_mScoreAndLog(\'essai\',false,null,\'Adv\',5)" style="padding:9px;background:var(--g100);border:1px solid var(--g300);border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+5</button>'
+      +'<button onclick="_mScoreAndLog(\'transfo\',false,null,\'Adv\',2)" style="padding:9px;background:var(--g100);border:1px solid var(--g300);border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+2</button>'
+      +'<button onclick="_mScoreAndLog(\'penalite\',false,null,\'Adv\',3)" style="padding:9px;background:var(--g100);border:1px solid var(--g300);border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
+      +'<button onclick="_mScoreAndLog(\'drop\',false,null,\'Adv\',3)" style="padding:9px;background:var(--g100);border:1px solid var(--g300);border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px">'
+      +'<span style="font-size:11px;color:var(--g500)">Corriger :</span>'
+      +'<button onclick="_mCorrectScore(-1)" style="padding:3px 10px;background:var(--g100);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:12px">−1</button>'
+    +'</div>'
+  +'</div>'
+  // Événements de match
+  +'<div style="margin-bottom:8px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px;font-family:var(--fd)">📋 Événements</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'
+      +'<button onclick="_mShowPlayerPicker(\'remplacement\',\'Sort — Qui ?\',function(p1){_mShowPlayerPicker(\'remplacement\',\'Entre — Qui ?\',function(p2){var pl1=S.players.find(function(x){return String(x.id)===String(p1);});var pl2=S.players.find(function(x){return String(x.id)===String(p2);});_mAddEvent(\'remplacement\',{out:p1,outName:pl1?pl1.p+\' \'+pl1.n:\'?\',in:p2,inName:pl2?pl2.p+\' \'+pl2.n:\'?\'}); });} )" style="padding:8px;background:#0ea5e9;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;font-family:var(--fd)">🔄 Remplacement</button>'
+      +'<button onclick="_mShowPlayerPicker(\'avertissement\',\'Avertissement — Qui ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mAddEvent(\'avertissement\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\'});})" style="padding:8px;background:#f97316;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;font-family:var(--fd)">⚠️ Avertissement</button>'
+      +'<button onclick="_mShowPlayerPicker(\'carton_jaune\',\'Carton jaune — Qui ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mAddEvent(\'carton_jaune\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\'});})" style="padding:8px;background:#eab308;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;font-family:var(--fd)">🟡 Carton jaune</button>'
+      +'<button onclick="_mShowPlayerPicker(\'carton_rouge\',\'Carton rouge — Qui ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});_mAddEvent(\'carton_rouge\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\'});})" style="padding:8px;background:#dc2626;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;font-family:var(--fd)">🔴 Carton rouge</button>'
+      +'<button onclick="_mShowPlayerPicker(\'blessure\',\'Blessure — Qui ?\',function(pid){var p=S.players.find(function(x){return String(x.id)===String(pid);});var nat=prompt(\'Nature de la blessure :\',\'\');_mAddEvent(\'blessure\',{pid:pid,name:p?p.p+\' \'+p.n:\'?\',nat:nat||\'—\'});})" style="padding:8px;background:#7c3aed;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;font-family:var(--fd);grid-column:span 2">🤕 Blessure</button>'
+    +'</div>'
+  +'</div>'
+  // Historique
+  +(allEvts.length>0
+    ?'<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500);margin-bottom:5px;font-family:var(--fd)">📜 Historique</div>'
+      +'<div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto">'
+        +allEvts.slice().reverse().map(function(ev){
+          var pCount2=cfg.periods||2;
+          var pL=pCount2===2?(ev.periodIdx===0?'1MT':'2MT'):('T'+(ev.periodIdx+1));
+          var desc=ev.type==='remplacement'?(ev.outName+' ↔ '+ev.inName):(ev.forUs===false?_mActiveMatchAdv:ev.name||'');
+          if(ev.nat)desc+=' ('+ev.nat+')';
+          if(ev.pts&&ev.forUs!==false)desc+=' +'+ev.pts+'pts';
+          return '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--g100);font-size:11px">'
+            +'<span style="font-size:14px">'+(icons[ev.type]||'•')+'</span>'
+            +'<span style="background:var(--g100);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--fd)">'+pL+' '+ev.min+'\'</span>'
+            +'<span style="flex:1;color:var(--g700)">'+desc+'</span>'
+            +'</div>';
+        }).join('')
+      +'</div></div>'
+    :'');
 }
-function _mShowPlayerPicker(type, label, callback){
-  _mPickerCallback=callback;
-  var players=_mGetPlayers();
-  var ex=document.getElementById("m-pick-overlay"); if(ex) ex.remove();
-  var overlay=document.createElement("div");
-  overlay.id="m-pick-overlay";
-  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px";
-  var listHTML=players.map(function(p){
-    return "<button data-pid=\""+p.id+"\" onclick=\"_mPickPlayer(this.dataset.pid)\" style=\"display:block;width:100%;text-align:left;padding:9px 12px;margin:2px 0;background:var(--g50);border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:13px\">"+p.p+" "+p.n+"</button>";
-  }).join("");
-  var cancelBtn="<button onclick=\"document.getElementById('m-pick-overlay').remove()\" style=\"width:100%;padding:9px;background:var(--g200);border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:13px\">Annuler</button>";
-  overlay.innerHTML="<div style=\"background:#fff;border-radius:12px;width:100%;max-width:340px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.25)\">"
-    +"<div style=\"padding:12px 16px;font-weight:700;font-size:14px;background:var(--c1);color:#fff;border-radius:12px 12px 0 0\">"+label+"</div>"
-    +"<div style=\"overflow-y:auto;flex:1;padding:8px\">"+listHTML+"</div>"
-    +"<div style=\"padding:8px\">"+cancelBtn+"</div>"
-    +"</div>";
-  overlay.addEventListener("click",function(e){if(e.target===overlay)overlay.remove();});
-  document.body.appendChild(overlay);
-}
-function _mPickPlayer(pid){
-  var o=document.getElementById("m-pick-overlay"); if(o) o.remove();
-  if(_mPickerCallback){_mPickerCallback(pid);_mPickerCallback=null;}
-}
-// INIT
-// Apply stored settings on load
-(function(){
-  const ns=document.getElementById("nav-sub-txt");
-  if(ns&&S.settings.season) ns.textContent=`Entente M14 · Saison ${S.settings.season}`;
-})();
-rdash();revents();
-</script>
-</body>
-</html>
+
+>
