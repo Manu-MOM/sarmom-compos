@@ -301,6 +301,8 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
           <button class="stab" onclick="switchEV('terrain',this)">Terrain</button>
           <button class="stab" onclick="switchEV('export',this)">Réseaux sociaux</button>
           <button class="stab" onclick="switchEV('effectif',this)">Effectif</button>
+          <button class="stab" onclick="switchEV('match',this)">🏉 Match</button>
+          <button class="stab" onclick="switchEV('match',this)">⏱ Match</button>
         </div>
         <div id="ev-inj-alert" style="margin-bottom:8px"></div>
         <div id="ev-liste">
@@ -312,6 +314,8 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
         <div id="ev-terrain" style="display:none"><div class="field-wrap"><svg id="field-svg" viewBox="0 0 520 700" style="width:100%;display:block"></svg></div></div>
         <div id="ev-export" style="display:none"><div class="exp-wrap" id="export-preview"></div></div>
         <div id="ev-effectif" style="display:none"><div id="effectif-content"></div></div>
+        <div id="ev-match" style="display:none"><div id="match-content"></div></div>
+        <div id="ev-match" style="display:none"><div id="match-content"></div></div>
       </div>
     </div>
   </div>
@@ -894,7 +898,7 @@ function renderPick(){
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="effectif")renderEffectif();}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif","match"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="effectif")renderEffectif();if(view==="match")renderMatch();}
 
 // FIELD SVG
 function drawField(){
@@ -1105,6 +1109,755 @@ function impJSON(e){
 // Vérifier si on revient d'un redirect OAuth
 _gCheckRedirectToken();
 rdash();revents();
+
+// ═══════════════════════════════════════════════════════════════════
+// SUIVI DE MATCH
+// ═══════════════════════════════════════════════════════════════════
+
+// État du chrono
+var _mTimer = null;
+var _mRunning = false;
+var _mSeconds = 0;       // secondes écoulées dans la période
+var _mPeriod = 0;        // période en cours (0-based)
+var _mConfig = null;     // config chrono de l'événement courant
+
+function _mGetMatch(ev, mid) {
+  if (!ev.matchData) ev.matchData = {};
+  if (!ev.matchData[mid]) ev.matchData[mid] = {
+    events: [], scoreAdv: 0, config: null, periodTimes: []
+  };
+  return ev.matchData[mid];
+}
+
+function _mGetConfig(ev, mid) {
+  const md = _mGetMatch(ev, mid);
+  if (md.config) return md.config;
+  // Config par défaut
+  return { periods: 2, duration: 20, inverse: false };
+}
+
+function _mSaveConfig(ev, mid, cfg) {
+  _mGetMatch(ev, mid).config = cfg;
+  sv();
+}
+
+function _mTimeStr(sec, cfg) {
+  if (cfg.inverse) {
+    const rem = Math.max(0, cfg.duration * 60 - sec);
+    const m = Math.floor(rem / 60), s = rem % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function _mCurTime() {
+  const cfg = _mConfig || { duration: 20, inverse: false };
+  return _mTimeStr(_mSeconds, cfg);
+}
+
+function _mCurMinute() {
+  return Math.floor(_mSeconds / 60) + 1;
+}
+
+function mStart() {
+  if (_mRunning) return;
+  _mRunning = true;
+  _mTimer = setInterval(function() {
+    _mSeconds++;
+    const cfg = _mConfig || { duration: 20 };
+    // Fin de période automatique
+    if (_mSeconds >= cfg.duration * 60) {
+      clearInterval(_mTimer); _mTimer = null; _mRunning = false;
+      mEndPeriod();
+    }
+    document.getElementById('m-chrono-display') &&
+      (document.getElementById('m-chrono-display').textContent = _mCurTime());
+  }, 1000);
+  renderMatchControls();
+}
+
+function mPause() {
+  if (!_mRunning) { mStart(); return; }
+  clearInterval(_mTimer); _mTimer = null; _mRunning = false;
+  renderMatchControls();
+}
+
+function mStop() {
+  clearInterval(_mTimer); _mTimer = null; _mRunning = false;
+  _mSeconds = 0;
+  document.getElementById('m-chrono-display') &&
+    (document.getElementById('m-chrono-display').textContent = _mCurTime());
+  renderMatchControls();
+}
+
+function mEndPeriod() {
+  const md = _mGetMatch(curEV, curMID);
+  md.periodTimes = md.periodTimes || [];
+  md.periodTimes[_mPeriod] = _mSeconds;
+  const cfg = _mConfig || { periods: 2, duration: 20 };
+  _mPeriod++;
+  _mSeconds = 0;
+  if (_mPeriod >= cfg.periods) {
+    _mPeriod = 0;
+    alert('🏁 Match terminé !');
+  } else {
+    const names = cfg.periods === 2 ? ['Mi-temps','Fin de match'] :
+      cfg.periods === 3 ? ['Fin du 1er tiers','Fin du 2e tiers','Fin de match'] :
+      Array.from({length: cfg.periods}, (_,i) => `Fin période ${i+1}`);
+    alert(`⏸ ${names[_mPeriod-1]} — reprise quand vous êtes prêts`);
+  }
+  sv();
+  renderMatch();
+}
+
+function mAddEvent(type, data) {
+  const md = _mGetMatch(curEV, curMID);
+  const minute = _mCurMinute();
+  const ev = { type, minute, ...data, ts: Date.now() };
+  md.events.push(ev);
+  // Sauvegarder score adverse si fourni
+  if (data.scoreAdv !== undefined) md.scoreAdv = data.scoreAdv;
+  sv();
+  renderMatch();
+}
+
+function mScore(ev, mid) {
+  const md = _mGetMatch(ev, mid);
+  const pts = { essai: 5, transformation: 2, penalite: 3, drop: 3 };
+  return md.events.filter(e => pts[e.type]).reduce((s, e) => s + (pts[e.type]||0), 0);
+}
+
+function mPromptScore(type, label, pts) {
+  // Choisir le joueur
+  const base = getBase(curEV, curTID).filter(Boolean);
+  const players = base.length > 0
+    ? base.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean)
+    : S.players;
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden">
+      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:16px">
+        ${label} (+${pts} pts) — Min. ${_mCurMinute()}
+      </div>
+      <div style="padding:12px;max-height:60vh;overflow-y:auto">
+        <input id="m-score-search" placeholder="Rechercher joueur…" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-bottom:8px;font-size:13px" oninput="mFilterScorers(this.value)">
+        <div id="m-scorer-list" style="display:flex;flex-direction:column;gap:4px">
+          ${players.map(p => `
+            <button onclick="mConfirmScore('${type}','${p.id}',${pts});this.closest('.m-modal').remove()" 
+              style="padding:10px 12px;background:var(--g50);border:none;border-radius:7px;text-align:left;cursor:pointer;font-size:13px;font-weight:500">
+              ${p.p} ${p.n} <span style="color:var(--g400);font-size:11px">${p.pos[0]||''}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--g100)">
+        <button onclick="this.closest('div[style*=fixed]').remove()" 
+          style="width:100%;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
+      </div>
+    </div>`;
+  modal.querySelector('div').classList.add('m-modal');
+  document.body.appendChild(modal);
+}
+
+function mFilterScorers(s) {
+  document.querySelectorAll('#m-scorer-list button').forEach(btn => {
+    btn.style.display = btn.textContent.toLowerCase().includes(s.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function mConfirmScore(type, pid, pts) {
+  document.querySelector('div[style*="position:fixed"][style*="900"]')?.remove();
+  mAddEvent(type, { pid });
+}
+
+function mPromptEvent(type, label, emoji) {
+  const base = getBase(curEV, curTID).filter(Boolean);
+  const players = base.length > 0
+    ? base.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean)
+    : S.players;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  
+  let extra = '';
+  if (type === 'remplacement') {
+    const base2 = getBase(curEV, curTID).filter(Boolean);
+    const sortants = base2.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean);
+    extra = `<div style="margin-top:8px">
+      <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Joueur entrant</label>
+      <select id="m-enter" style="width:100%;padding:7px;border:1.5px solid var(--g200);border-radius:7px;margin-top:3px">
+        ${sortants.map(p => `<option value="${p.id}">${p.p} ${p.n}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  if (type === 'blessure') {
+    extra = `<div style="margin-top:8px">
+      <input id="m-injury-desc" placeholder="Nature de la blessure (optionnel)" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;font-size:12px">
+    </div>`;
+  }
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden">
+      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:16px">
+        ${emoji} ${label} — Min. ${_mCurMinute()}
+      </div>
+      <div style="padding:12px;max-height:55vh;overflow-y:auto">
+        <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:6px">
+          ${type === 'remplacement' ? 'Joueur sortant' : 'Joueur concerné'}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${players.map(p => `
+            <button class="m-ev-player" data-pid="${p.id}"
+              onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.style.background='var(--g50)');this.style.background='var(--c2)30'"
+              style="padding:9px 12px;background:var(--g50);border:1.5px solid transparent;border-radius:7px;text-align:left;cursor:pointer;font-size:13px">
+              ${p.p} ${p.n}
+            </button>`).join('')}
+        </div>
+        ${extra}
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--g100);display:flex;gap:8px">
+        <button onclick="this.closest('div[style*=fixed]').remove()" 
+          style="flex:1;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
+        <button onclick="mConfirmEvent('${type}')" 
+          style="flex:2;padding:10px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd)">
+          ${emoji} Confirmer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function mConfirmEvent(type) {
+  const modal = document.querySelector('div[style*="position:fixed"][style*="900"]');
+  const selected = modal?.querySelector('.m-ev-player[style*="c2"]');
+  const pid = selected?.dataset.pid;
+  if (!pid) { alert('Sélectionnez un joueur'); return; }
+  
+  const data = { pid };
+  if (type === 'remplacement') {
+    data.pidIn = modal.querySelector('#m-enter')?.value;
+  }
+  if (type === 'blessure') {
+    data.desc = modal.querySelector('#m-injury-desc')?.value || '';
+  }
+  modal.remove();
+  mAddEvent(type, data);
+}
+
+function mPromptAdv() {
+  const md = _mGetMatch(curEV, curMID);
+  const val = prompt('Score adverse actuel :', md.scoreAdv || 0);
+  if (val !== null && !isNaN(parseInt(val))) {
+    mAddEvent('score_adv', { scoreAdv: parseInt(val) });
+  }
+}
+
+function mDeleteEvent(idx) {
+  if (!confirm('Supprimer cet événement ?')) return;
+  const md = _mGetMatch(curEV, curMID);
+  md.events.splice(idx, 1);
+  sv();
+  renderMatch();
+}
+
+function mOpenConfig() {
+  const cfg = _mGetConfig(curEV, curMID);
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:340px">
+      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:15px">⚙️ Paramètres chrono</div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Nombre de périodes</label>
+          <input id="m-cfg-periods" type="number" min="1" max="6" value="${cfg.periods}" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-top:4px;font-size:16px">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Durée d'une période (minutes)</label>
+          <input id="m-cfg-duration" type="number" min="1" max="60" value="${cfg.duration}" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-top:4px;font-size:16px">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input id="m-cfg-inverse" type="checkbox" ${cfg.inverse?'checked':''} style="width:18px;height:18px">
+          <label for="m-cfg-inverse" style="font-size:13px;font-weight:500">Chrono inversé (décompte)</label>
+        </div>
+      </div>
+      <div style="padding:10px 16px 16px;display:flex;gap:8px">
+        <button onclick="this.closest('div[style*=fixed]').remove()" 
+          style="flex:1;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
+        <button onclick="mSaveConfig()" 
+          style="flex:2;padding:10px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd)">✅ Appliquer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function mSaveConfig() {
+  const modal = document.querySelector('div[style*="position:fixed"][style*="900"]');
+  const periods = parseInt(modal.querySelector('#m-cfg-periods').value) || 2;
+  const duration = parseInt(modal.querySelector('#m-cfg-duration').value) || 20;
+  const inverse = modal.querySelector('#m-cfg-inverse').checked;
+  modal.remove();
+  const cfg = { periods, duration, inverse };
+  _mSaveConfig(curEV, curMID, cfg);
+  _mConfig = cfg;
+  _mSeconds = 0; _mPeriod = 0; _mRunning = false;
+  clearInterval(_mTimer); _mTimer = null;
+  renderMatch();
+}
+
+function renderMatchControls() {
+  const btn = document.getElementById('m-play-btn');
+  if (!btn) return;
+  btn.textContent = _mRunning ? '⏸ Pause' : (_mSeconds > 0 ? '▶ Reprendre' : '▶ Démarrer');
+  btn.style.background = _mRunning ? '#d97706' : 'var(--cg)';
+}
+
+function renderMatch() {
+  const el = document.getElementById('match-content');
+  if (!el) return;
+
+  const md = _mGetMatch(curEV, curMID);
+  const cfg = md.config || { periods: 2, duration: 20, inverse: false };
+  _mConfig = cfg;
+
+  const ourScore = mScore(curEV, curMID);
+  const advScore = md.scoreAdv || 0;
+  const periodNames = cfg.periods === 2 ? ['1ère mi-temps','2ème mi-temps'] :
+    cfg.periods === 3 ? ['1er tiers-temps','2e tiers-temps','3e tiers-temps'] :
+    Array.from({length: cfg.periods}, (_,i) => `Période ${i+1}`);
+
+  const typeLabels = {
+    essai: ['🏉','Essai','+5'],
+    transformation: ['🎯','Transformation','+2'],
+    penalite: ['🅿️','Pénalité','+3'],
+    drop: ['🦵','Drop','+3'],
+    carton_jaune: ['⚠️','Carton jaune',''],
+    carton_rouge: ['🟥','Carton rouge',''],
+    blessure: ['🤕','Blessure',''],
+    remplacement: ['🔄','Remplacement',''],
+    score_adv: ['⚔️','Score adverse',''],
+  };
+
+  // Group events by period
+  const byPeriod = Array.from({length: cfg.periods}, () => []);
+  const periodSecs = cfg.duration * 60;
+  md.events.forEach((ev, idx) => {
+    const p = Math.min(Math.floor(((ev.minute-1) * 60) / periodSecs), cfg.periods-1);
+    byPeriod[Math.max(0,p)].push({...ev, _idx: idx});
+  });
+
+  el.innerHTML = `
+    <!-- SCORE -->
+    <div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;text-align:center;color:#fff">
+      <div style="font-size:11px;font-weight:700;opacity:.7;font-family:var(--fd);letter-spacing:1px;margin-bottom:4px">
+        ${periodNames[_mPeriod] || 'Match terminé'} · ${_mConfig.inverse ? 'Décompte' : 'Chrono normal'}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR×MOM</div>
+          <div style="font-size:52px;font-weight:900;font-family:var(--fd);color:var(--c2);line-height:1">${ourScore}</div>
+        </div>
+        <div style="font-size:28px;opacity:.5">—</div>
+        <div>
+          <div style="font-size:11px;opacity:.7;font-family:var(--fd)">Adversaire</div>
+          <div style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1" id="m-adv-score">${advScore}</div>
+        </div>
+      </div>
+      <!-- CHRONO -->
+      <div style="font-size:42px;font-weight:900;font-family:monospace;letter-spacing:2px;color:var(--c2)" id="m-chrono-display">${_mCurTime()}</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+        <button id="m-play-btn" onclick="mPause()" style="padding:10px 20px;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer;color:#fff;font-family:var(--fd)">▶ Démarrer</button>
+        <button onclick="mStop()" style="padding:10px 16px;background:rgba(255,255,255,.2);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:#fff">⏹ Reset</button>
+        <button onclick="mEndPeriod()" style="padding:10px 16px;background:rgba(255,255,255,.2);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:#fff">⏭ Fin période</button>
+        <button onclick="mOpenConfig()" style="padding:10px 14px;background:rgba(255,255,255,.15);border:none;border-radius:8px;font-size:13px;cursor:pointer;color:#fff">⚙️</button>
+      </div>
+    </div>
+
+    <!-- ACTIONS DE JEU -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Actions SAR×MOM</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onclick="mPromptScore('essai','🏉 Essai',5)" style="padding:14px 8px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--fd)">🏉 Essai +5</button>
+        <button onclick="mPromptScore('transformation','🎯 Transformation',2)" style="padding:14px 8px;background:#0369a1;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--fd)">🎯 Transfo +2</button>
+        <button onclick="mPromptScore('penalite','🅿️ Pénalité',3)" style="padding:14px 8px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;font-family:var(--fd)">🅿️ Pénalité +3</button>
+        <button onclick="mPromptScore('drop','🦵 Drop',3)" style="padding:14px 8px;background:#b45309;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;font-family:var(--fd)">🦵 Drop +3</button>
+      </div>
+    </div>
+
+    <!-- SCORE ADVERSAIRE -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Score adversaire</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+5)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🏉 +5</button>
+        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+2)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🎯 +2</button>
+        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+3)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🅿️ +3</button>
+      </div>
+      <button onclick="mPromptAdv()" style="width:100%;margin-top:6px;padding:9px;background:var(--g100);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">✏️ Saisir score exact</button>
+    </div>
+
+    <!-- ÉVÉNEMENTS -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Événements</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onclick="mPromptEvent('carton_jaune','Carton jaune','⚠️')" style="padding:12px 8px;background:#fef3c7;color:#92400e;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">⚠️ Carton jaune</button>
+        <button onclick="mPromptEvent('carton_rouge','Carton rouge','🟥')" style="padding:12px 8px;background:#fee2e2;color:#991b1b;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🟥 Carton rouge</button>
+        <button onclick="mPromptEvent('blessure','Blessure','🤕')" style="padding:12px 8px;background:#e0f2fe;color:#0369a1;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🤕 Blessure</button>
+        <button onclick="mPromptEvent('remplacement','Remplacement','🔄')" style="padding:12px 8px;background:#f0fdf4;color:#166534;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🔄 Remplacement</button>
+      </div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Historique du match</div>
+      ${md.events.length === 0 ? '<div style="text-align:center;color:var(--g400);padding:20px;font-size:13px">Aucun événement enregistré</div>' :
+        [...md.events].reverse().map((ev, ri) => {
+          const idx = md.events.length - 1 - ri;
+          const pl = S.players.find(p => String(p.id) === String(ev.pid));
+          const plIn = ev.pidIn ? S.players.find(p => String(p.id) === String(ev.pidIn)) : null;
+          const lbl = typeLabels[ev.type] || ['❓', ev.type, ''];
+          const pts = lbl[2] ? `<span style="font-weight:800;color:var(--cg)">${lbl[2]}</span>` : '';
+          const plName = pl ? `${pl.p} ${pl.n}` : (ev.type === 'score_adv' ? `Score adv. → ${ev.scoreAdv}` : '');
+          const plInName = plIn ? ` → ${plIn.p} ${plIn.n}` : '';
+          const desc = ev.desc ? ` (${ev.desc})` : '';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border-radius:8px;margin-bottom:5px">
+            <div style="font-size:18px;width:24px;text-align:center">${lbl[0]}</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:700">${lbl[1]} ${pts}</div>
+              <div style="font-size:11px;color:var(--g600)">${plName}${plInName}${desc} · Min. ${ev.minute}</div>
+            </div>
+            <button onclick="mDeleteEvent(${idx})" style="border:none;background:none;color:var(--g400);cursor:pointer;font-size:16px;padding:4px">🗑</button>
+          </div>`;
+        }).join('')}
+    </div>
+  `;
+  renderMatchControls();
+}
+// ═══════════════════════════════════════════════════════════════════
+// SUIVI DE MATCH
+// ═══════════════════════════════════════════════════════════════════
+
+// État du chrono
+var _mTimer = null;
+var _mRunning = false;
+var _mSeconds = 0;        // secondes écoulées dans la période courante
+var _mPeriod = 0;         // période courante (0-based)
+var _mConfig = null;      // config chrono de l'événement courant
+
+function _mGetMatch(ev) {
+  if (!ev.match) ev.match = {
+    config: { periods: 2, duration: 20, reverse: false },
+    periods: [],           // { score_us, score_them, events[] }
+    currentPeriod: 0,
+    status: "idle"         // idle | running | paused | ended
+  };
+  return ev.match;
+}
+
+function _mGetPlayers() {
+  const base = getBase(curEV, curTID).filter(Boolean);
+  if (base.length > 0) return S.players.filter(p => base.map(String).includes(String(p.id)));
+  return S.players;
+}
+
+function _mFormatTime(secs, config) {
+  const dur = (config.duration || 20) * 60;
+  const t = config.reverse ? Math.max(0, dur - secs) : secs;
+  const m = Math.floor(t / 60);
+  const s = t % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function _mTotalScore(match, key) {
+  return (match.periods || []).reduce((acc, p) => acc + (p[key] || 0), 0);
+}
+
+function _mCurrentPeriod(match) {
+  const idx = match.currentPeriod || 0;
+  if (!match.periods[idx]) match.periods[idx] = { score_us: 0, score_them: 0, events: [] };
+  return match.periods[idx];
+}
+
+function _mAddEvent(type, data) {
+  const match = _mGetMatch(curEV);
+  const period = _mCurrentPeriod(match);
+  const config = match.config;
+  const dur = (config.duration || 20) * 60;
+  const t = config.reverse ? Math.max(0, dur - _mSeconds) : _mSeconds;
+  const min = Math.floor(t / 60);
+  period.events = period.events || [];
+  period.events.push({ type, min, ...data, ts: Date.now() });
+  sv();
+  renderMatchTab();
+}
+
+function _mScore(type, forUs) {
+  const pts = { essai: 5, transfo: 2, penalite: 3, drop: 3 }[type] || 0;
+  const match = _mGetMatch(curEV);
+  const period = _mCurrentPeriod(match);
+  if (forUs) period.score_us = (period.score_us || 0) + pts;
+  else period.score_them = (period.score_them || 0) + pts;
+  sv();
+  renderMatchTab();
+}
+
+function initMatchTab() {
+  const match = _mGetMatch(curEV);
+  _mConfig = match.config;
+  _mSeconds = match._seconds || 0;
+  _mPeriod = match.currentPeriod || 0;
+  _mRunning = false;
+  renderMatchTab();
+}
+
+function _mStartStop() {
+  const match = _mGetMatch(curEV);
+  if (_mRunning) {
+    // Pause
+    clearInterval(_mTimer);
+    _mRunning = false;
+    match._seconds = _mSeconds;
+    match.status = "paused";
+    sv();
+  } else {
+    // Start
+    match.status = "running";
+    _mRunning = true;
+    _mTimer = setInterval(() => {
+      _mSeconds++;
+      match._seconds = _mSeconds;
+      const dur = (match.config.duration || 20) * 60;
+      if (_mSeconds >= dur) {
+        // Fin de période auto
+        clearInterval(_mTimer);
+        _mRunning = false;
+        match.status = "paused";
+        match._seconds = _mSeconds;
+        sv();
+      }
+      _mUpdateChronoDisplay();
+    }, 1000);
+  }
+  renderMatchTab();
+}
+
+function _mNextPeriod() {
+  const match = _mGetMatch(curEV);
+  clearInterval(_mTimer);
+  _mRunning = false;
+  match.status = "idle";
+  const total = match.config.periods || 2;
+  if (match.currentPeriod < total - 1) {
+    match.currentPeriod++;
+    _mPeriod = match.currentPeriod;
+    _mSeconds = 0;
+    match._seconds = 0;
+  } else {
+    match.status = "ended";
+  }
+  sv();
+  renderMatchTab();
+}
+
+function _mReset() {
+  if (!confirm("Réinitialiser tout le suivi de ce match ?")) return;
+  delete curEV.match;
+  sv();
+  renderMatchTab();
+}
+
+function _mUpdateChronoDisplay() {
+  const match = _mGetMatch(curEV);
+  const el = document.getElementById("match-chrono-time");
+  if (el) el.textContent = _mFormatTime(_mSeconds, match.config);
+  const su = document.getElementById("match-score-us");
+  const st = document.getElementById("match-score-them");
+  if (su) su.textContent = _mTotalScore(match, "score_us");
+  if (st) st.textContent = _mTotalScore(match, "score_them");
+}
+
+function _mSaveConfig() {
+  const match = _mGetMatch(curEV);
+  match.config.periods  = parseInt(document.getElementById("mc-periods").value) || 2;
+  match.config.duration = parseInt(document.getElementById("mc-duration").value) || 20;
+  match.config.reverse  = document.getElementById("mc-reverse").checked;
+  _mConfig = match.config;
+  sv();
+  renderMatchTab();
+}
+
+function _mShowPlayerPicker(type, label, callback) {
+  const players = _mGetPlayers();
+  const modal = document.getElementById("match-player-modal");
+  const list  = document.getElementById("match-player-list");
+  document.getElementById("match-player-title").textContent = label;
+  list.innerHTML = players.map(p =>
+    `<button onclick="document.getElementById('match-player-modal').style.display='none';(${callback})('${p.id}')" 
+      style="display:block;width:100%;text-align:left;padding:8px 12px;margin:2px 0;background:var(--g50);border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:13px">
+      ${p.p} ${p.n}
+    </button>`
+  ).join('') + `<button onclick="document.getElementById('match-player-modal').style.display='none'" 
+    style="display:block;width:100%;padding:8px;margin-top:8px;background:var(--g200);border:none;border-radius:6px;cursor:pointer">Annuler</button>`;
+  modal.style.display = "flex";
+}
+
+function renderMatchTab() {
+  const el = document.getElementById("match-content");
+  if (!el) return;
+  const match = _mGetMatch(curEV);
+  const cfg   = match.config;
+  const totalUs   = _mTotalScore(match, "score_us");
+  const totalThem = _mTotalScore(match, "score_them");
+  const periodIdx = match.currentPeriod || 0;
+  const periodLabel = cfg.periods === 2
+    ? ["1ère mi-temps","2ème mi-temps"][periodIdx] || `Période ${periodIdx+1}`
+    : `Tiers-temps ${periodIdx+1}`;
+  const ended = match.status === "ended";
+  const pNames = { essai:"Essai","transfo":"Transfo","penalite":"Pénalité","drop":"Drop","remplacement":"Remplacement","carton_jaune":"Carton 🟡","carton_rouge":"Carton 🔴","blessure":"Blessure 🤕","avertissement":"Avertissement" };
+
+  // Collect all events across all periods
+  const allEvents = [];
+  (match.periods || []).forEach((p, pi) => {
+    (p.events || []).forEach(ev => allEvents.push({ ...ev, periodIdx: pi }));
+  });
+  allEvents.sort((a, b) => a.ts - b.ts);
+
+  el.innerHTML = `
+  <!-- Player picker modal -->
+  <div id="match-player-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:12px;padding:16px;max-width:340px;width:100%;max-height:80vh;overflow-y:auto">
+      <div id="match-player-title" style="font-weight:700;font-size:14px;margin-bottom:10px;font-family:var(--fd)"></div>
+      <div id="match-player-list"></div>
+    </div>
+  </div>
+
+  <!-- Config chrono -->
+  <div style="background:var(--g50);border:1px solid var(--g200);border-radius:10px;padding:12px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:8px;font-family:var(--fd)">⚙️ Configuration</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+      <div>
+        <label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Nb de périodes</label>
+        <input id="mc-periods" type="number" min="1" max="5" value="${cfg.periods||2}" 
+          style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:13px;text-align:center">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px">Durée (min)</label>
+        <input id="mc-duration" type="number" min="1" max="60" value="${cfg.duration||20}" 
+          style="width:100%;padding:6px;border:1px solid var(--g200);border-radius:6px;font-size:13px;text-align:center">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--g500);display:block;margin-bottom:2px;white-space:nowrap">Décompte</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:6px 0">
+          <input id="mc-reverse" type="checkbox" ${cfg.reverse?"checked":""} style="width:14px;height:14px"> Inversé
+        </label>
+      </div>
+    </div>
+    <button onclick="_mSaveConfig()" style="margin-top:8px;width:100%;padding:6px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--fd)">Appliquer</button>
+  </div>
+
+  <!-- Chrono + Score -->
+  <div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;color:#fff;text-align:center">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;opacity:.7;margin-bottom:4px;font-family:var(--fd)">${ended?"MATCH TERMINÉ":periodLabel} ${ended?"":`(${periodIdx+1}/${cfg.periods})`}</div>
+    <div id="match-chrono-time" style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1;letter-spacing:2px">${_mFormatTime(_mSeconds, cfg)}</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-top:12px">
+      <div style="text-align:center">
+        <div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR/MOM</div>
+        <div id="match-score-us" style="font-size:42px;font-weight:900;font-family:var(--fd)">${totalUs}</div>
+      </div>
+      <div style="font-size:28px;opacity:.5;font-family:var(--fd)">—</div>
+      <div style="text-align:center">
+        <div style="font-size:11px;opacity:.7;font-family:var(--fd)">Adversaire</div>
+        <div id="match-score-them" style="font-size:42px;font-weight:900;font-family:var(--fd)">${totalThem}</div>
+      </div>
+    </div>
+    <!-- Chrono buttons -->
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
+      ${!ended ? `
+      <button onclick="_mStartStop()" style="flex:2;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--fd);background:${_mRunning?"#f59e0b":"#22c55e"};color:#fff">
+        ${_mRunning ? "⏸ Pause" : "▶ Démarrer"}
+      </button>
+      <button onclick="_mNextPeriod()" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd);background:rgba(255,255,255,.2);color:#fff">
+        ${periodIdx < (cfg.periods||2)-1 ? "⏭ Mi-temps" : "🏁 Fin"}
+      </button>` : `<button onclick="_mReset()" style="padding:10px 20px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd);background:rgba(255,255,255,.2);color:#fff">↺ Nouveau match</button>`}
+    </div>
+  </div>
+
+  <!-- Actions score SAR/MOM -->
+  <div style="margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">⚡ Actions SAR/MOM</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button onclick="_mShowPlayerPicker('essai','Essai — Qui marque ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('essai',true);_mAddEvent('essai',{pid,name:p?p.p+' '+p.n:'?',pts:5,forUs:true});})" 
+        style="padding:10px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd)">🏉 Essai +5</button>
+      <button onclick="_mShowPlayerPicker('transfo','Transformation — Qui transforme ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('transfo',true);_mAddEvent('transfo',{pid,name:p?p.p+' '+p.n:'?',pts:2,forUs:true});})"
+        style="padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd)">🥾 Transfo +2</button>
+      <button onclick="_mShowPlayerPicker('penalite','Pénalité — Qui bute ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('penalite',true);_mAddEvent('penalite',{pid,name:p?p.p+' '+p.n:'?',pts:3,forUs:true});})"
+        style="padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd)">🎯 Pénalité +3</button>
+      <button onclick="_mShowPlayerPicker('drop','Drop — Qui bute ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mScore('drop',true);_mAddEvent('drop',{pid,name:p?p.p+' '+p.n:'?',pts:3,forUs:true});})"
+        style="padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--fd)">💥 Drop +3</button>
+    </div>
+  </div>
+
+  <!-- Score adversaire -->
+  <div style="margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">🆚 Adversaire</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">
+      <button onclick="_mScore('essai',false);_mAddEvent('essai',{forUs:false,pts:5,name:'Adversaire'})" 
+        style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+5</button>
+      <button onclick="_mScore('transfo',false);_mAddEvent('transfo',{forUs:false,pts:2,name:'Adversaire'})"
+        style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+2</button>
+      <button onclick="_mScore('penalite',false);_mAddEvent('penalite',{forUs:false,pts:3,name:'Adversaire'})"
+        style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+3</button>
+      <button onclick="_mScore('drop',false);_mAddEvent('drop',{forUs:false,pts:3,name:'Adversaire'})"
+        style="padding:10px;background:var(--g100);color:var(--g800);border:1px solid var(--g300);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">+3</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:4px;align-items:center">
+      <span style="font-size:11px;color:var(--g500)">Correction :</span>
+      <button onclick="const m=_mGetMatch(curEV);const p=_mCurrentPeriod(m);p.score_them=Math.max(0,(p.score_them||0)-1);sv();renderMatchTab()"
+        style="padding:4px 10px;background:var(--g100);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:12px">−1</button>
+    </div>
+  </div>
+
+  <!-- Événements de jeu -->
+  <div style="margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">📋 Événements</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button onclick="_mShowPlayerPicker('remplacement','Remplacement — Qui sort ?',function(pid1){const p1=S.players.find(x=>String(x.id)===String(pid1));_mShowPlayerPicker('remplacement','Remplacement — Qui entre ?',function(pid2){const p2=S.players.find(x=>String(x.id)===String(pid2));_mAddEvent('remplacement',{out:pid1,outName:p1?p1.p+' '+p1.n:'?',in:pid2,inName:p2?p2.p+' '+p2.n:'?'});});})"
+        style="padding:9px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🔄 Remplacement</button>
+      <button onclick="_mShowPlayerPicker('avertissement','Avertissement — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mAddEvent('avertissement',{pid,name:p?p.p+' '+p.n:'?'});})"
+        style="padding:9px;background:#f97316;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">⚠️ Avertissement</button>
+      <button onclick="_mShowPlayerPicker('carton_jaune','Carton jaune — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mAddEvent('carton_jaune',{pid,name:p?p.p+' '+p.n:'?'});})"
+        style="padding:9px;background:#eab308;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🟡 Carton jaune</button>
+      <button onclick="_mShowPlayerPicker('carton_rouge','Carton rouge — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));_mAddEvent('carton_rouge',{pid,name:p?p.p+' '+p.n:'?'});})"
+        style="padding:9px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd)">🔴 Carton rouge</button>
+      <button onclick="_mShowPlayerPicker('blessure','Blessure — Qui ?',function(pid){const p=S.players.find(x=>String(x.id)===String(pid));const nat=prompt('Nature de la blessure :','');_mAddEvent('blessure',{pid,name:p?p.p+' '+p.n:'?',nat:nat||'Non précisée'});})"
+        style="padding:9px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--fd);grid-column:span 2">🤕 Blessure</button>
+    </div>
+  </div>
+
+  <!-- Historique -->
+  ${allEvents.length > 0 ? `
+  <div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:6px;font-family:var(--fd)">📜 Historique</div>
+    <div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden">
+      ${allEvents.slice().reverse().map(ev => {
+        const icons = {essai:'🏉',transfo:'🥾',penalite:'🎯',drop:'💥',remplacement:'🔄',carton_jaune:'🟡',carton_rouge:'🔴',blessure:'🤕',avertissement:'⚠️'};
+        const pLabel = cfg.periods===2 ? (ev.periodIdx===0?'1MT':'2MT') : `T${ev.periodIdx+1}`;
+        let desc = '';
+        if (ev.type==='remplacement') desc = `${ev.outName} ↔ ${ev.inName}`;
+        else if (ev.forUs===false) desc = `Adversaire`;
+        else desc = ev.name || '';
+        if (ev.nat) desc += ` (${ev.nat})`;
+        if (ev.pts && ev.forUs!==false) desc += ` • +${ev.pts}pts`;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--g100);font-size:12px">
+          <span style="font-size:16px">${icons[ev.type]||'•'}</span>
+          <span style="background:var(--g100);padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700;font-family:var(--fd)">${pLabel} ${ev.min}'</span>
+          <span style="flex:1;color:var(--g700)">${desc}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>` : ''}
+  `;
+}
 
 // MISC
 function cm(id){document.getElementById(id).classList.remove("open");}
@@ -1508,6 +2261,430 @@ function gShowClientIdPrompt() {
 function cm(id){document.getElementById(id)?.classList.remove("open");}
 function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`${dd}/${m}/${y}`;}
 function typeLabel(t){const L={"championnat-1":"Champ. L1","championnat-2":"Champ. L2","vie":"Challenge Vié","federal":"Challenge Féd.","tournoi":"Tournoi","amical":"Amical","seven":"Seven"};return L[t]||t;}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUIVI DE MATCH
+// ═══════════════════════════════════════════════════════════════════
+
+// État du chrono
+var _mTimer = null;
+var _mRunning = false;
+var _mSeconds = 0;       // secondes écoulées dans la période
+var _mPeriod = 0;        // période en cours (0-based)
+var _mConfig = null;     // config chrono de l'événement courant
+
+function _mGetMatch(ev, mid) {
+  if (!ev.matchData) ev.matchData = {};
+  if (!ev.matchData[mid]) ev.matchData[mid] = {
+    events: [], scoreAdv: 0, config: null, periodTimes: []
+  };
+  return ev.matchData[mid];
+}
+
+function _mGetConfig(ev, mid) {
+  const md = _mGetMatch(ev, mid);
+  if (md.config) return md.config;
+  // Config par défaut
+  return { periods: 2, duration: 20, inverse: false };
+}
+
+function _mSaveConfig(ev, mid, cfg) {
+  _mGetMatch(ev, mid).config = cfg;
+  sv();
+}
+
+function _mTimeStr(sec, cfg) {
+  if (cfg.inverse) {
+    const rem = Math.max(0, cfg.duration * 60 - sec);
+    const m = Math.floor(rem / 60), s = rem % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function _mCurTime() {
+  const cfg = _mConfig || { duration: 20, inverse: false };
+  return _mTimeStr(_mSeconds, cfg);
+}
+
+function _mCurMinute() {
+  return Math.floor(_mSeconds / 60) + 1;
+}
+
+function mStart() {
+  if (_mRunning) return;
+  _mRunning = true;
+  _mTimer = setInterval(function() {
+    _mSeconds++;
+    const cfg = _mConfig || { duration: 20 };
+    // Fin de période automatique
+    if (_mSeconds >= cfg.duration * 60) {
+      clearInterval(_mTimer); _mTimer = null; _mRunning = false;
+      mEndPeriod();
+    }
+    document.getElementById('m-chrono-display') &&
+      (document.getElementById('m-chrono-display').textContent = _mCurTime());
+  }, 1000);
+  renderMatchControls();
+}
+
+function mPause() {
+  if (!_mRunning) { mStart(); return; }
+  clearInterval(_mTimer); _mTimer = null; _mRunning = false;
+  renderMatchControls();
+}
+
+function mStop() {
+  clearInterval(_mTimer); _mTimer = null; _mRunning = false;
+  _mSeconds = 0;
+  document.getElementById('m-chrono-display') &&
+    (document.getElementById('m-chrono-display').textContent = _mCurTime());
+  renderMatchControls();
+}
+
+function mEndPeriod() {
+  const md = _mGetMatch(curEV, curMID);
+  md.periodTimes = md.periodTimes || [];
+  md.periodTimes[_mPeriod] = _mSeconds;
+  const cfg = _mConfig || { periods: 2, duration: 20 };
+  _mPeriod++;
+  _mSeconds = 0;
+  if (_mPeriod >= cfg.periods) {
+    _mPeriod = 0;
+    alert('🏁 Match terminé !');
+  } else {
+    const names = cfg.periods === 2 ? ['Mi-temps','Fin de match'] :
+      cfg.periods === 3 ? ['Fin du 1er tiers','Fin du 2e tiers','Fin de match'] :
+      Array.from({length: cfg.periods}, (_,i) => `Fin période ${i+1}`);
+    alert(`⏸ ${names[_mPeriod-1]} — reprise quand vous êtes prêts`);
+  }
+  sv();
+  renderMatch();
+}
+
+function mAddEvent(type, data) {
+  const md = _mGetMatch(curEV, curMID);
+  const minute = _mCurMinute();
+  const ev = { type, minute, ...data, ts: Date.now() };
+  md.events.push(ev);
+  // Sauvegarder score adverse si fourni
+  if (data.scoreAdv !== undefined) md.scoreAdv = data.scoreAdv;
+  sv();
+  renderMatch();
+}
+
+function mScore(ev, mid) {
+  const md = _mGetMatch(ev, mid);
+  const pts = { essai: 5, transformation: 2, penalite: 3, drop: 3 };
+  return md.events.filter(e => pts[e.type]).reduce((s, e) => s + (pts[e.type]||0), 0);
+}
+
+function mPromptScore(type, label, pts) {
+  // Choisir le joueur
+  const base = getBase(curEV, curTID).filter(Boolean);
+  const players = base.length > 0
+    ? base.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean)
+    : S.players;
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden">
+      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:16px">
+        ${label} (+${pts} pts) — Min. ${_mCurMinute()}
+      </div>
+      <div style="padding:12px;max-height:60vh;overflow-y:auto">
+        <input id="m-score-search" placeholder="Rechercher joueur…" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-bottom:8px;font-size:13px" oninput="mFilterScorers(this.value)">
+        <div id="m-scorer-list" style="display:flex;flex-direction:column;gap:4px">
+          ${players.map(p => `
+            <button onclick="mConfirmScore('${type}','${p.id}',${pts});this.closest('.m-modal').remove()" 
+              style="padding:10px 12px;background:var(--g50);border:none;border-radius:7px;text-align:left;cursor:pointer;font-size:13px;font-weight:500">
+              ${p.p} ${p.n} <span style="color:var(--g400);font-size:11px">${p.pos[0]||''}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--g100)">
+        <button onclick="this.closest('div[style*=fixed]').remove()" 
+          style="width:100%;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
+      </div>
+    </div>`;
+  modal.querySelector('div').classList.add('m-modal');
+  document.body.appendChild(modal);
+}
+
+function mFilterScorers(s) {
+  document.querySelectorAll('#m-scorer-list button').forEach(btn => {
+    btn.style.display = btn.textContent.toLowerCase().includes(s.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function mConfirmScore(type, pid, pts) {
+  document.querySelector('div[style*="position:fixed"][style*="900"]')?.remove();
+  mAddEvent(type, { pid });
+}
+
+function mPromptEvent(type, label, emoji) {
+  const base = getBase(curEV, curTID).filter(Boolean);
+  const players = base.length > 0
+    ? base.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean)
+    : S.players;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  
+  let extra = '';
+  if (type === 'remplacement') {
+    const base2 = getBase(curEV, curTID).filter(Boolean);
+    const sortants = base2.map(id => S.players.find(p => String(p.id) === String(id))).filter(Boolean);
+    extra = `<div style="margin-top:8px">
+      <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Joueur entrant</label>
+      <select id="m-enter" style="width:100%;padding:7px;border:1.5px solid var(--g200);border-radius:7px;margin-top:3px">
+        ${sortants.map(p => `<option value="${p.id}">${p.p} ${p.n}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  if (type === 'blessure') {
+    extra = `<div style="margin-top:8px">
+      <input id="m-injury-desc" placeholder="Nature de la blessure (optionnel)" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;font-size:12px">
+    </div>`;
+  }
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden">
+      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:16px">
+        ${emoji} ${label} — Min. ${_mCurMinute()}
+      </div>
+      <div style="padding:12px;max-height:55vh;overflow-y:auto">
+        <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:6px">
+          ${type === 'remplacement' ? 'Joueur sortant' : 'Joueur concerné'}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${players.map(p => `
+            <button class="m-ev-player" data-pid="${p.id}"
+              onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.style.background='var(--g50)');this.style.background='var(--c2)30'"
+              style="padding:9px 12px;background:var(--g50);border:1.5px solid transparent;border-radius:7px;text-align:left;cursor:pointer;font-size:13px">
+              ${p.p} ${p.n}
+            </button>`).join('')}
+        </div>
+        ${extra}
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--g100);display:flex;gap:8px">
+        <button onclick="this.closest('div[style*=fixed]').remove()" 
+          style="flex:1;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
+        <button onclick="mConfirmEvent('${type}')" 
+          style="flex:2;padding:10px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd)">
+          ${emoji} Confirmer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function mConfirmEvent(type) {
+  const modal = document.querySelector('div[style*="position:fixed"][style*="900"]');
+  const selected = modal?.querySelector('.m-ev-player[style*="c2"]');
+  const pid = selected?.dataset.pid;
+  if (!pid) { alert('Sélectionnez un joueur'); return; }
+  
+  const data = { pid };
+  if (type === 'remplacement') {
+    data.pidIn = modal.querySelector('#m-enter')?.value;
+  }
+  if (type === 'blessure') {
+    data.desc = modal.querySelector('#m-injury-desc')?.value || '';
+  }
+  modal.remove();
+  mAddEvent(type, data);
+}
+
+function mPromptAdv() {
+  const md = _mGetMatch(curEV, curMID);
+  const val = prompt('Score adverse actuel :', md.scoreAdv || 0);
+  if (val !== null && !isNaN(parseInt(val))) {
+    mAddEvent('score_adv', { scoreAdv: parseInt(val) });
+  }
+}
+
+function mDeleteEvent(idx) {
+  if (!confirm('Supprimer cet événement ?')) return;
+  const md = _mGetMatch(curEV, curMID);
+  md.events.splice(idx, 1);
+  sv();
+  renderMatch();
+}
+
+function mOpenConfig() {
+  const cfg = _mGetConfig(curEV, curMID);
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:340px">
+      <div style="background:var(--c1);color:#fff;padding:12px 16px;font-family:var(--fd);font-weight:800;font-size:15px">⚙️ Paramètres chrono</div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Nombre de périodes</label>
+          <input id="m-cfg-periods" type="number" min="1" max="6" value="${cfg.periods}" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-top:4px;font-size:16px">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase">Durée d'une période (minutes)</label>
+          <input id="m-cfg-duration" type="number" min="1" max="60" value="${cfg.duration}" style="width:100%;padding:8px;border:1.5px solid var(--g200);border-radius:7px;margin-top:4px;font-size:16px">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input id="m-cfg-inverse" type="checkbox" ${cfg.inverse?'checked':''} style="width:18px;height:18px">
+          <label for="m-cfg-inverse" style="font-size:13px;font-weight:500">Chrono inversé (décompte)</label>
+        </div>
+      </div>
+      <div style="padding:10px 16px 16px;display:flex;gap:8px">
+        <button onclick="this.closest('div[style*=fixed]').remove()" 
+          style="flex:1;padding:10px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>
+        <button onclick="mSaveConfig()" 
+          style="flex:2;padding:10px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd)">✅ Appliquer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function mSaveConfig() {
+  const modal = document.querySelector('div[style*="position:fixed"][style*="900"]');
+  const periods = parseInt(modal.querySelector('#m-cfg-periods').value) || 2;
+  const duration = parseInt(modal.querySelector('#m-cfg-duration').value) || 20;
+  const inverse = modal.querySelector('#m-cfg-inverse').checked;
+  modal.remove();
+  const cfg = { periods, duration, inverse };
+  _mSaveConfig(curEV, curMID, cfg);
+  _mConfig = cfg;
+  _mSeconds = 0; _mPeriod = 0; _mRunning = false;
+  clearInterval(_mTimer); _mTimer = null;
+  renderMatch();
+}
+
+function renderMatchControls() {
+  const btn = document.getElementById('m-play-btn');
+  if (!btn) return;
+  btn.textContent = _mRunning ? '⏸ Pause' : (_mSeconds > 0 ? '▶ Reprendre' : '▶ Démarrer');
+  btn.style.background = _mRunning ? '#d97706' : 'var(--cg)';
+}
+
+function renderMatch() {
+  const el = document.getElementById('match-content');
+  if (!el) return;
+
+  const md = _mGetMatch(curEV, curMID);
+  const cfg = md.config || { periods: 2, duration: 20, inverse: false };
+  _mConfig = cfg;
+
+  const ourScore = mScore(curEV, curMID);
+  const advScore = md.scoreAdv || 0;
+  const periodNames = cfg.periods === 2 ? ['1ère mi-temps','2ème mi-temps'] :
+    cfg.periods === 3 ? ['1er tiers-temps','2e tiers-temps','3e tiers-temps'] :
+    Array.from({length: cfg.periods}, (_,i) => `Période ${i+1}`);
+
+  const typeLabels = {
+    essai: ['🏉','Essai','+5'],
+    transformation: ['🎯','Transformation','+2'],
+    penalite: ['🅿️','Pénalité','+3'],
+    drop: ['🦵','Drop','+3'],
+    carton_jaune: ['⚠️','Carton jaune',''],
+    carton_rouge: ['🟥','Carton rouge',''],
+    blessure: ['🤕','Blessure',''],
+    remplacement: ['🔄','Remplacement',''],
+    score_adv: ['⚔️','Score adverse',''],
+  };
+
+  // Group events by period
+  const byPeriod = Array.from({length: cfg.periods}, () => []);
+  const periodSecs = cfg.duration * 60;
+  md.events.forEach((ev, idx) => {
+    const p = Math.min(Math.floor(((ev.minute-1) * 60) / periodSecs), cfg.periods-1);
+    byPeriod[Math.max(0,p)].push({...ev, _idx: idx});
+  });
+
+  el.innerHTML = `
+    <!-- SCORE -->
+    <div style="background:var(--c1);border-radius:12px;padding:16px;margin-bottom:12px;text-align:center;color:#fff">
+      <div style="font-size:11px;font-weight:700;opacity:.7;font-family:var(--fd);letter-spacing:1px;margin-bottom:4px">
+        ${periodNames[_mPeriod] || 'Match terminé'} · ${_mConfig.inverse ? 'Décompte' : 'Chrono normal'}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;opacity:.7;font-family:var(--fd)">SAR×MOM</div>
+          <div style="font-size:52px;font-weight:900;font-family:var(--fd);color:var(--c2);line-height:1">${ourScore}</div>
+        </div>
+        <div style="font-size:28px;opacity:.5">—</div>
+        <div>
+          <div style="font-size:11px;opacity:.7;font-family:var(--fd)">Adversaire</div>
+          <div style="font-size:52px;font-weight:900;font-family:var(--fd);line-height:1" id="m-adv-score">${advScore}</div>
+        </div>
+      </div>
+      <!-- CHRONO -->
+      <div style="font-size:42px;font-weight:900;font-family:monospace;letter-spacing:2px;color:var(--c2)" id="m-chrono-display">${_mCurTime()}</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+        <button id="m-play-btn" onclick="mPause()" style="padding:10px 20px;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer;color:#fff;font-family:var(--fd)">▶ Démarrer</button>
+        <button onclick="mStop()" style="padding:10px 16px;background:rgba(255,255,255,.2);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:#fff">⏹ Reset</button>
+        <button onclick="mEndPeriod()" style="padding:10px 16px;background:rgba(255,255,255,.2);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:#fff">⏭ Fin période</button>
+        <button onclick="mOpenConfig()" style="padding:10px 14px;background:rgba(255,255,255,.15);border:none;border-radius:8px;font-size:13px;cursor:pointer;color:#fff">⚙️</button>
+      </div>
+    </div>
+
+    <!-- ACTIONS DE JEU -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Actions SAR×MOM</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onclick="mPromptScore('essai','🏉 Essai',5)" style="padding:14px 8px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--fd)">🏉 Essai +5</button>
+        <button onclick="mPromptScore('transformation','🎯 Transformation',2)" style="padding:14px 8px;background:#0369a1;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--fd)">🎯 Transfo +2</button>
+        <button onclick="mPromptScore('penalite','🅿️ Pénalité',3)" style="padding:14px 8px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;font-family:var(--fd)">🅿️ Pénalité +3</button>
+        <button onclick="mPromptScore('drop','🦵 Drop',3)" style="padding:14px 8px;background:#b45309;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;font-family:var(--fd)">🦵 Drop +3</button>
+      </div>
+    </div>
+
+    <!-- SCORE ADVERSAIRE -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Score adversaire</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+5)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🏉 +5</button>
+        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+2)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🎯 +2</button>
+        <button onclick="mAddEvent('score_adv',{scoreAdv:Math.max(0,(_mGetMatch(curEV,curMID).scoreAdv||0)+3)})" style="padding:12px 6px;background:var(--g100);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">🅿️ +3</button>
+      </div>
+      <button onclick="mPromptAdv()" style="width:100%;margin-top:6px;padding:9px;background:var(--g100);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">✏️ Saisir score exact</button>
+    </div>
+
+    <!-- ÉVÉNEMENTS -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Événements</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onclick="mPromptEvent('carton_jaune','Carton jaune','⚠️')" style="padding:12px 8px;background:#fef3c7;color:#92400e;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">⚠️ Carton jaune</button>
+        <button onclick="mPromptEvent('carton_rouge','Carton rouge','🟥')" style="padding:12px 8px;background:#fee2e2;color:#991b1b;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🟥 Carton rouge</button>
+        <button onclick="mPromptEvent('blessure','Blessure','🤕')" style="padding:12px 8px;background:#e0f2fe;color:#0369a1;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🤕 Blessure</button>
+        <button onclick="mPromptEvent('remplacement','Remplacement','🔄')" style="padding:12px 8px;background:#f0fdf4;color:#166534;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">🔄 Remplacement</button>
+      </div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;margin-bottom:8px">Historique du match</div>
+      ${md.events.length === 0 ? '<div style="text-align:center;color:var(--g400);padding:20px;font-size:13px">Aucun événement enregistré</div>' :
+        [...md.events].reverse().map((ev, ri) => {
+          const idx = md.events.length - 1 - ri;
+          const pl = S.players.find(p => String(p.id) === String(ev.pid));
+          const plIn = ev.pidIn ? S.players.find(p => String(p.id) === String(ev.pidIn)) : null;
+          const lbl = typeLabels[ev.type] || ['❓', ev.type, ''];
+          const pts = lbl[2] ? `<span style="font-weight:800;color:var(--cg)">${lbl[2]}</span>` : '';
+          const plName = pl ? `${pl.p} ${pl.n}` : (ev.type === 'score_adv' ? `Score adv. → ${ev.scoreAdv}` : '');
+          const plInName = plIn ? ` → ${plIn.p} ${plIn.n}` : '';
+          const desc = ev.desc ? ` (${ev.desc})` : '';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border-radius:8px;margin-bottom:5px">
+            <div style="font-size:18px;width:24px;text-align:center">${lbl[0]}</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:700">${lbl[1]} ${pts}</div>
+              <div style="font-size:11px;color:var(--g600)">${plName}${plInName}${desc} · Min. ${ev.minute}</div>
+            </div>
+            <button onclick="mDeleteEvent(${idx})" style="border:none;background:none;color:var(--g400);cursor:pointer;font-size:16px;padding:4px">🗑</button>
+          </div>`;
+        }).join('')}
+    </div>
+  `;
+  renderMatchControls();
+}
 
 // INIT
 // Purge anciennes clés obsolètes
