@@ -301,7 +301,6 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
           <button class="stab" onclick="switchEV('terrain',this)">Terrain</button>
           <button class="stab" onclick="switchEV('export',this)">Réseaux sociaux</button>
           <button class="stab" onclick="switchEV('match',this)">⏱ Match</button>
-          <button class="stab" onclick="switchEV('rapport',this)">📊 Rapport</button>
         </div>
         <div id="ev-inj-alert" style="margin-bottom:8px"></div>
         <div id="ev-liste">
@@ -755,7 +754,7 @@ function renderEvCard(ev){
   let scoreHtml="";
   if(!isTour){scoreHtml=matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("");}
   else{scoreHtml=(ev.phases||[]).map(ph=>`<div style="margin-bottom:7px"><div style="font-size:10px;font-weight:700;color:var(--tour);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;font-family:var(--fd)">📍 ${ph.name}</div>${ph.matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("")}</div>`).join("");}
-  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base')" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Compo de base"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base');setTimeout(function(){var b=document.querySelector('.stab[onclick*=terrain]');if(b)b.click();},300)" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Vue terrain"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="10"/><path d="M12 2v20M2 12h20"/></svg></button><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base');setTimeout(function(){var b=document.querySelector('.stab[onclick*=export]');if(b)b.click();},300)" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Réseaux sociaux"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg></button><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base');setTimeout(function(){var b=document.querySelector('.stab[onclick*=match]');if(b)b.click();},300)" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Suivi de match"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px" title="Modifier">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
+  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base')" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Compo de base"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base');setTimeout(function(){var b=document.querySelector('.stab[onclick*=terrain]');if(b)b.click();},300)" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Vue terrain"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="10"/><path d="M12 2v20M2 12h20"/></svg></button><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base');setTimeout(function(){var b=document.querySelector('.stab[onclick*=export]');if(b)b.click();},300)" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Réseaux sociaux"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg></button><button class="btn" onclick="event.stopPropagation();openEditor('${ev.id}',null,null,'base');setTimeout(function(){var b=document.querySelector('.stab[onclick*=match]');if(b)b.click();},300)" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Suivi de match"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button><button class="btn" onclick="event.stopPropagation();_openRapport('${ev.id}')" style="padding:3px 7px;background:none;border:1px solid var(--g300);color:var(--g600)" title="Rapport"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px" title="Modifier">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
 }
 function toggleEv(id){const el=document.getElementById("eb-"+id);el&&el.classList.toggle("open");}
 function setSc(eid,mid,side,val){const e=S.events.find(e=>e.id===eid);if(!e.scores)e.scores={};if(!e.scores[mid])e.scores[mid]={f:null,a:null};e.scores[mid][side]=val===""?null:parseInt(val);sv();}
@@ -859,7 +858,7 @@ function openEditor(eid,tid,mid,mode){
   if(targetBtn){
     document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));
     targetBtn.classList.add("active");
-    ["liste","terrain","export","match","rapport"].forEach(v=>{
+    ["liste","terrain","export","match"].forEach(v=>{
       const el=document.getElementById("ev-"+v);
       if(el)el.style.display=v===targetTab?"block":"none";
     });
@@ -935,7 +934,7 @@ function renderPick(){
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","match"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
 
 // FIELD SVG
 function drawField(){
@@ -1694,6 +1693,26 @@ function _mExportRapportPDF(){
     pdf.addImage(imgData,"JPEG",0,0,pdfW,pdfW*ratio);
     pdf.save("rapport_"+(curEV?curEV.name:"match").replace(/\s+/g,"_")+".pdf");
   });
+}
+
+
+function _openRapport(evId){
+  var ev=S.events.find(function(e){return e.id===evId;});
+  if(!ev)return;
+  curEV=ev;curTID=(ev.teams||['t1'])[0];
+  // Open editor on rapport panel
+  openEditor(evId,null,null,'base');
+  setTimeout(function(){
+    // Add rapport panel visibility manually since it's no longer in stabs
+    ['liste','terrain','export','match'].forEach(function(v){
+      var el=document.getElementById('ev-'+v);if(el)el.style.display='none';
+    });
+    var rp=document.getElementById('ev-rapport');
+    if(rp)rp.style.display='block';
+    // Update stabs - none active for rapport
+    document.querySelectorAll('.stab').forEach(function(t){t.classList.remove('active');});
+    renderRapport();
+  },200);
 }
 
 
