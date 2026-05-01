@@ -1501,7 +1501,7 @@ function renderMatchTab(){
       html+='<div style="font-size:18px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">vs '+adv+'</div>';
     html+='</div>';
     html+='<div style="display:flex;align-items:center;gap:8px">';
-      html+='<img src="'+window._LOGO_SM+'" style="height:36px;width:36px;border-radius:50%;object-fit:cover;border:2px solid '+c2+'">';
+      html+='<img src="data:image/png;base64,'+window._LOGO_SM+'" style="height:36px;width:36px;border-radius:50%;object-fit:cover;border:2px solid '+c2+'">';
       html+='<button onclick="_mResetActiveMatch()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--fd);letter-spacing:.05em">CHANGER</button>';
     html+='</div>';
   html+='</div>';
@@ -1614,7 +1614,7 @@ function renderRapport(){
       html+='<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em">'+curEV.date+' · '+curEV.lieu+'</div>';
       html+='<div style="font-size:20px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">'+curEV.name+'</div>';
     html+='</div>';
-    html+='<img src="'+window._LOGO_SM+'" style="height:40px;width:40px;border-radius:50%;object-fit:cover;border:2px solid '+c2+'">';
+    html+='<img src="data:image/png;base64,'+window._LOGO_SM+'" style="height:40px;width:40px;border-radius:50%;object-fit:cover;border:2px solid '+c2+'">';
   html+='</div>';
   var hasData=false;
   allMatches.forEach(function(m){
