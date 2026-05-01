@@ -827,10 +827,12 @@ function openEditor(eid,tid,mid,mode){
     if(_cm){
       if(_mActiveMatchId!==curMID){
         clearInterval(_mTimer);_mRunning=false;
+        _mActiveMatchId=curMID;
+        _mActiveMatchAdv=_cm.adv&&String(_cm.adv).length>2?_cm.adv:"Match "+_cm.adv;
+        var _md=_mGetMatchData(curEV,curMID);_mSeconds=_md.seconds||0;
+      } else {
+        _mActiveMatchAdv=_cm.adv&&String(_cm.adv).length>2?_cm.adv:"Match "+_cm.adv;
       }
-      _mActiveMatchId=curMID;
-      _mActiveMatchAdv=_cm.adv&&String(_cm.adv).length>2?_cm.adv:"Match "+_cm.adv;
-      var _md=_mGetMatchData(curEV,curMID);_mSeconds=_md.seconds||0;
     }
   } else if(curMode==="base"){
     _mActiveMatchId=null;_mActiveMatchAdv="";
@@ -910,7 +912,7 @@ function renderPick(){
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","effectif","match"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
 
 // FIELD SVG
 function drawField(){
