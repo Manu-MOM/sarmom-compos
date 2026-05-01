@@ -996,7 +996,7 @@ function drawExport(){
 
   function playerCard(pid,i,isSub){
     const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
-    const fwd=i<8;
+    const fwd=isS?i<4:(curEV.format==="13"?i<6:i<8);
     const photoContent=pl?.photo?`<img src="${pl.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:${isSub?"8":"10"}px;font-weight:700;color:rgba(255,255,255,.35)">${pl?(pl.p[0]+pl.n[0]):""}</div>`;
     if(!isSub){return`<div class="exp-player ${fwd?"fwd":"bck"}"><div class="exp-pnum">${i+1}</div><div class="exp-pphoto ${pl?.photo?"":"no-photo"}">${photoContent}</div><div class="exp-pinfo"><div class="exp-pfname">${pl?pl.n:"À définir"}</div><div style="color:rgba(255,255,255,.5);font-size:8px;font-weight:600">${pl?.p||""}</div><div class="exp-ppos">${Ps[i]||""}</div>${pl?`<span class="exp-pclub exp-pclub-${pl.club}">${pl.club}</span>`:""}</div></div>`;}
     else{return`<div class="exp-sub-p"><div class="exp-snum">${i+1}</div><div class="exp-sphoto ${pl?.photo?"":"no-photo"}">${photoContent}</div><div class="exp-sfname">${pl?pl.n+" "+pl.p[0]:"—"}</div></div>`;}
@@ -1696,16 +1696,57 @@ function _mExportRapportPDF(){
   var el=document.getElementById("rapport-content");
   if(!el)return;
   if(typeof html2canvas==="undefined"){alert("Librairie PDF non disponible");return;}
+  var evName=(curEV?curEV.name:"match").replace(/\s+/g,"_");
   html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
-    var imgData=canvas.toDataURL("image/jpeg",0.92);
     var pdf=new jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
     var pdfW=pdf.internal.pageSize.getWidth();
+    var pdfH=pdf.internal.pageSize.getHeight();
+    // Page 1 : rapport (PNG)
+    var imgData=canvas.toDataURL("image/png");
     var ratio=canvas.height/canvas.width;
-    pdf.addImage(imgData,"JPEG",0,0,pdfW,pdfW*ratio);
-    pdf.save("rapport_"+(curEV?curEV.name:"match").replace(/\s+/g,"_")+".pdf");
+    var imgH=pdfW*ratio;
+    if(imgH<=pdfH){
+      pdf.addImage(imgData,"PNG",0,0,pdfW,imgH);
+    } else {
+      var y=0;
+      while(y<imgH){
+        if(y>0)pdf.addPage();
+        pdf.addImage(imgData,"PNG",0,-y,pdfW,imgH);
+        y+=pdfH;
+      }
+    }
+    // Page 2 : terrain
+    var svgEl=document.getElementById("field-svg");
+    if(svgEl&&svgEl.innerHTML.trim()!==""){
+      try{
+        var svgData=new XMLSerializer().serializeToString(svgEl);
+        var svgBlob=new Blob([svgData],{type:"image/svg+xml;charset=utf-8"});
+        var svgUrl=URL.createObjectURL(svgBlob);
+        var svgImg=new Image();
+        svgImg.onload=function(){
+          var fc=document.createElement("canvas");
+          var vb=svgEl.viewBox.baseVal;
+          fc.width=(vb.width||520)*3;fc.height=(vb.height||700)*3;
+          var ctx=fc.getContext("2d");ctx.scale(3,3);
+          ctx.drawImage(svgImg,0,0);
+          URL.revokeObjectURL(svgUrl);
+          pdf.addPage("a4","landscape");
+          var fi=fc.toDataURL("image/png");
+          var pw2=pdf.internal.pageSize.getWidth();
+          var ph2=pdf.internal.pageSize.getHeight();
+          var fw=ph2*(fc.width/fc.height);
+          var fh=ph2;
+          pdf.addImage(fi,"PNG",(pw2-fw)/2,0,fw,fh);
+          pdf.save("rapport_"+evName+".pdf");
+        };
+        svgImg.onerror=function(){pdf.save("rapport_"+evName+".pdf");};
+        svgImg.src=svgUrl;
+        return;
+      }catch(e){console.warn("Terrain SVG error:",e);}
+    }
+    pdf.save("rapport_"+evName+".pdf");
   });
 }
-
 
 function _openRapport(evId){
   var ev=S.events.find(function(e){return e.id===evId;});
