@@ -1918,7 +1918,6 @@ function exportImg(fmt){
 function _doExportImg(canvas,fmt){
   var evName=(curEV?curEV.name.replace(/\s+/g,"_"):"export");
   if(fmt==="pdf"){
-    // Get jsPDF - try multiple possible globals
     var JPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF||null;
     if(!JPDF){alert("PDF non disponible - rechargez la page");return;}
     var pdf=new JPDF({orientation:"portrait",unit:"mm",format:"a4"});
@@ -1926,11 +1925,48 @@ function _doExportImg(canvas,fmt){
     var ph=pdf.internal.pageSize.getHeight();
     var ratio=canvas.height/canvas.width;
     var iw=pw, ih=pw*ratio;
-    // Center if smaller than page
     var yo=ih<ph?(ph-ih)/2:0;
     var imgData=canvas.toDataURL("image/png");
     pdf.addImage(imgData,"PNG",0,yo,iw,ih<ph?ih:ph);
-    pdf.save("compo_"+evName+".pdf");
+    // Page 2 : terrain
+    var svgEl=document.getElementById("field-svg");
+    var terrainPanel=document.getElementById("ev-terrain");
+    var wasHidden=terrainPanel&&terrainPanel.style.display==="none";
+    if(wasHidden){terrainPanel.style.position="fixed";terrainPanel.style.left="-9999px";terrainPanel.style.display="block";}
+    try{if(typeof drawField==="function")drawField();}catch(e){}
+    setTimeout(function(){
+      if(svgEl&&svgEl.innerHTML&&svgEl.innerHTML.trim()!==""){
+        try{
+          var vb=svgEl.viewBox.baseVal;
+          var sw=vb.width||520,sh=vb.height||700;
+          var svgClone=svgEl.cloneNode(true);
+          svgClone.setAttribute("width",sw);svgClone.setAttribute("height",sh);
+          var svgB64="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(svgClone))));
+          var img2=new Image();
+          img2.onload=function(){
+            var fc=document.createElement("canvas");
+            fc.width=sw*2;fc.height=sh*2;
+            var ctx=fc.getContext("2d");ctx.scale(2,2);
+            ctx.fillStyle="#fff";ctx.fillRect(0,0,sw,sh);
+            ctx.drawImage(img2,0,0,sw,sh);
+            pdf.addPage();
+            var fi=fc.toDataURL("image/png");
+            var fh=pw*(fc.height/fc.width);
+            pdf.addImage(fi,"PNG",0,fh<ph?(ph-fh)/2:0,pw,Math.min(fh,ph));
+            if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
+            pdf.save("compo_"+evName+".pdf");
+          };
+          img2.onerror=function(){
+            if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
+            pdf.save("compo_"+evName+".pdf");
+          };
+          img2.src=svgB64;
+          return;
+        }catch(e){console.warn(e);}
+      }
+      if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
+      pdf.save("compo_"+evName+".pdf");
+    },150);
     return;
   }
   var mimeType=fmt==="jpg"?"image/jpeg":"image/png";
