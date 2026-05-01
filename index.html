@@ -849,6 +849,12 @@ function openEditor(eid,tid,mid,mode){
   // Switch to appropriate tab
   var targetTab=curMode==="base"?"liste":"match";
   var targetBtn=document.querySelector('.stab[onclick*="'+targetTab+'"]');
+  // Griser l'onglet Match en mode BASE
+  var matchStab=document.querySelector('.stab[onclick*="match"]');
+  if(matchStab){
+    matchStab.style.opacity=curMode==="base"?"0.4":"1";
+    matchStab.style.pointerEvents=curMode==="base"?"none":"auto";
+  }
   if(targetBtn){
     document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));
     targetBtn.classList.add("active");
@@ -1424,7 +1430,17 @@ function _mSelectMatch(el){
   var mid=el.dataset.mid,adv=el.dataset.adv;
   clearInterval(_mTimer);_mRunning=false;
   _mActiveMatchId=mid;_mActiveMatchAdv=adv;
+  // Sync curMID and curMode so renderMatchTab doesn't override
+  curMID=mid;curMode="match";
   var md=_mGetMatchData(curEV,mid);_mSeconds=md.seconds||0;
+  // Click the corresponding mode chip to keep UI consistent
+  var chips=document.querySelectorAll("#ed-btns .cchip");
+  chips.forEach(function(chip){
+    if(chip.getAttribute("onclick")&&chip.getAttribute("onclick").indexOf(mid)>=0){
+      chip.click();
+      return;
+    }
+  });
   renderMatchTab();
 }
 function _mResetActiveMatch(){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=null;_mActiveMatchAdv="";_mSeconds=0;renderMatchTab();}
@@ -1433,7 +1449,16 @@ function renderMatchTab(){
   var el=document.getElementById("match-content");
   if(!el)return;
   
-  // Sync with curMID
+  // En mode BASE : message d'invite
+  if(!curMode||curMode==="base"){
+    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#9ca3af">'
+      +'<div style="font-size:36px;margin-bottom:12px">⏱</div>'
+      +'<div style="font-size:13px;font-weight:600;margin-bottom:6px">Sélectionnez un match</div>'
+      +'<div style="font-size:11px">Cliquez sur un adversaire dans la barre MODE<br>pour démarrer le suivi du match</div>'
+      +'</div>';
+    return;
+  }
+  
   // Synchro avec curMID uniquement si mode != BASE
   if(curMID&&curEV&&curMode!=="base"){
     var allM=getMatches(curEV)||[];
