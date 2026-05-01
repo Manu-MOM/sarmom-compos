@@ -377,7 +377,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <button class="btn btn-g" onclick="expJSON()" style="width:100%;justify-content:center;margin-bottom:5px">⬇ Exporter JSON</button>
       <button class="btn btn-g" onclick="document.getElementById('imp').click()" style="width:100%;justify-content:center;margin-bottom:5px">⬆ Importer JSON</button>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(event)">
-      <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm5');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
+      <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm7');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
     </div>
   </div>
 </div>
@@ -582,9 +582,14 @@ const INIT_EV=[
 const INIT_TEAMS=[{id:"t1",label:"SAR/MOM 1"},{id:"t2",label:"SAR/MOM 2"},{id:"t3",label:"SAR/MOM X"}];
 const INIT_COACHES=[{id:"c1",role:"Entraîneur principal",name:"Vivien RULFO"},{id:"c2",role:"Manager",name:"Emmanuel JUNG"},{id:"c3",role:"Entraîneur adjoint",name:"Loïc HELM"}];
 
-function load(){try{const s=localStorage.getItem("sm5");if(s)return JSON.parse(s);}catch(e){}
-  return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}}}
-function sv(){localStorage.setItem("sm5",JSON.stringify(S));}
+function load(){
+  try{
+    const s=localStorage.getItem("sm7");
+    if(s){const d=JSON.parse(s);if((d.players||[]).length<60)d.players=INIT_PL;return d;}
+  }catch(e){}
+  return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}};
+}
+function sv(){localStorage.setItem("sm7",JSON.stringify(S));if(window._gDriveReady)_gSaveCompos();}
 let S=load();
 
 // Lineup helpers
@@ -746,7 +751,7 @@ function renderEvCard(ev){
   let scoreHtml="";
   if(!isTour){scoreHtml=matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("");}
   else{scoreHtml=(ev.phases||[]).map(ph=>`<div style="margin-bottom:7px"><div style="font-size:10px;font-weight:700;color:var(--tour);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;font-family:var(--fd)">📍 ${ph.name}</div>${ph.matches.map(m=>`<div class="mrow"><div class="mvs">vs ${m.adv}</div><button onclick="event.stopPropagation();openMatchTracker('${ev.id}','${m.id}','${m.adv}')" style="padding:2px 7px;font-size:11px;background:#6d28d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:6px">T</button><div class="mscore"><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.f??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','f',this.value)"><span class="ssep">-</span><input class="si" type="number" min="0" value="${ev.scores?.[m.id]?.a??''}" placeholder="—" onchange="setSc('${ev.id}','${m.id}','a',this.value)"></div></div>`).join("")}</div>`).join("");}
-  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
+  return`<div class="ev-card"><div class="ev-hdr" onclick="toggleEv('${ev.id}')"><div class="ev-bar bar-${ev.type}"></div><div class="ev-info"><div class="ev-name">${ev.name} <span class="badge b-${ev.type}">${typeLabel}</span></div><div class="ev-meta">${fd(ev.date)} · ${ev.lieu} · ${(ev.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.label||"?").join(", ")}</div></div><div class="ev-prog"><div class="ev-prog-v">${done}/${total}</div><div class="ev-prog-l">compos</div></div><div style="display:flex;gap:3px"><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-b" onclick="event.stopPropagation();openEMtab('${ev.id}','liste')" style="padding:3px 7px;font-size:11px" title="Compo de base">📋</button><button class="btn" onclick="event.stopPropagation();openEMtab('${ev.id}','match')" style="padding:3px 7px;font-size:11px;background:#6d28d9;color:#fff" title="Suivi de match">⏱</button><button class="btn btn-g" onclick="event.stopPropagation();openEM('${ev.id}')" style="padding:3px 7px">⚙️</button><button class="btn btn-r" onclick="event.stopPropagation();delEv('${ev.id}')" style="padding:3px 7px">🗑</button></div></div><div class="ev-body" id="eb-${ev.id}"><div style="margin-bottom:10px">${scoreHtml}</div><div style="font-family:var(--fd);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g400);margin-bottom:5px">Compositions par équipe → match</div>${teamsHtml}</div></div>`;
 }
 function toggleEv(id){const el=document.getElementById("eb-"+id);el&&el.classList.toggle("open");}
 function setSc(eid,mid,side,val){const e=S.events.find(e=>e.id===eid);if(!e.scores)e.scores={};if(!e.scores[mid])e.scores[mid]={f:null,a:null};e.scores[mid][side]=val===""?null:parseInt(val);sv();}
@@ -1057,11 +1062,159 @@ function updateTeam(id,val){const t=S.teams.find(t=>t.id===id);if(t)t.label=val;
 function delTeam(id){if(!confirm("Supprimer ?"))return;S.teams=S.teams.filter(t=>t.id!==id);sv();rsettings();}
 function addCoach(){if(!S.coaches)S.coaches=[];S.coaches.push({id:"c"+Date.now(),role:"",name:""});sv();rsettings();}
 function expJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="sarmom_compos.json";a.click();}
-function impJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.events)S.events=d.events;if(d.settings)S.settings=d.settings;if(d.teams)S.teams=d.teams;if(d.coaches)S.coaches=d.coaches;if(d.players&&d.players.length>0)S.players=d.players;sv();rdash();revents();rsettings();alert('Import OK — '+S.events.length+' événements');}catch(err){alert('Fichier invalide');}};r.readAsText(f);}
+function impJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.events)S.events=d.events;if(d.settings)S.settings=d.settings;if(d.teams)S.teams=d.teams;if(d.coaches)S.coaches=d.coaches;if(d.players&&d.players.length>0)S.players=d.players;sv();_gCheckRedirectToken();
+rdash();revents();rsettings();alert('Import OK — '+S.events.length+' événements');}catch(err){alert('Fichier invalide');}};r.readAsText(f);}
 
 function _mResetActiveMatch(){
   _mActiveMatchId=null; _mActiveMatchAdv='';
   clearInterval(_mTimer); _mRunning=false; _mSeconds=0;
+  renderMatchTab();
+}
+function _mClosePickerOverlay(){var o=document.getElementById('m-pick-overlay');if(o)o.remove();}
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE DRIVE — OAuth2 implicit redirect flow
+// ═══════════════════════════════════════════════════════════════
+var _gAccessToken = null;
+var _gComposFileId = null;
+var _gDriveReady = false;
+var _gSaveTimer = null;
+var _G_FILE_NAME = "sarmom_compos.json";
+var _G_FILE_ID = "";
+
+function _gGetClientId(){return localStorage.getItem("sarmom_gClientId")||"";}
+
+function gConnectDrive(){
+  var cid=_gGetClientId();
+  if(!cid){gShowClientIdPrompt();return;}
+  var saved=localStorage.getItem("sarmom_gtoken");
+  var savedExp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
+  if(saved&&Date.now()<savedExp){
+    _gAccessToken=saved;_gDriveReady=true;
+    gUpdateDriveStatus("connected");_gFindOrCreateFile();return;
+  }
+  var redirectUri=window.location.origin+window.location.pathname;
+  var params=new URLSearchParams({
+    client_id:cid,redirect_uri:redirectUri,response_type:"token",
+    scope:"https://www.googleapis.com/auth/drive.file",
+    include_granted_scopes:"true",state:"drive_auth"
+  });
+  window.location.href="https://accounts.google.com/o/oauth2/v2/auth?"+params.toString();
+}
+
+function _gCheckRedirectToken(){
+  var hash=window.location.hash;
+  if(!hash||hash.indexOf("access_token")<0)return;
+  var params=new URLSearchParams(hash.substring(1));
+  var token=params.get("access_token");
+  var expiresIn=parseInt(params.get("expires_in")||"3600");
+  if(token){
+    _gAccessToken=token;_gDriveReady=true;
+    localStorage.setItem("sarmom_gtoken",token);
+    localStorage.setItem("sarmom_gtoken_exp",String(Date.now()+expiresIn*1000-60000));
+    history.replaceState(null,"",window.location.pathname);
+    gUpdateDriveStatus("connected");
+    var se=document.getElementById("drive-status");
+    if(se)se.innerHTML='<span style="color:var(--cg)">✅ Connecté — sauvegarde auto active</span>';
+    _gFindOrCreateFile();
+  }
+}
+
+function _gFindOrCreateFile(){
+  gUpdateDriveStatus("syncing");
+  var q="name='"+_G_FILE_NAME+"' and trashed=false";
+  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)",{
+    headers:{Authorization:"Bearer "+_gAccessToken}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    if(data.files&&data.files.length>0){_gComposFileId=data.files[0].id;gUpdateDriveStatus("connected");}
+    else{_gUploadFile(S,function(){gUpdateDriveStatus("connected");});}
+  }).catch(function(){gUpdateDriveStatus("error");});
+}
+
+function _gSaveCompos(){
+  clearTimeout(_gSaveTimer);
+  _gSaveTimer=setTimeout(function(){
+    if(!_gAccessToken||!S)return;
+    _gUploadFile(S,function(ok){
+      gUpdateDriveStatus(ok?"saved":"error");
+      setTimeout(function(){if(_gDriveReady)gUpdateDriveStatus("connected");},2000);
+    });
+  },1500);
+}
+
+function _gUploadFile(data,cb){
+  if(!_gAccessToken){if(cb)cb(false);return;}
+  var fileId=_gComposFileId||_G_FILE_ID;
+  var body=JSON.stringify(data);
+  var boundary="sarmom_b";
+  var meta=JSON.stringify({name:_G_FILE_NAME,mimeType:"application/json"});
+  var payload="--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
+    +meta+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"
+    +body+"\r\n--"+boundary+"--";
+  var url=fileId
+    ?"https://www.googleapis.com/upload/drive/v3/files/"+fileId+"?uploadType=multipart"
+    :"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  fetch(url,{
+    method:fileId?"PATCH":"POST",
+    headers:{Authorization:"Bearer "+_gAccessToken,"Content-Type":"multipart/related; boundary="+boundary},
+    body:payload
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.id){_gComposFileId=d.id;if(cb)cb(true);}
+    else{console.error("Drive error:",d);if(cb)cb(false);}
+  }).catch(function(e){console.error("Drive error:",e);if(cb)cb(false);});
+}
+
+function gUpdateDriveStatus(status){
+  var el=document.getElementById("drive-status");
+  if(!el)return;
+  var map={
+    connected:["✅","Connecté — sauvegarde auto","#16a34a"],
+    syncing:["🔄","Synchronisation…","#d97706"],
+    saved:["✅","Sauvegardé","#16a34a"],
+    error:["🔴","Erreur Drive","#dc2626"],
+    disconnected:["⚪","Non connecté","var(--g400)"]
+  };
+  var info=map[status]||map.disconnected;
+  el.innerHTML='<span>'+info[0]+'</span> <span style="font-size:11px;font-weight:600;color:'+info[2]+'">'+info[1]+'</span>';
+}
+
+function gManualSave(){if(_gDriveReady)_gSaveCompos();else gConnectDriveUI();}
+
+function gConnectDriveUI(){
+  var cid=document.getElementById("drive-client-id");
+  if(cid&&cid.value.trim())localStorage.setItem("sarmom_gClientId",cid.value.trim());
+  gConnectDrive();
+}
+
+function gShowClientIdPrompt(){
+  var d=document.createElement("div");
+  d.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px";
+  d.innerHTML='<div style="background:#fff;border-radius:14px;max-width:480px;width:100%;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
+    +'<div style="background:var(--c1);color:#fff;padding:14px 18px;font-family:var(--fd);font-size:16px;font-weight:800">🔗 Connexion Google Drive</div>'
+    +'<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
+    +'<div><label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g600);margin-bottom:4px">Client ID Google OAuth</label>'
+    +'<input id="g-cid-inp" type="text" value="'+_gGetClientId()+'" placeholder="XXXXXXXXX.apps.googleusercontent.com" style="width:100%;padding:8px 10px;border:1.5px solid var(--g200);border-radius:7px;font-size:12px;font-family:monospace"></div>'
+    +'<div style="font-size:11px;color:var(--g600);background:var(--g50);padding:8px;border-radius:6px;line-height:1.6">ℹ️ Après connexion, vous serez redirigé vers Google puis ramené automatiquement.</div>'
+    +'</div>'
+    +'<div style="padding:10px 16px 16px;display:flex;gap:8px">'
+    +'<button onclick="this.closest(\'div[style]\').remove()" style="flex:1;padding:9px;background:var(--g100);border:none;border-radius:7px;font-weight:700;cursor:pointer">Annuler</button>'
+    +'<button onclick="var v=document.getElementById(\'g-cid-inp\').value.trim();if(v){localStorage.setItem(\'sarmom_gClientId\',v);this.closest(\'div[style]\').remove();gConnectDrive();}" style="flex:2;padding:9px;background:var(--c1);color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:var(--fd);font-size:14px">🔗 Connecter Drive</button>'
+    +'</div></div>';
+  d.onclick=function(e){if(e.target===d)d.remove();};
+  document.body.appendChild(d);
+}
+
+function openEMtab(id,tab){
+  openEM(id);
+  setTimeout(function(){
+    var btn=document.querySelector('.stab[onclick*="'+tab+'"]');
+    if(btn)btn.click();
+  },200);
+}
+function _mResetActiveMatch(){
+  _mActiveMatchId=null;_mActiveMatchAdv='';
+  clearInterval(_mTimer);_mRunning=false;_mSeconds=0;
   renderMatchTab();
 }
 function _mClosePickerOverlay(){var o=document.getElementById('m-pick-overlay');if(o)o.remove();}
