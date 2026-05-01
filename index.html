@@ -1424,278 +1424,146 @@ function _mSelectMatch(el){
 function _mResetActiveMatch(){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=null;_mActiveMatchAdv="";_mSeconds=0;renderMatchTab();}
 
 function renderMatchTab(){
-  var el=document.getElementById("match-content");if(!el)return;
-  if(curMID){
-    var cm=getMatches(curEV).find(function(m){return m.id===curMID;});
+  var el=document.getElementById("match-content");
+  if(!el)return;
+  
+  // Sync with curMID
+  if(curMID&&curEV){
+    var allM=getMatches(curEV)||[];
+    var cm=allM.find(function(m){return m.id===curMID;});
     if(cm&&cm.id!==_mActiveMatchId){
       clearInterval(_mTimer);_mRunning=false;
       _mActiveMatchId=cm.id;
-      _mActiveMatchAdv=cm.adv&&String(cm.adv).length>2?cm.adv:"Match "+cm.adv;
-      var md2=_mGetMatchData(curEV,cm.id);_mSeconds=md2.seconds||0;
+      _mActiveMatchAdv=String(cm.adv||"Adversaire");
+      var md2=_mGetMatchData(curEV,cm.id);
+      _mSeconds=md2.seconds||0;
     }
   }
+  
+  // No match selected - show selector
   if(!_mActiveMatchId){
-    var ms=getMatches(curEV)||[];
-    el.innerHTML='<div style="padding:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px">Selectionner un match</div>'
-      +ms.map(function(m){
-        var adv=m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv;
-        return'<div onclick="_mSelectMatch(this)" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,"&quot;")+'" style="padding:10px 12px;margin:3px 0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center"><b>vs '+adv+'</b><span style="color:#9ca3af;font-size:11px">▶</span></div>';
-      }).join("")
-      +(ms.length===0?'<p style="color:#9ca3af;text-align:center">Aucun match</p>':"")+"</div>";
+    var ms=(curEV?getMatches(curEV):[])||[];
+    var html='<div style="padding:12px">';
+    html+='<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Selectionner un match</div>';
+    ms.forEach(function(m){
+      var adv=String(m.adv&&m.adv.length>2?m.adv:"Match "+m.adv);
+      html+='<div onclick="_mSelectMatch(this)" data-mid="'+m.id+'" data-adv="'+adv.replace(/"/g,"&quot;")+'" ';
+      html+='style="padding:10px 12px;margin:3px 0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center">';
+      html+='<b>vs '+adv+'</b><span style="color:#9ca3af;font-size:11px">▶</span></div>';
+    });
+    if(!ms.length)html+='<p style="color:#9ca3af;text-align:center">Aucun match</p>';
+    html+='</div>';
+    el.innerHTML=html;
     return;
   }
-  var match=_mGetMatch(curEV),md=_mGetMatchData(curEV,_mActiveMatchId),cfg=match.config;
-  var totalUs=_mTotalScore(md,"score_us"),totalThem=_mTotalScore(md,"score_them");
-  var pidx=md.currentPeriod||0,ended=md.status==="ended",pCount=cfg.periods||2;
+  
+  // Match selected - render UI
+  var match=_mGetMatch(curEV);
+  var md=_mGetMatchData(curEV,_mActiveMatchId);
+  var cfg=match.config||{periods:2,duration:20,reverse:false};
+  var pCount=cfg.periods||2;
+  var pidx=md.currentPeriod||0;
+  var ended=md.status==="ended";
+  var totalUs=_mTotalScore(md,"score_us");
+  var totalThem=_mTotalScore(md,"score_them");
   var pLabel=pCount===2?(pidx===0?"1ere mi-temps":"2eme mi-temps"):("Tiers-temps "+(pidx+1));
-  el.innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px">'
-      +'<span style="font-family:var(--fd);font-size:15px;font-weight:900;color:var(--c1)">vs '+_mActiveMatchAdv+'</span>'
-      +'<button onclick="_mResetActiveMatch()" style="background:none;border:1px solid #d1d5db;color:#6b7280;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px">Changer</button>'
-    +'</div>'
-    +'<details style="margin-bottom:10px"><summary style="font-size:11px;color:#6b7280;cursor:pointer;list-style:none">Parametres du chrono</summary>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 0;align-items:end">'
-        +'<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Periodes</label><input id="mc-periods" type="number" min="1" max="5" value="'+( cfg.periods||2)+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>'
-        +'<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Duree (min)</label><input id="mc-duration" type="number" min="1" max="60" value="'+( cfg.duration||20)+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>'
-        +'<div><label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-top:14px"><input id="mc-reverse" type="checkbox" '+( cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inverse</label></div>'
-      +'</div>'
-      +'<button onclick="_mSaveConfig()" style="width:100%;padding:7px;background:var(--c1);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button>'
-    +'</details>'
-    +'<div style="background:var(--c1);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center">'
-      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.65;margin-bottom:2px">'+( ended?"TERMINE":pLabel+" ("+(pidx+1)+"/"+pCount+")")+'</div>'
-      +'<div id="m-time" style="font-size:52px;font-weight:900;font-family:var(--fd);letter-spacing:3px;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>'
-      +'<div style="display:flex;justify-content:center;align-items:center;gap:28px;margin:10px 0 12px">'
-        +'<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">SAR/MOM</div><div id="m-score-us" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalUs+'</div></div>'
-        +'<div style="font-size:22px;opacity:.35;font-weight:900">-</div>'
-        +'<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">'+_mActiveMatchAdv+'</div><div id="m-score-them" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalThem+'</div></div>'
-      +'</div>'
-      +(!ended
-        ?'<div style="display:flex;gap:8px"><button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+(_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)")+';color:'+(_mRunning?"#fff":"var(--c1)")+'">'+(_mRunning?"Pause":"Demarrer")+'</button><button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+( pidx<pCount-1?"Fin periode":"Fin match")+'</button></div>'
-        :'<div style="display:flex;gap:8px"><button onclick="_mReset()" style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">Nouveau</button><button onclick="_mExportMatch()" style="flex:2;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.9);color:var(--c1)">Exporter rapport</button></div>')
-    +'</div>'
-    +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'
-        +'<button onclick="_mDoEssai()" style="padding:10px;border:2px solid #16a34a;color:#16a34a;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>'
-        +'<button onclick="_mDoTransfo()" style="padding:10px;border:2px solid #2563eb;color:#2563eb;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>'
-        +'<button onclick="_mDoPenalite()" style="padding:10px;border:2px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>'
-        +'<button onclick="_mDoDrop()" style="padding:10px;border:2px solid #d97706;color:#d97706;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>'
-      +'</div></div>'
-    +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">'+_mActiveMatchAdv+'</div>'
-      +'<div style="display:flex;gap:4px">'
-        +'<button onclick="_mDoAdvEssai()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+5</button>'
-        +'<button onclick="_mDoAdvTransfo()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+2</button>'
-        +'<button onclick="_mDoAdvPenalite()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
-        +'<button onclick="_mDoAdvDrop()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>'
-        +'<button onclick="_mCorrectScore(-1)" style="padding:9px 10px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-size:12px;cursor:pointer;color:#6b7280">-1</button>'
-      +'</div></div>'
-    +'<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">Evenements</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'
-        +'<button onclick="_mDoRemplacement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Remplacement</button>'
-        +'<button onclick="_mDoAvertissement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Avertissement</button>'
-        +'<button onclick="_mDoCartonJ()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton jaune</button>'
-        +'<button onclick="_mDoCartonR()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton rouge</button>'
-        +'<button onclick="_mDoBlessure()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>'
-      +'</div></div>'
-    +'<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Historique</div>'
-      +'<div id="m-history" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;min-height:36px"></div>'
-    +'</div>';
+  var adv=String(_mActiveMatchAdv||"Adversaire");
+  var c1=S.settings.c1||"#1a3a6b";
+  
+  var html='';
+  // Header
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px">';
+  html+='<span style="font-family:var(--fd);font-size:15px;font-weight:900;color:'+c1+'">vs '+adv+'</span>';
+  html+='<button onclick="_mResetActiveMatch()" style="background:none;border:1px solid #d1d5db;color:#6b7280;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px">Changer</button>';
+  html+='</div>';
+  
+  // Config
+  html+='<details style="margin-bottom:10px"><summary style="font-size:11px;color:#6b7280;cursor:pointer;list-style:none">Parametres du chrono</summary>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 0;align-items:end">';
+  html+='<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Periodes</label>';
+  html+='<input id="mc-periods" type="number" min="1" max="5" value="'+pCount+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>';
+  html+='<div><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:2px">Duree (min)</label>';
+  html+='<input id="mc-duration" type="number" min="1" max="60" value="'+(cfg.duration||20)+'" style="width:100%;padding:5px;border:1px solid #d1d5db;border-radius:5px;font-size:14px;text-align:center"></div>';
+  html+='<div><label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-top:14px">';
+  html+='<input id="mc-reverse" type="checkbox" '+(cfg.reverse?"checked":"")+' style="width:14px;height:14px"> Inverse</label></div>';
+  html+='</div><button onclick="_mSaveConfig()" style="width:100%;padding:7px;background:'+c1+';color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Appliquer</button></details>';
+  
+  // Chrono
+  html+='<div style="background:'+c1+';color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center">';
+  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.65;margin-bottom:2px">'+(ended?"TERMINE":pLabel+" ("+(pidx+1)+"/"+pCount+")")+'</div>';
+  html+='<div id="m-time" style="font-size:52px;font-weight:900;font-family:var(--fd);letter-spacing:3px;line-height:1">'+_mFormatTime(_mSeconds,cfg)+'</div>';
+  html+='<div style="display:flex;justify-content:center;align-items:center;gap:28px;margin:10px 0 12px">';
+  html+='<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">SAR/MOM</div>';
+  html+='<div id="m-score-us" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalUs+'</div></div>';
+  html+='<div style="font-size:22px;opacity:.35;font-weight:900">-</div>';
+  html+='<div><div style="font-size:9px;opacity:.6;text-transform:uppercase;margin-bottom:2px">'+adv+'</div>';
+  html+='<div id="m-score-them" style="font-size:40px;font-weight:900;font-family:var(--fd);line-height:1">'+totalThem+'</div></div>';
+  html+='</div>';
+  if(!ended){
+    var btnBg=_mRunning?"rgba(255,255,255,.2)":"rgba(255,255,255,.95)";
+    var btnCol=_mRunning?"#fff":"var(--c1)";
+    var btnTxt=_mRunning?"Pause":"Demarrer";
+    var nxtTxt=pidx<pCount-1?"Fin periode":"Fin match";
+    html+='<div style="display:flex;gap:8px">';
+    html+='<button id="m-btn-ss" onclick="_mStartStop()" style="flex:2;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;background:'+btnBg+';color:'+btnCol+'">'+btnTxt+'</button>';
+    html+='<button onclick="_mNextPeriod()" style="flex:1;padding:11px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">'+nxtTxt+'</button>';
+    html+='</div>';
+  } else {
+    html+='<div style="display:flex;gap:8px">';
+    html+='<button onclick="_mReset()" style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff">Nouveau</button>';
+    html+='<button onclick="_mExportMatch()" style="flex:2;padding:9px;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;background:rgba(255,255,255,.9);color:var(--c1)">Rapport</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  
+  // SAR/MOM buttons
+  html+='<div style="margin-bottom:8px">';
+  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">SAR/MOM</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
+  html+='<button onclick="_mDoEssai()" style="padding:10px;border:2px solid #16a34a;color:#16a34a;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Essai +5</button>';
+  html+='<button onclick="_mDoTransfo()" style="padding:10px;border:2px solid #2563eb;color:#2563eb;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Transfo +2</button>';
+  html+='<button onclick="_mDoPenalite()" style="padding:10px;border:2px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Penalite +3</button>';
+  html+='<button onclick="_mDoDrop()" style="padding:10px;border:2px solid #d97706;color:#d97706;background:#fff;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Drop +3</button>';
+  html+='</div></div>';
+  
+  // Adversaire
+  html+='<div style="margin-bottom:8px">';
+  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">'+adv+'</div>';
+  html+='<div style="display:flex;gap:4px">';
+  html+='<button onclick="_mDoAdvEssai()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+5</button>';
+  html+='<button onclick="_mDoAdvTransfo()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+2</button>';
+  html+='<button onclick="_mDoAdvPenalite()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>';
+  html+='<button onclick="_mDoAdvDrop()" style="flex:1;padding:9px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">+3</button>';
+  html+='<button onclick="_mCorrectScore(-1)" style="padding:9px 10px;background:#f9fafb;border:1px solid #d1d5db;border-radius:7px;font-size:12px;cursor:pointer;color:#6b7280">-1</button>';
+  html+='</div></div>';
+  
+  // Evenements
+  html+='<div style="margin-bottom:8px">';
+  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:5px">Evenements</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
+  html+='<button onclick="_mDoRemplacement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Remplacement</button>';
+  html+='<button onclick="_mDoAvertissement()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Avertissement</button>';
+  html+='<button onclick="_mDoCartonJ()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton jaune</button>';
+  html+='<button onclick="_mDoCartonR()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer">Carton rouge</button>';
+  html+='<button onclick="_mDoBlessure()" style="padding:9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;font-size:12px;cursor:pointer;grid-column:span 2">Blessure</button>';
+  html+='</div></div>';
+  
+  // Historique
+  html+='<div>';
+  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px">Historique</div>';
+  html+='<div id="m-history" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;min-height:36px"></div>';
+  html+='</div>';
+  
+  el.innerHTML=html;
   _mRefreshHistory();
 }
 
-// ── Statistiques joueurs ─────────────────────────────────────────
-function computePlayerStats(){
-  var stats={};
-  (S.events||[]).forEach(function(ev){
-    // Stats from lineups (matchs joués)
-    var ms=getMatches(ev);
-    (ev.teams||[]).forEach(function(tid){
-      ms.forEach(function(m){
-        var res=getResolved(ev,tid,m.id);
-        res.forEach(function(pid,idx2){
-          if(!pid)return;
-          var k=String(pid);
-          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,remplacements:0};
-          stats[k].matchs++;
-        });
-      });
-    });
-    // Stats from match events
-    var matchData=ev.match&&ev.match.byMatch||{};
-    Object.values(matchData).forEach(function(md){
-      (md.periods||[]).forEach(function(p){
-        (p.events||[]).forEach(function(evt){
-          if(!evt.pid||evt.forUs===false)return;
-          var k=String(evt.pid);
-          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,remplacements:0};
-          if(evt.type==='essai')stats[k].essais++;
-          if(evt.type==='carton_jaune')stats[k].cartons_j++;
-          if(evt.type==='carton_rouge')stats[k].cartons_r++;
-          if(evt.type==='blessure')stats[k].blessures++;
-          if(evt.type==='remplacement'&&(evt.out===evt.pid||String(evt.out)===k))stats[k].remplacements++;
-        });
-      });
-    });
-  });
-  return stats;
-}
-
-function renderPlayerStats(pid){
-  var el=document.getElementById("mp-stats");if(!el)return;
-  var stats=computePlayerStats();
-  var st=stats[String(pid)];
-  if(!st||!st.matchs){
-    el.innerHTML="<span style='font-size:11px;color:#9ca3af'>Aucune donnee de match pour ce joueur</span>";
-    return;
-  }
-  var html="<div style='display:flex;flex-wrap:wrap;gap:5px'>";
-  html+="<span style='background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.matchs+" match"+(st.matchs>1?"s":"")+"</span>";
-  if(st.essais)html+="<span style='background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.essais+" essai"+(st.essais>1?"s":"")+"</span>";
-  if(st.cartons_j)html+="<span style='background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.cartons_j+" 🟡</span>";
-  if(st.cartons_r)html+="<span style='background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.cartons_r+" 🔴</span>";
-  if(st.blessures)html+="<span style='background:#f3e8ff;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700'>"+st.blessures+" 🤕</span>";
-  html+="</div>";
-  el.innerHTML=html;
-}
-
-
-function _mExportMatch(){var b=document.querySelector('.stab[onclick*=rapport]');if(b)b.click();}
-
-function renderEffectif(){
-  var el=document.getElementById("effectif-content");if(!el)return;
-  if(!curEV){el.innerHTML="<p style='color:#9ca3af;text-align:center;padding:20px'>Aucun evenement selectionne</p>";return;}
-  var stats=computePlayerStats();
-  var base=getBase(curEV,curTID).filter(Boolean);
-  var players=base.length>0?S.players.filter(function(p){return base.map(String).includes(String(p.id));}):S.players;
-  if(!players.length){el.innerHTML="<p style='color:#9ca3af;text-align:center;padding:20px'>Aucun joueur convoque</p>";return;}
-  el.innerHTML="<div style='padding:4px'>"
-    +"<div style='font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px'>Joueurs convoqués ("+players.length+")</div>"
-    +players.map(function(p){
-      var st=stats[String(p.id)]||{matchs:0,essais:0,cartons_j:0,cartons_r:0};
-      var tags=p.pos.slice(0,2).map(function(pos){return"<span style='background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:9px;margin-right:2px'>"+pos+"</span>";}).join("");
-      var statBadges=(st.essais?"<span style='background:#dcfce7;color:#16a34a;padding:1px 5px;border-radius:10px;font-size:9px;margin-right:2px'>"+st.essais+" essai"+(st.essais>1?"s":"")+"</span>":"")
-        +(st.cartons_j?"<span style='background:#fef9c3;color:#854d0e;padding:1px 5px;border-radius:10px;font-size:9px;margin-right:2px'>"+st.cartons_j+" 🟡</span>":"")
-        +(st.cartons_r?"<span style='background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:10px;font-size:9px;margin-right:2px'>"+st.cartons_r+" 🔴</span>":"");
-      var photoHtml=p.photo?"<img src='"+p.photo+"' style='width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:10px'>":"<div style='width:36px;height:36px;border-radius:50%;background:var(--c1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;margin-right:10px'>"+p.p[0]+(p.n[0]||"")+"</div>";
-      return"<div style='display:flex;align-items:center;padding:7px 4px;border-bottom:1px solid #f3f4f6'>"
-        +photoHtml
-        +"<div style='flex:1'>"
-          +"<div style='font-size:12px;font-weight:600'>"+p.p+" "+p.n+"</div>"
-          +"<div style='margin-top:2px'>"+tags+(p.inj?"<span style='background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:4px;font-size:9px'>BLESSÉ</span>":"")+"</div>"
-          +(statBadges?"<div style='margin-top:3px'>"+statBadges+"</div>":"")
-        +"</div>"
-        +(st.matchs?"<div style='font-size:10px;color:#9ca3af;text-align:right'>"+st.matchs+"<br><span style='font-size:9px'>matchs</span></div>":"")
-      +"</div>";
-    }).join("")
-    +"</div>";
-}
-
-function renderRapport(){
-  var el=document.getElementById("rapport-content");if(!el)return;
-  if(!curEV){
-    el.innerHTML='<div style="padding:20px;color:red">curEV est null</div>';return;
-  }
-  var allMatches=getMatches(curEV)||[];
-  var matchStore=curEV.match||{};
-  var byMatch=matchStore.byMatch||{};
-  var byMatchKeys=Object.keys(byMatch);
-
-  // Debug info
-  var debugHTML='<div style="background:#f3f4f6;border-radius:8px;padding:10px;margin:10px;font-size:11px;font-family:monospace">'
-    +'<b>DEBUG</b><br>'
-    +'curEV.id: '+curEV.id+'<br>'
-    +'allMatches: '+allMatches.length+' matchs<br>'
-    +'byMatch keys: '+JSON.stringify(byMatchKeys)+'<br>'
-    +'allMatches ids: '+JSON.stringify(allMatches.map(function(m){return m.id;}))+'<br>'
-    +'_mActiveMatchId: '+_mActiveMatchId+'<br>'
-    +'curMID: '+curMID
-    +'</div>';
-
-  var c1=S.settings.c1||"#1a3a6b";
-  var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
-
-  var matchesHTML=allMatches.map(function(m){
-    var adv=m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv;
-    var md=byMatch[m.id];
-    var cfg=matchStore.config||{periods:2,duration:20};
-    var totalUs=md?(md.periods||[]).reduce(function(a,p){return a+(p.score_us||0);},0):0;
-    var totalThem=md?(md.periods||[]).reduce(function(a,p){return a+(p.score_them||0);},0):0;
-    var played=md&&((md.periods||[]).some(function(p){
-      return(p.score_us||0)+(p.score_them||0)>0||(p.events||[]).length>0;
-    })||md.status==="ended");
-    var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
-    var bgColor=!played?"#6b7280":win?c1:draw?"#374151":"#991b1b";
-    var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
-    var allEvts=[];
-    if(md)(md.periods||[]).forEach(function(p,pi){(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
-    allEvts.sort(function(a,b){return a.ts-b.ts;});
-    return'<div style="background:white;border-radius:10px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)">'
-      +'<div style="background:'+c1+';color:white;padding:10px 14px"><div style="font-size:13px;font-weight:700">vs '+adv+'</div>'
-        +'<div style="font-size:10px;opacity:.7">md: '+(md?'OUI ('+Object.keys(md).join(',')+')':'NON')+'</div>'
-      +'</div>'
-      +'<div style="background:'+bgColor+';color:white;padding:12px;text-align:center">'
-        +'<div style="font-size:9px;opacity:.7;text-transform:uppercase;margin-bottom:4px">'+resultLabel+'</div>'
-        +'<div style="display:flex;align-items:center;justify-content:center;gap:20px">'
-          +'<div><div style="font-size:9px;opacity:.6;text-transform:uppercase">SAR/MOM</div><div style="font-size:36px;font-weight:900;font-family:var(--fd)">'+totalUs+'</div></div>'
-          +'<div style="font-size:18px;opacity:.4">—</div>'
-          +'<div><div style="font-size:9px;opacity:.6;text-transform:uppercase">'+adv+'</div><div style="font-size:36px;font-weight:900;font-family:var(--fd)">'+totalThem+'</div></div>'
-        +'</div>'
-      +'</div>'
-      +(allEvts.length?'<div style="padding:10px 14px">'
-        +allEvts.map(function(e){
-          var pL=(cfg.periods||2)===2?(e.pi===0?'1MT':'2MT'):('T'+(e.pi+1));
-          var desc=e.type==='remplacement'?(e.outName+' > '+e.inName):(e.forUs===false?'['+adv+']':e.name||'');
-          if(e.nat)desc+=' ('+e.nat+')';
-          return'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:11px">'
-            +'<span style="background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:700">'+pL+' '+e.min+"'</span>"
-            +'<span>'+(icons[e.type]||'•')+'</span>'
-            +'<span style="flex:1;color:#374151">'+desc+'</span>'
-            +(e.pts&&e.forUs!==false?'<span style="font-weight:700;color:'+c1+';font-size:10px">+'+e.pts+'</span>':'')
-          +'</div>';
-        }).join('')
-      +'</div>':'')
-    +'</div>';
-  }).join('');
-
-  el.innerHTML='<div style="padding:10px">'
-    +debugHTML
-    +(matchesHTML||'<div style="text-align:center;padding:20px;color:#9ca3af">Aucun match avec donnees</div>')
-    +(matchesHTML?'<button onclick="_mExportRapportPDF()" style="width:100%;margin-top:4px;padding:11px;background:'+c1+';color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">📄 Exporter en PDF</button>':'')
-  +'</div>';
-}
-
-
-function _mExportRapportPDF(){
-  var el=document.getElementById("rapport-content");if(!el)return;
-  if(typeof html2canvas==="undefined"||typeof jspdf==="undefined"){alert("Librairies PDF non chargées");return;}
-  html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#f9fafb"}).then(function(canvas){
-    var imgData=canvas.toDataURL("image/jpeg",0.92);
-    var pdf=new jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-    var pdfW=pdf.internal.pageSize.getWidth(),pdfH=pdf.internal.pageSize.getHeight();
-    var ratio=canvas.height/canvas.width;
-    var imgH=pdfW*ratio;
-    if(imgH<=pdfH){
-      pdf.addImage(imgData,"JPEG",0,0,pdfW,imgH);
-    } else {
-      var y=0,remaining=imgH;
-      while(remaining>0){
-        pdf.addImage(imgData,"JPEG",0,-y,pdfW,imgH);
-        remaining-=pdfH;y+=pdfH;
-        if(remaining>0)pdf.addPage();
-      }
-    }
-    pdf.save("rapport_"+curEV.name.replace(/\s+/g,"_")+".pdf");
-  });
-}
-
-// MISC
-function cm(id){document.getElementById(id)?.classList.remove("open");}
-function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`${dd}/${m}/${y}`;}
 
 // INIT
-['sm5','sm6'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
-try{var _ld=JSON.parse(localStorage.getItem('sm7')||'null');if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem('sm7');}catch(e){}
+["sm5","sm6"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+try{var _ld=JSON.parse(localStorage.getItem("sm7")||"null");if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem("sm7");}catch(e){}
 if(S.players.length<60)S.players=INIT_PL;
-(function(){var ns=document.getElementById('nav-sub-txt');if(ns&&S.settings&&S.settings.season)ns.textContent='Entente M14 · Saison '+S.settings.season;})();
+(function(){var ns=document.getElementById("nav-sub-txt");if(ns&&S.settings&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;})();
 _gCheckRedirectToken();
 rdash();revents();
 </script>
