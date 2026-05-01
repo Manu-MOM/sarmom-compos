@@ -376,7 +376,10 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </div>
     <div class="card"><div class="ctitle">Données</div>
       <button class="btn btn-g" onclick="expJSON()" style="width:100%;justify-content:center;margin-bottom:5px">⬇ Exporter JSON</button>
-      <button class="btn btn-g" onclick="document.getElementById('imp').click()" style="width:100%;justify-content:center;margin-bottom:5px">⬆ Importer JSON</button>
+      <div style="display:flex;gap:6px;margin-bottom:5px">
+        <button class="btn btn-g" onclick="document.getElementById('imp').click()" style="flex:1;justify-content:center;font-size:11px">💻 Ordinateur</button>
+        <button class="btn btn-g" onclick="impFromDrive()" style="flex:1;justify-content:center;font-size:11px">☁️ Drive</button>
+      </div>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(event)">
       <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm7');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
     </div>
@@ -1633,6 +1636,38 @@ function _mExportRapportPDF(){
     var imgH=pdfW*ratio;
     pdf.addImage(imgData,"JPEG",0,0,pdfW,imgH);
     pdf.save("rapport_"+curEV.name.replace(/\s+/g,"_")+".pdf");
+  });
+}
+
+
+function impFromDrive(){
+  if(!_gAccessToken){
+    alert("Connectez d'abord Google Drive dans les Réglages.");
+    return;
+  }
+  // Search for sarmom_compos.json in Drive
+  var q="name='sarmom_compos.json' and trashed=false";
+  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)",{
+    headers:{Authorization:"Bearer "+_gAccessToken}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    if(!data.files||!data.files.length){
+      alert("Fichier sarmom_compos.json introuvable sur Drive.");
+      return;
+    }
+    var fileId=data.files[0].id;
+    return fetch("https://www.googleapis.com/drive/v3/files/"+fileId+"?alt=media",{
+      headers:{Authorization:"Bearer "+_gAccessToken}
+    });
+  }).then(function(r){if(r)return r.json();})
+  .then(function(json){
+    if(!json)return;
+    var merged=Object.assign({players:INIT_PL,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}},json);
+    if(!merged.players||merged.players.length<60)merged.players=INIT_PL;
+    S=merged;sv();rdash();revents();rsettings();
+    alert("Données importées depuis Drive !");
+  }).catch(function(e){
+    alert("Erreur import Drive : "+e.message);
   });
 }
 
