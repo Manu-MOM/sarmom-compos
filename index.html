@@ -1713,61 +1713,84 @@ function _mExportRapportPDF(){
   if(!JPDF){alert("PDF non disponible - rechargez la page");return;}
   if(typeof html2canvas==="undefined"){alert("html2canvas non disponible");return;}
   var evName=(curEV?curEV.name.replace(/\s+/g,"_"):"match");
-  // Force render terrain SVG avant export
-  try{if(typeof drawField==="function")drawField();}catch(e){}
+
+  // Force render terrain - temporarily show terrain panel off-screen
+  var terrainPanel=document.getElementById("ev-terrain");
+  var terrainWasHidden=terrainPanel&&terrainPanel.style.display==="none";
+  if(terrainPanel&&terrainWasHidden){
+    terrainPanel.style.position="fixed";
+    terrainPanel.style.left="-9999px";
+    terrainPanel.style.display="block";
+  }
+  try{if(typeof drawField==="function")drawField();}catch(e){console.warn("drawField error:",e);}
+
   var svgEl=document.getElementById("field-svg");
+
+  function restoreTerrain(){
+    if(terrainPanel&&terrainWasHidden){
+      terrainPanel.style.display="none";
+      terrainPanel.style.position="";
+      terrainPanel.style.left="";
+    }
+  }
 
   function svgToCanvas(svgEl,cb){
     if(!svgEl||!svgEl.innerHTML||svgEl.innerHTML.trim()===""){cb(null);return;}
     try{
-      var svgStr=new XMLSerializer().serializeToString(svgEl);
-      var blob=new Blob([svgStr],{type:"image/svg+xml"});
-      var url=URL.createObjectURL(blob);
+      // Clone SVG with explicit dimensions
+      var vb=svgEl.viewBox.baseVal;
+      var sw=vb.width||520,sh=vb.height||700;
+      var svgClone=svgEl.cloneNode(true);
+      svgClone.setAttribute("width",sw);
+      svgClone.setAttribute("height",sh);
+      var svgStr=new XMLSerializer().serializeToString(svgClone);
+      var svgB64="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svgStr)));
       var img=new Image();
       img.onload=function(){
-        var vb=svgEl.viewBox.baseVal;
-        var sw=vb.width||520,sh=vb.height||700;
         var fc=document.createElement("canvas");
         fc.width=sw*2;fc.height=sh*2;
-        var ctx=fc.getContext("2d");ctx.scale(2,2);
+        var ctx=fc.getContext("2d");
+        ctx.scale(2,2);
         ctx.fillStyle="#fff";ctx.fillRect(0,0,sw,sh);
         ctx.drawImage(img,0,0,sw,sh);
-        URL.revokeObjectURL(url);
         cb(fc);
       };
-      img.onerror=function(){URL.revokeObjectURL(url);cb(null);};
-      img.src=url;
-    }catch(e){console.warn(e);cb(null);}
+      img.onerror=function(){console.warn("SVG img error");cb(null);};
+      img.src=svgB64;
+    }catch(e){console.warn("svgToCanvas error:",e);cb(null);}
   }
 
-  html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
-    var JPDF2=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
-    var pdf=new JPDF2({orientation:"portrait",unit:"mm",format:"a4"});
-    var pw=pdf.internal.pageSize.getWidth();
-    var ph=pdf.internal.pageSize.getHeight();
-    // Page 1 : rapport
-    var imgData=canvas.toDataURL("image/png");
-    var ratio=canvas.height/canvas.width;
-    var imgH=pw*ratio;
-    if(imgH<=ph){
-      pdf.addImage(imgData,"PNG",0,0,pw,imgH);
-    } else {
-      var y=0;
-      while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(imgData,"PNG",0,-y,pw,imgH);y+=ph;}
-    }
-    // Page 2 : terrain
-    svgToCanvas(svgEl,function(terrainCanvas){
-      if(terrainCanvas){
-        pdf.addPage();
-        var fi=terrainCanvas.toDataURL("image/png");
-        var fw=pw;
-        var fh=pw*(terrainCanvas.height/terrainCanvas.width);
-        var yo=fh<ph?(ph-fh)/2:0;
-        pdf.addImage(fi,"PNG",0,yo,fw,Math.min(fh,ph));
+  // Small delay to let drawField render
+  setTimeout(function(){
+    html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
+      var JPDF2=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+      var pdf=new JPDF2({orientation:"portrait",unit:"mm",format:"a4"});
+      var pw=pdf.internal.pageSize.getWidth();
+      var ph=pdf.internal.pageSize.getHeight();
+      // Page 1 : rapport
+      var imgData=canvas.toDataURL("image/png");
+      var ratio=canvas.height/canvas.width;
+      var imgH=pw*ratio;
+      if(imgH<=ph){
+        pdf.addImage(imgData,"PNG",0,0,pw,imgH);
+      } else {
+        var y=0;
+        while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(imgData,"PNG",0,-y,pw,imgH);y+=ph;}
       }
-      pdf.save("rapport_"+evName+".pdf");
+      // Page 2 : terrain
+      svgToCanvas(svgEl,function(fc){
+        restoreTerrain();
+        if(fc){
+          pdf.addPage();
+          var fi=fc.toDataURL("image/png");
+          var fh=pw*(fc.height/fc.width);
+          var yo=fh<ph?(ph-fh)/2:0;
+          pdf.addImage(fi,"PNG",0,yo,pw,Math.min(fh,ph));
+        }
+        pdf.save("rapport_"+evName+".pdf");
+      });
     });
-  });
+  },150);
 }
 
 function _openRapport(evId){
