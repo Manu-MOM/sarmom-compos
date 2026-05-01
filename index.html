@@ -1728,4 +1728,13 @@ function renderMatchTab(){
     :"");
 }
 
->
+// INIT
+['sm5','sm6'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+try{var _ld=JSON.parse(localStorage.getItem('sm7')||'null');if(_ld&&(_ld.players||[]).length<60)localStorage.removeItem('sm7');}catch(e){localStorage.removeItem('sm7');}
+if(S.players.length<60)S.players=INIT_PL;
+(function(){var ns=document.getElementById('nav-sub-txt');if(ns&&S.settings&&S.settings.season)ns.textContent='Entente M14 · Saison '+S.settings.season;})();
+_gCheckRedirectToken();
+rdash();revents();
+</script>
+</body>
+</html>
