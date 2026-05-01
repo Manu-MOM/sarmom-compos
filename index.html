@@ -194,7 +194,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
 .photo-area:hover{border-color:var(--sky);background:#f0f8ff}
 .photo-preview{width:70px;height:70px;border-radius:50%;object-fit:cover;margin:0 auto 6px;display:block;border:2px solid var(--c1)}
 /* STABS */
-.stabs{display:flex;border-bottom:1px solid var(--g200);margin-bottom:10px}
+.stabs{display:flex;border-bottom:1px solid var(--g200);margin-bottom:10pxoverflow-x:auto;-webkit-overflow-scrolling:touch;}
 .stab{padding:6px 12px;font-size:12px;font-weight:600;color:var(--g400);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:var(--fd);text-transform:uppercase;letter-spacing:.04em}
 .stab.active{color:var(--c1);border-bottom-color:var(--c1)}
 /* FBAR */
@@ -339,6 +339,13 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </select>
     <select class="fsel" id="p-jdd" onchange="rplayers()"><option value="">Passeport JDD</option><option value="oui">JDD Validé</option><option value="non">Sans JDD</option></select>
     <select class="fsel" id="p-arb" onchange="rplayers()"><option value="">Passeport Arbitrage</option><option value="oui">Arbitrage Validé</option><option value="non">Sans arbitrage</option></select>
+    <select class="fsel" id="p-apt" onchange="rplayers()">
+      <option value="">Toutes aptitudes</option>
+      <option>Tank</option><option>Driver</option><option>Runner</option>
+      <option>Botteur</option><option>Lanceur</option><option>Sauteur</option><option>Lifteur</option>
+      <option>Avant</option><option>3/4</option><option>Gros défenseur</option>
+      <option>Bon gratteur</option><option>Fort au contact</option><option>Rapide</option>
+    </select>
     <select class="fsel" id="p-inj" onchange="rplayers()"><option value="">Tous états</option><option value="ok">Disponibles</option><option value="inj">Blessés</option></select>
   </div>
   <div class="pg" id="players-grid"></div>
@@ -463,7 +470,17 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <div class="fg"><label class="fl">Club</label><select class="fs" id="mp-club"><option>SAR</option><option>MOM</option><option>ASCS</option></select></div>
       <div class="fg"><label class="fl">Catégorie</label><select class="fs" id="mp-cat"><option>M13</option><option>M14</option><option>F14</option><option>F15</option></select></div>
     </div>
-    <div class="fg"><label class="fl">Postes (virgule)</label><input class="fi" id="mp-pos" placeholder="Pilier, 3ème ligne"></div>
+    <div class="fg"><label class="fl">Postes</label>
+      <div id="mp-pos-dropdown" style="position:relative">
+        <div id="mp-pos-display" onclick="document.getElementById('mp-pos-list').style.display=document.getElementById('mp-pos-list').style.display==='block'?'none':'block'" 
+          style="cursor:pointer;border:1px solid var(--g200);border-radius:6px;padding:7px 10px;font-size:13px;min-height:34px;background:#fff;display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+          <span id="mp-pos-placeholder" style="color:var(--g400);font-size:12px">Sélectionner des postes…</span>
+        </div>
+        <div id="mp-pos-list" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;width:100%;left:0;top:calc(100% + 2px)">
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Talonneur" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Talonneur</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="2ème ligne gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 2ème ligne gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="2ème ligne droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 2ème ligne droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Flanker gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Flanker gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Flanker droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Flanker droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Numéro 8" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Numéro 8</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Demi de mêlée" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Demi de mêlée</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Demi d'ouverture" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Demi d'ouverture</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Centre droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Centre droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Ailier gauche" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Ailier gauche</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Ailier droit" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Ailier droit</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Arrière" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Arrière</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="Pilier" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> Pilier</label><label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--g50)" onclick="event.stopPropagation()"><input type="checkbox" class="mp-pos-cb" value="3ème ligne" style="width:14px;height:14px" onchange="_mUpdatePosDisplay()"> 3ème ligne</label>
+        </div>
+      </div>
+      <input type="hidden" id="mp-pos"></div>
     <div class="fg"><label class="fl">Aptitudes</label><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:3px" id="mp-apts"></div></div>
     <div class="f2">
       <div class="fg"><label class="fl">Taille (m)</label><input class="fi" id="mp-h" type="number" step="0.01"></div>
@@ -997,6 +1014,8 @@ function rplayers(){
     if(s&&!`${p.p} ${p.n}`.toLowerCase().includes(s))return false;
     if(club&&p.club!==club)return false;if(cat&&p.cat!==cat)return false;
     if(pos&&!p.pos.some(pp=>pp.toLowerCase().includes(pos.toLowerCase())))return false;
+    const apt=document.getElementById('p-apt')?.value||'';
+    if(apt&&!(p.apt||[]).includes(apt))return false;
     if(jdd==="oui"&&p.jdd!=="oui")return false;if(jdd==="non"&&p.jdd==="oui")return false;
     if(arb==="oui"&&p.arb!=="oui")return false;if(arb==="non"&&p.arb==="oui")return false;
     if(inj==="ok"&&p.inj)return false;if(inj==="inj"&&!p.inj)return false;
@@ -1859,6 +1878,29 @@ function renderMatchTab() {
   `;
 }
 
+function _mUpdatePosDisplay(){
+  const cbs=[...document.querySelectorAll('.mp-pos-cb:checked')];
+  const vals=cbs.map(c=>c.value);
+  document.getElementById('mp-pos').value=vals.join(', ');
+  const disp=document.getElementById('mp-pos-display');
+  const ph=document.getElementById('mp-pos-placeholder');
+  if(vals.length===0){
+    disp.innerHTML='<span id="mp-pos-placeholder" style="color:var(--g400);font-size:12px">Sélectionner des postes…</span>';
+  } else {
+    disp.innerHTML=vals.map(v=>`<span style="background:var(--g100);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600">${v}</span>`).join('');
+  }
+}
+function _mInitPosDropdown(posArr){
+  document.querySelectorAll('.mp-pos-cb').forEach(cb=>{
+    cb.checked=posArr.includes(cb.value);
+  });
+  _mUpdatePosDisplay();
+  // Close on outside click
+  document.addEventListener('click', function(e){
+    const dd=document.getElementById('mp-pos-list');
+    if(dd&&!document.getElementById('mp-pos-dropdown').contains(e.target)) dd.style.display='none';
+  },{once:true});
+}
 // MISC
 function cm(id){document.getElementById(id).classList.remove("open");}
 document.querySelectorAll(".mbg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");}));
