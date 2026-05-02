@@ -1713,278 +1713,90 @@ function _mExportMatch(){
 }
 
 function _mExportRapportPDF(){
+  var el=document.getElementById("rapport-content");
+  if(!el)return;
   var JPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF||null;
   if(!JPDF){alert("PDF non disponible - rechargez la page");return;}
-  if(!curEV){alert("Aucun evenement selectionne");return;}
-
-  var pdf=new JPDF({orientation:"portrait",unit:"mm",format:"a4"});
-  var pw=pdf.internal.pageSize.getWidth();   // 210mm
-  var ph=pdf.internal.pageSize.getHeight();  // 297mm
-  var ml=14, mr=14, mt=14;
-  var cw=pw-ml-mr; // content width = 182mm
-
-  // Colors
-  var c1arr=_hexToRgb(S.settings.c1||"#1a3a6b");
-  var c2arr=_hexToRgb(S.settings.c2||"#f0c500");
-  var allMatches=getMatches(curEV)||[];
-  var byMatch=(curEV.match&&curEV.match.byMatch)||{};
-  var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
-  var icons={essai:"Essai",transfo:"Transfo",penalite:"Penalite",drop:"Drop",
-             remplacement:"Rempl.",carton_jaune:"C.Jaune",carton_rouge:"C.Rouge",
-             blessure:"Blessure",avertissement:"Avert."};
-  var y=mt;
-
-  function newPageIfNeeded(needed){
-    if(y+needed>ph-10){pdf.addPage();y=mt;}
-  }
-
-  function drawHeader(){
-    // Top banner
-    pdf.setFillColor(c1arr[0],c1arr[1],c1arr[2]);
-    pdf.rect(0,0,pw,22,"F");
-    // Logo circle
-    if(window._LOGO_SM){
-      try{
-        pdf.addImage("data:image/png;base64,"+window._LOGO_SM,"PNG",ml,2,18,18);
-      }catch(e){}
-    }
-    pdf.setTextColor(c2arr[0],c2arr[1],c2arr[2]);
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(14);
-    pdf.text(curEV.name.toUpperCase(),ml+22,10);
-    pdf.setFont("helvetica","normal");
-    pdf.setFontSize(8);
-    pdf.setTextColor(220,220,220);
-    pdf.text(curEV.date+" \u00b7 "+curEV.lieu+" \u00b7 Format "+curEV.format+" joueurs",ml+22,16);
-    // Right: date export
-    pdf.setFontSize(7);
-    pdf.text(new Date().toLocaleDateString("fr-FR"),pw-mr,10,"right");
-    y=28;
-  }
-
-  // ── PAGE 1 : RÉSUMÉ ──────────────────────────────────────────────
-  drawHeader();
-
-  // Titre section
-  pdf.setFillColor(c1arr[0],c1arr[1],c1arr[2]);
-  pdf.rect(ml,y,cw,7,"F");
-  pdf.setTextColor(255,255,255);
-  pdf.setFont("helvetica","bold");
-  pdf.setFontSize(9);
-  pdf.text("RÉSUMÉ DU TOURNOI",ml+3,y+5);
-  y+=10;
-
-  // Tableau résumé des matchs
-  var cols=[cw*0.38,cw*0.12,cw*0.12,cw*0.12,cw*0.26];
-  var headers=["Adversaire","Nous","Eux","Résultat","Buteurs"];
-  var rowH=8;
-
-  // Header row
-  pdf.setFillColor(240,242,245);
-  pdf.rect(ml,y,cw,rowH,"F");
-  pdf.setTextColor(80,80,80);
-  pdf.setFont("helvetica","bold");
-  pdf.setFontSize(7.5);
-  var cx=ml;
-  headers.forEach(function(h,i){pdf.text(h,cx+2,y+5.5);cx+=cols[i];});
-  pdf.setDrawColor(200,200,200);
-  pdf.line(ml,y+rowH,ml+cw,y+rowH);
-  y+=rowH;
-
-  allMatches.forEach(function(m,mi){
-    newPageIfNeeded(rowH+2);
-    var adv=String(m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv);
-    var md=byMatch[m.id];
-    var totalUs=0,totalThem=0,allEvts=[];
-    if(md)(md.periods||[]).forEach(function(p,pi){
-      if(p){totalUs+=(p.score_us||0);totalThem+=(p.score_them||0);
-        (p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});}
-    });
-    var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended");
-    var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
-    var bg=mi%2===0?[255,255,255]:[248,250,252];
-    pdf.setFillColor(bg[0],bg[1],bg[2]);
-    pdf.rect(ml,y,cw,rowH,"F");
-    // Result color bar
-    if(played){
-      var rc=win?[22,163,74]:draw?[100,100,100]:[185,28,28];
-      pdf.setFillColor(rc[0],rc[1],rc[2]);
-      pdf.rect(ml,y,2,rowH,"F");
-    }
-    pdf.setTextColor(40,40,40);
-    pdf.setFont("helvetica","normal");
-    pdf.setFontSize(7.5);
-    var cx2=ml;
-    // Adversaire
-    pdf.text(adv.length>28?adv.slice(0,27)+"…":adv,cx2+3,y+5.5);cx2+=cols[0];
-    // Score nous
-    if(played){pdf.setFont("helvetica","bold");pdf.setTextColor(c1arr[0],c1arr[1],c1arr[2]);}
-    pdf.text(played?String(totalUs):"-",cx2+cols[0]*0.4,y+5.5,"center");cx2+=cols[1];
-    // Score eux
-    pdf.setFont("helvetica","normal");pdf.setTextColor(40,40,40);
-    pdf.text(played?String(totalThem):"-",cx2+cols[1]*0.4,y+5.5,"center");cx2+=cols[2];
-    // Résultat
-    if(played){
-      var rl=win?"VICTOIRE":draw?"NUL":"DÉFAITE";
-      var rc2=win?[22,163,74]:draw?[80,80,80]:[185,28,28];
-      pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);
-      pdf.setTextColor(rc2[0],rc2[1],rc2[2]);
-      pdf.text(rl,cx2+2,y+5.5);
-    }cx2+=cols[3];
-    // Buteurs
-    pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.setTextColor(80,80,80);
-    var buteurs=allEvts.filter(function(e){return e.type==="essai"&&e.forUs!==false;}).map(function(e){return e.name?e.name.split(" ")[0]:"?";}).join(", ");
-    if(buteurs.length>30)buteurs=buteurs.slice(0,29)+"…";
-    pdf.text(buteurs||"-",cx2+2,y+5.5);
-    pdf.setDrawColor(220,220,220);
-    pdf.line(ml,y+rowH,ml+cw,y+rowH);
-    y+=rowH;
-  });
-  y+=6;
-
-  // ── DÉTAIL PAR MATCH ─────────────────────────────────────────────
-  allMatches.forEach(function(m){
-    var adv=String(m.adv&&String(m.adv).length>2?m.adv:"Match "+m.adv);
-    var md=byMatch[m.id];
-    if(!md)return;
-    var totalUs=0,totalThem=0,allEvts=[];
-    (md.periods||[]).forEach(function(p,pi){
-      if(p){totalUs+=(p.score_us||0);totalThem+=(p.score_them||0);
-        (p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});}
-    });
-    if(totalUs+totalThem===0&&allEvts.length===0&&md.status!=="ended")return;
-    allEvts.sort(function(a,b){return a.ts-b.ts;});
-
-    newPageIfNeeded(30);
-
-    // Match header
-    var win=totalUs>totalThem,draw=totalUs===totalThem;
-    var rc=win?[22,163,74]:draw?[80,80,80]:[185,28,28];
-    pdf.setFillColor(c1arr[0],c1arr[1],c1arr[2]);
-    pdf.rect(ml,y,cw,8,"F");
-    pdf.setTextColor(255,255,255);
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(9);
-    pdf.text("vs "+adv.toUpperCase(),ml+3,y+5.5);
-    // Score
-    pdf.setTextColor(c2arr[0],c2arr[1],c2arr[2]);
-    pdf.setFontSize(11);
-    pdf.text(totalUs+" - "+totalThem,pw-mr-3,y+5.5,"right");
-    // Result badge
-    pdf.setFillColor(rc[0],rc[1],rc[2]);
-    pdf.rect(pw-mr-28,y+1.5,22,5,"F");
-    pdf.setTextColor(255,255,255);
-    pdf.setFontSize(6.5);
-    pdf.setFont("helvetica","bold");
-    var rl2=win?"VICTOIRE":draw?"MATCH NUL":"DÉFAITE";
-    pdf.text(rl2,pw-mr-17,y+5.2,"center");
-    y+=10;
-
-    if(allEvts.length===0){
-      pdf.setFont("helvetica","italic");pdf.setFontSize(8);pdf.setTextColor(150,150,150);
-      pdf.text("Aucun événement enregistré",ml+3,y+4);
-      y+=8;
-    } else {
-      // Events table
-      var pCount=cfg.periods||2;
-      allEvts.forEach(function(e){
-        newPageIfNeeded(6);
-        var pL=pCount===2?(e.pi===0?"1MT":"2MT"):("T"+(e.pi+1));
-        var minStr=e.min?String(e.min)+"'":"";
-        var typStr=icons[e.type]||e.type;
-        var nameStr=e.type==="remplacement"?(e.outName||"?")+" > "+(e.inName||"?"):(e.forUs===false?"["+adv+"]":e.name||"");
-        if(e.nat)nameStr+=" ("+e.nat+")";
-        var ptsStr=e.pts&&e.forUs!==false?"+"+e.pts:"";
-        var forUs=e.forUs!==false;
-
-        pdf.setFillColor(forUs?[235,245,255]:[255,235,235]);
-        if(forUs)pdf.setFillColor(235,245,255);
-        else pdf.setFillColor(255,235,235);
-        pdf.rect(ml,y,cw,5.5,"F");
-        pdf.setDrawColor(220,220,220);
-        pdf.line(ml,y+5.5,ml+cw,y+5.5);
-
-        // Period badge
-        pdf.setFont("helvetica","bold");pdf.setFontSize(6);
-        pdf.setTextColor(forUs?c1arr[0]:185,forUs?c1arr[1]:28,forUs?c1arr[2]:28);
-        pdf.text(pL,ml+3,y+3.8);
-        // Min
-        pdf.setFont("helvetica","normal");pdf.setTextColor(100,100,100);
-        pdf.text(minStr,ml+12,y+3.8);
-        // Type
-        pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);
-        pdf.setTextColor(60,60,60);
-        pdf.text(typStr,ml+22,y+3.8);
-        // Name
-        pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.setTextColor(40,40,40);
-        var nameMax=nameStr.length>45?nameStr.slice(0,44)+"…":nameStr;
-        pdf.text(nameMax,ml+42,y+3.8);
-        // Points
-        if(ptsStr){
-          pdf.setFont("helvetica","bold");pdf.setFontSize(7);
-          pdf.setTextColor(c1arr[0],c1arr[1],c1arr[2]);
-          pdf.text(ptsStr,pw-mr-2,y+3.8,"right");
-        }
-        y+=5.5;
-      });
-    }
-    y+=5;
-  });
-
-  // ── PAGE TERRAIN ─────────────────────────────────────────────────
-  var svgEl=document.getElementById("field-svg");
-  var terrainPanel=document.getElementById("ev-terrain");
-  var wasHidden=terrainPanel&&terrainPanel.style.display==="none";
-  if(wasHidden){terrainPanel.style.position="fixed";terrainPanel.style.left="-9999px";terrainPanel.style.display="block";}
-  try{if(typeof drawField==="function")drawField();}catch(e){}
-
-  function finalizePDF(evName){
-    pdf.save("rapport_"+evName+".pdf");
-    if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
-  }
-
+  if(typeof html2canvas==="undefined"){alert("html2canvas non disponible");return;}
   var evName=(curEV?curEV.name.replace(/\s+/g,"_"):"match");
-  setTimeout(function(){
-    if(svgEl&&svgEl.innerHTML&&svgEl.innerHTML.trim()!==""){
-      try{
-        var vb=svgEl.viewBox.baseVal;
-        var sw=vb.width||520,sh=vb.height||700;
-        var clone=svgEl.cloneNode(true);
-        clone.setAttribute("width",sw);clone.setAttribute("height",sh);
-        var b64svg="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(clone))));
-        var img=new Image();
-        img.onload=function(){
-          var fc=document.createElement("canvas");
-          fc.width=sw*2;fc.height=sh*2;
-          var ctx=fc.getContext("2d");ctx.scale(2,2);
-          ctx.fillStyle="#fff";ctx.fillRect(0,0,sw,sh);
-          ctx.drawImage(img,0,0,sw,sh);
-          pdf.addPage();
-          drawHeader();
-          pdf.setFillColor(c1arr[0],c1arr[1],c1arr[2]);
-          pdf.rect(ml,y,cw,7,"F");
-          pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(9);
-          pdf.text("TERRAIN — COMPOSITION",ml+3,y+5);
-          y+=10;
-          var fi=fc.toDataURL("image/png");
-          var fh=(pw-ml-mr)*(fc.height/fc.width);
-          var yo=fh<(ph-y-10)?((ph-y-fh)/2):0;
-          pdf.addImage(fi,"PNG",ml,y+yo,pw-ml-mr,Math.min(fh,ph-y-10));
-          finalizePDF(evName);
-        };
-        img.onerror=function(){finalizePDF(evName);};
-        img.src=b64svg;
-        return;
-      }catch(e){console.warn(e);}
-    }
-    finalizePDF(evName);
-  },200);
-}
 
-function _hexToRgb(hex){
-  hex=hex.replace("#","");
-  if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
-  return[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];
+  // Force render terrain - temporarily show terrain panel off-screen
+  var terrainPanel=document.getElementById("ev-terrain");
+  var terrainWasHidden=terrainPanel&&terrainPanel.style.display==="none";
+  if(terrainPanel&&terrainWasHidden){
+    terrainPanel.style.position="fixed";
+    terrainPanel.style.left="-9999px";
+    terrainPanel.style.display="block";
+  }
+  try{if(typeof drawField==="function")drawField();}catch(e){console.warn("drawField error:",e);}
+
+  var svgEl=document.getElementById("field-svg");
+
+  function restoreTerrain(){
+    if(terrainPanel&&terrainWasHidden){
+      terrainPanel.style.display="none";
+      terrainPanel.style.position="";
+      terrainPanel.style.left="";
+    }
+  }
+
+  function svgToCanvas(svgEl,cb){
+    if(!svgEl||!svgEl.innerHTML||svgEl.innerHTML.trim()===""){cb(null);return;}
+    try{
+      // Clone SVG with explicit dimensions
+      var vb=svgEl.viewBox.baseVal;
+      var sw=vb.width||520,sh=vb.height||700;
+      var svgClone=svgEl.cloneNode(true);
+      svgClone.setAttribute("width",sw);
+      svgClone.setAttribute("height",sh);
+      var svgStr=new XMLSerializer().serializeToString(svgClone);
+      var svgB64="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svgStr)));
+      var img=new Image();
+      img.onload=function(){
+        var fc=document.createElement("canvas");
+        fc.width=sw*2;fc.height=sh*2;
+        var ctx=fc.getContext("2d");
+        ctx.scale(2,2);
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,sw,sh);
+        ctx.drawImage(img,0,0,sw,sh);
+        cb(fc);
+      };
+      img.onerror=function(){console.warn("SVG img error");cb(null);};
+      img.src=svgB64;
+    }catch(e){console.warn("svgToCanvas error:",e);cb(null);}
+  }
+
+  // Small delay to let drawField render
+  setTimeout(function(){
+    html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
+      var JPDF2=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+      var pdf=new JPDF2({orientation:"portrait",unit:"mm",format:"a4"});
+      var pw=pdf.internal.pageSize.getWidth();
+      var ph=pdf.internal.pageSize.getHeight();
+      // Page 1 : rapport
+      var imgData=canvas.toDataURL("image/png");
+      var ratio=canvas.height/canvas.width;
+      var imgH=pw*ratio;
+      if(imgH<=ph){
+        pdf.addImage(imgData,"PNG",0,0,pw,imgH);
+      } else {
+        var y=0;
+        while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(imgData,"PNG",0,-y,pw,imgH);y+=ph;}
+      }
+      // Page 2 : terrain
+      svgToCanvas(svgEl,function(fc){
+        restoreTerrain();
+        if(fc){
+          pdf.addPage();
+          var fi=fc.toDataURL("image/png");
+          var fh=pw*(fc.height/fc.width);
+          var yo=fh<ph?(ph-fh)/2:0;
+          pdf.addImage(fi,"PNG",0,yo,pw,Math.min(fh,ph));
+        }
+        pdf.save("rapport_"+evName+".pdf");
+      });
+    });
+  },150);
 }
 
 function _openRapport(evId){
