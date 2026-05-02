@@ -388,9 +388,15 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </div>
     <div class="card"><div class="ctitle">Données</div>
       <button class="btn btn-g" onclick="expJSON()" style="width:100%;justify-content:center;margin-bottom:5px">⬇ Exporter JSON</button>
-      <div style="display:flex;gap:6px;margin-bottom:5px">
+      <div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Importer</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
         <button class="btn btn-g" onclick="document.getElementById('imp').click()" style="flex:1;justify-content:center;font-size:11px">💻 Ordinateur</button>
         <button class="btn btn-g" onclick="impFromDrive()" style="flex:1;justify-content:center;font-size:11px">☁️ Drive</button>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Exporter</div>
+      <div style="display:flex;gap:6px;margin-bottom:5px">
+        <button class="btn btn-g" onclick="expToFile()" style="flex:1;justify-content:center;font-size:11px">💻 Ordinateur</button>
+        <button class="btn btn-g" onclick="expToDrive()" style="flex:1;justify-content:center;font-size:11px">☁️ Drive</button>
       </div>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(event)">
       <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm7');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
@@ -2025,6 +2031,51 @@ function _initCustomLogo(){
   if(navLogo&&dataUrl)navLogo.src=dataUrl;
   var settImg=document.getElementById("sett-logo-img");
   if(settImg&&dataUrl)settImg.src=dataUrl;
+}
+
+
+function expToFile(){
+  var json=JSON.stringify(S,null,2);
+  var blob=new Blob([json],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  a.download="sarmom_compos_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+function expToDrive(){
+  if(!_gAccessToken){alert("Connectez d'abord Google Drive dans les Reglages.");return;}
+  var json=JSON.stringify(S,null,2);
+  // Search for existing file to overwrite
+  var q="name='sarmom_compos.json' and trashed=false";
+  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)",{
+    headers:{Authorization:"Bearer "+_gAccessToken}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var method,url;
+    if(data.files&&data.files.length){
+      // Update existing file
+      var fileId=data.files[0].id;
+      method="PATCH";
+      url="https://www.googleapis.com/upload/drive/v3/files/"+fileId+"?uploadType=media";
+    } else {
+      // Create new file
+      method="POST";
+      url="https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+      // Use multipart for new file to set name
+      var boundary="sarmom_boundary";
+      var meta=JSON.stringify({name:"sarmom_compos.json",mimeType:"application/json"});
+      var body="--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+meta+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+json+"\r\n--"+boundary+"--";
+      return fetch(url,{method:method,headers:{Authorization:"Bearer "+_gAccessToken,"Content-Type":"multipart/related; boundary="+boundary},body:body})
+        .then(function(r){return r.json();})
+        .then(function(){alert("Sauvegardé sur Drive !");});
+    }
+    return fetch(url,{method:method,headers:{Authorization:"Bearer "+_gAccessToken,"Content-Type":"application/json"},body:json})
+      .then(function(r){return r.json();})
+      .then(function(){alert("Sauvegardé sur Drive !");});
+  }).catch(function(e){alert("Erreur export Drive : "+e.message);});
 }
 
 
