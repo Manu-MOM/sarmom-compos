@@ -402,6 +402,11 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <button class="btn" onclick="if(confirm('Réinitialiser ?')){localStorage.removeItem('sm7');location.reload()}" style="width:100%;justify-content:center;background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5">🗑 Réinitialiser</button>
     </div>
   </div>
+  <div style="position:sticky;bottom:0;padding:10px 0 4px;max-width:900px">
+    <button class="btn btn-b" onclick="saveAllSettings()" style="width:100%;justify-content:center;font-size:15px;font-weight:700;padding:13px;border-radius:8px">
+      💾 Enregistrer tous les changements
+    </button>
+  </div>
 </div>
 
 <!-- MODAL EVENT -->
@@ -1660,6 +1665,7 @@ function renderRapport(){
     allEvts.sort(function(a,b){return a.ts-b.ts;});
     var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended");
     if(played)hasData=true;
+    if(!played)return; // Ne pas afficher les matchs non joues
     var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
     var resultBorder=!played?"rgba(255,255,255,.1)":win?"#4ade80":draw?"rgba(255,255,255,.2)":"#f87171";
     var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
@@ -1699,7 +1705,7 @@ function renderRapport(){
   });
   if(hasData){
     html+='<div style="padding:12px 16px">';
-    html+='<button onclick="_mExportRapportPDF()" style="width:100%;padding:12px;background:'+c2+';color:#0a0a1a;border:none;border-radius:6px;font-weight:700;font-size:15px;letter-spacing:.08em;cursor:pointer;text-transform:uppercase">EXPORTER EN PDF</button>';
+    html+='<button id="rapport-pdf-btn" onclick="_mExportRapportPDF()" style="width:100%;padding:12px;background:'+c2+';color:#0a0a1a;border:none;border-radius:6px;font-weight:700;font-size:15px;letter-spacing:.08em;cursor:pointer;text-transform:uppercase">EXPORTER EN PDF</button>';
     html+='</div>';
   }
   html+='</div>';
@@ -1713,67 +1719,60 @@ function _mExportMatch(){
 }
 
 function _mExportRapportPDF(){
-  var el=document.getElementById("rapport-content");
-  if(!el)return;
   var JPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF||null;
   if(!JPDF){alert("PDF non disponible - rechargez la page");return;}
   if(typeof html2canvas==="undefined"){alert("html2canvas non disponible");return;}
+  if(!curEV){alert("Aucun evenement selectionne");return;}
   var evName=(curEV?curEV.name.replace(/\s+/g,"_"):"match");
 
-  // Force render terrain - temporarily show terrain panel off-screen
+  // Hide export button during capture
+  var exportBtn=document.getElementById("rapport-pdf-btn");
+  if(exportBtn)exportBtn.style.display="none";
+
+  var el=document.getElementById("rapport-content");
+  if(!el){if(exportBtn)exportBtn.style.display="";return;}
+
+  // Force render terrain
   var terrainPanel=document.getElementById("ev-terrain");
-  var terrainWasHidden=terrainPanel&&terrainPanel.style.display==="none";
-  if(terrainPanel&&terrainWasHidden){
-    terrainPanel.style.position="fixed";
-    terrainPanel.style.left="-9999px";
-    terrainPanel.style.display="block";
-  }
-  try{if(typeof drawField==="function")drawField();}catch(e){console.warn("drawField error:",e);}
-
+  var wasHidden=terrainPanel&&terrainPanel.style.display==="none";
+  if(wasHidden){terrainPanel.style.position="fixed";terrainPanel.style.left="-9999px";terrainPanel.style.display="block";}
+  try{if(typeof drawField==="function")drawField();}catch(e){}
   var svgEl=document.getElementById("field-svg");
-
-  function restoreTerrain(){
-    if(terrainPanel&&terrainWasHidden){
-      terrainPanel.style.display="none";
-      terrainPanel.style.position="";
-      terrainPanel.style.left="";
-    }
-  }
 
   function svgToCanvas(svgEl,cb){
     if(!svgEl||!svgEl.innerHTML||svgEl.innerHTML.trim()===""){cb(null);return;}
     try{
-      // Clone SVG with explicit dimensions
       var vb=svgEl.viewBox.baseVal;
       var sw=vb.width||520,sh=vb.height||700;
-      var svgClone=svgEl.cloneNode(true);
-      svgClone.setAttribute("width",sw);
-      svgClone.setAttribute("height",sh);
-      var svgStr=new XMLSerializer().serializeToString(svgClone);
-      var svgB64="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svgStr)));
+      var clone=svgEl.cloneNode(true);
+      clone.setAttribute("width",sw);clone.setAttribute("height",sh);
+      var b64="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(clone))));
       var img=new Image();
       img.onload=function(){
         var fc=document.createElement("canvas");
         fc.width=sw*2;fc.height=sh*2;
-        var ctx=fc.getContext("2d");
-        ctx.scale(2,2);
+        var ctx=fc.getContext("2d");ctx.scale(2,2);
         ctx.fillStyle="#fff";ctx.fillRect(0,0,sw,sh);
         ctx.drawImage(img,0,0,sw,sh);
         cb(fc);
       };
-      img.onerror=function(){console.warn("SVG img error");cb(null);};
-      img.src=svgB64;
-    }catch(e){console.warn("svgToCanvas error:",e);cb(null);}
+      img.onerror=function(){cb(null);};
+      img.src=b64;
+    }catch(e){cb(null);}
   }
 
-  // Small delay to let drawField render
   setTimeout(function(){
     html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
+      // Restore export button
+      if(exportBtn)exportBtn.style.display="";
+      if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
+
       var JPDF2=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
       var pdf=new JPDF2({orientation:"portrait",unit:"mm",format:"a4"});
       var pw=pdf.internal.pageSize.getWidth();
       var ph=pdf.internal.pageSize.getHeight();
-      // Page 1 : rapport
+
+      // Page 1 : rapport (html2canvas)
       var imgData=canvas.toDataURL("image/png");
       var ratio=canvas.height/canvas.width;
       var imgH=pw*ratio;
@@ -1783,9 +1782,9 @@ function _mExportRapportPDF(){
         var y=0;
         while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(imgData,"PNG",0,-y,pw,imgH);y+=ph;}
       }
+
       // Page 2 : terrain
       svgToCanvas(svgEl,function(fc){
-        restoreTerrain();
         if(fc){
           pdf.addPage();
           var fi=fc.toDataURL("image/png");
@@ -1795,8 +1794,18 @@ function _mExportRapportPDF(){
         }
         pdf.save("rapport_"+evName+".pdf");
       });
+    }).catch(function(e){
+      if(exportBtn)exportBtn.style.display="";
+      if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
+      console.error(e);
     });
-  },150);
+  },200);
+}
+
+function _hexToRgb(hex){
+  hex=hex.replace("#","");
+  if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  return[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];
 }
 
 function _openRapport(evId){
@@ -2076,6 +2085,30 @@ function expToDrive(){
       .then(function(r){return r.json();})
       .then(function(){alert("Sauvegardé sur Drive !");});
   }).catch(function(e){alert("Erreur export Drive : "+e.message);});
+}
+
+
+function saveAllSettings(){
+  // Save all form fields from settings
+  var sn=document.getElementById("s-name");
+  var ss=document.getElementById("s-season");
+  if(sn)S.settings.name=sn.value;
+  if(ss)S.settings.season=ss.value;
+  // Colors
+  var c1=document.getElementById("s-c1");
+  var c2=document.getElementById("s-c2");
+  if(c1)S.settings.c1=c1.value;
+  if(c2)S.settings.c2=c2.value;
+  // Drive client ID
+  var cid=document.getElementById("drive-client-id");
+  if(cid&&cid.value.trim())localStorage.setItem("gdrive_cid",cid.value.trim());
+  // Nav subtitle
+  var ns=document.getElementById("nav-sub-txt");
+  if(ns&&S.settings.season)ns.textContent="Entente M14 · Saison "+S.settings.season;
+  sv();
+  // Visual feedback
+  var btn=event&&event.target;
+  if(btn){var orig=btn.textContent;btn.textContent="✓ Enregistré !";btn.style.background="#16a34a";setTimeout(function(){btn.textContent=orig;btn.style.background="";},1500);}
 }
 
 
