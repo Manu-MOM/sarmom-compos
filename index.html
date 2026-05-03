@@ -1736,12 +1736,17 @@ function _compOpen(){
   document.getElementById("cc-classement").value=existing.classement||"";
   document.getElementById("cc-nbteams").value=existing.nbEquipes||"";
   document.getElementById("cc-remarks").value=existing.remarques||"";
-  // Aperçu live des stats calculées
+  // Aperçu live des stats calculées + alerte matchs non clôturés
   var s=_evTeamSummary(curEV,curTID);
-  document.getElementById("cc-preview").innerHTML=
-    '<b>Stats calculées :</b> '+s.played+' matchs joués · '+s.wins+'V '+s.draws+'N '+s.losses+'D · '
-    +s.essaisFor+' essais marqués / '+s.essaisAgainst+' encaissés · '+s.ptsFor+' pts pour / '+s.ptsAgainst+' contre'
-    +(s.played===0?'<br><span style="color:#dc2626">⚠ Aucun match joué détecté pour cette équipe.</span>':'');
+  var preview='<b>Stats calculées :</b> '+s.played+' matchs joués · '+s.wins+'V '+s.draws+'N '+s.losses+'D · '
+    +s.essaisFor+' essais marqués / '+s.essaisAgainst+' encaissés · '+s.ptsFor+' pts pour / '+s.ptsAgainst+' contre';
+  if(s.played===0){
+    preview+='<br><span style="color:#dc2626">⚠ Aucun match joué détecté pour cette équipe.</span>';
+  }
+  if(s.unfinalized){
+    preview+='<br><span style="color:#b45309;font-weight:700">⚠ '+s.unfinalized+' match(s) non clôturé(s)</span> <span style="color:#92400e">(touche « Fin » non appuyée — ils sont quand même comptabilisés).</span>';
+  }
+  document.getElementById("cc-preview").innerHTML=preview;
   document.getElementById("m-compclose").classList.add("open");
 }
 
@@ -1749,8 +1754,37 @@ function _compSave(){
   if(!curEV)return;
   var classement=document.getElementById("cc-classement").value.trim();
   if(!classement){alert("Le classement final est requis.");return;}
-  if(!curEV.competition_summary)curEV.competition_summary={};
   var s=_evTeamSummary(curEV,curTID);
+  // Vérification : matchs joués mais pas explicitement clôturés (touche "Fin" oubliée)
+  var unfinalizedList=[];
+  var matches=getMatches(curEV)||[];
+  var byMatch=(curEV.match&&curEV.match.byMatch)||{};
+  matches.forEach(function(m){
+    var res=getResolved(curEV,curTID,m.id);
+    if(!res.filter(Boolean).length)return;
+    var md=byMatch[m.id];
+    if(!md)return;
+    var hasEvts=(md.periods||[]).some(function(p){return p&&p.events&&p.events.length;});
+    var hasScore=(md.periods||[]).some(function(p){return p&&((p.score_us||0)+(p.score_them||0))>0;});
+    if(md.status!=="ended"&&((md.seconds||0)>0||hasEvts||hasScore)){
+      unfinalizedList.push(m.adv||"?");
+    }
+  });
+  // Construction du message de confirmation
+  var msg="Clôturer la compétition pour cette équipe ?\n\n";
+  msg+="• "+s.played+" match(s) comptabilisés\n";
+  msg+="• "+s.wins+"V "+s.draws+"N "+s.losses+"D\n";
+  msg+="• "+s.essaisFor+" essai(s) marqué(s) / "+s.essaisAgainst+" encaissé(s)\n";
+  msg+="• "+s.ptsFor+" pts pour / "+s.ptsAgainst+" contre\n";
+  if(unfinalizedList.length){
+    msg+="\n⚠ ATTENTION — "+unfinalizedList.length+" match(s) non clôturé(s) (touche \"Fin\" non appuyée) :\n";
+    unfinalizedList.forEach(function(adv){msg+="  · vs "+adv+"\n";});
+    msg+="\nIls sont quand même comptabilisés dans le bilan. Continuer ?";
+  } else {
+    msg+="\nConfirmer la clôture ?";
+  }
+  if(!confirm(msg))return;
+  if(!curEV.competition_summary)curEV.competition_summary={};
   curEV.competition_summary[curTID]={
     date:new Date().toISOString().slice(0,10),
     classement:classement,
@@ -1834,12 +1868,20 @@ function renderRapport(){
     var allEvts=[];
     if(md)(md.periods||[]).forEach(function(p,pi){if(p)(p.events||[]).forEach(function(e){allEvts.push(Object.assign({},e,{pi:pi}));});});
     allEvts.sort(function(a,b){return a.ts-b.ts;});
-    var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended");
+    // Score manuel (saisi sur la carte de l'événement) en repli si chrono sans données
+    var manualScore=(curEV.scores||{})[m.id];
+    var hasManual=manualScore&&(manualScore.f!=null||manualScore.a!=null);
+    if(totalUs+totalThem===0&&hasManual){totalUs=manualScore.f||0;totalThem=manualScore.a||0;}
+    // Match considéré comme joué si : score (chrono ou manuel), événements, statut "ended",
+    // OU chrono lancé (seconds>0) — couvre le cas où la touche "Fin" a été oubliée
+    var chronoStarted=md&&(md.seconds>0||(md.periods||[]).some(function(p){return p&&p.events&&p.events.length;}));
+    var notFinalized=md&&md.status!=="ended"&&(chronoStarted||totalUs+totalThem>0);
+    var played=md&&(totalUs+totalThem>0||allEvts.length>0||md.status==="ended"||chronoStarted)||hasManual;
     if(played)hasData=true;
     if(!played)return; // Ne pas afficher les matchs non joues
     var win=played&&totalUs>totalThem,draw=played&&totalUs===totalThem;
     var resultBorder=!played?"rgba(255,255,255,.1)":win?"#4ade80":draw?"rgba(255,255,255,.2)":"#f87171";
-    var resultLabel=!played?"A JOUER":win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE";
+    var resultLabel=!played?"A JOUER":notFinalized?(win?"VICTOIRE (non clôturé)":draw?"MATCH NUL (non clôturé)":"DEFAITE (non clôturé)"):(win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE");
     var resultColor2=!played?"rgba(255,255,255,.3)":win?"#4ade80":draw?c2:"#f87171";
     html+='<div style="border-bottom:1px solid rgba(255,255,255,.06);padding:12px 16px">';
       html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
@@ -2047,7 +2089,7 @@ function impFromDrive(){
 function _evTeamSummary(ev,tid){
   var matches=getMatches(ev)||[];
   var byMatch=(ev.match&&ev.match.byMatch)||{};
-  var s={played:0,wins:0,draws:0,losses:0,essaisFor:0,essaisAgainst:0,ptsFor:0,ptsAgainst:0,cartonsJ:0,cartonsR:0,avert:0,blessures:0,matchDetails:[]};
+  var s={played:0,wins:0,draws:0,losses:0,essaisFor:0,essaisAgainst:0,ptsFor:0,ptsAgainst:0,cartonsJ:0,cartonsR:0,avert:0,blessures:0,unfinalized:0,matchDetails:[]};
   matches.forEach(function(m){
     var res=getResolved(ev,tid,m.id);
     var teamLineup=res.filter(Boolean);
@@ -2058,8 +2100,11 @@ function _evTeamSummary(ev,tid){
     var totalUs=0,totalThem=0,played=false,fromChrono=false;
     if(md){
       (md.periods||[]).forEach(function(p){if(p){totalUs+=(p.score_us||0);totalThem+=(p.score_them||0);}});
-      played=md.status==="ended"||totalUs+totalThem>0||(md.periods||[]).some(function(p){return p&&p.events&&p.events.length;});
+      // Match joué via chrono si : statut "ended", score, événements OU chrono lancé (touche "Fin" oubliée)
+      var hasEvts=(md.periods||[]).some(function(p){return p&&p.events&&p.events.length;});
+      played=md.status==="ended"||totalUs+totalThem>0||hasEvts||(md.seconds||0)>0;
       if(played)fromChrono=true;
+      if(played&&md.status!=="ended")s.unfinalized++;
     }
     if(!played&&ev.scores&&ev.scores[m.id]){
       var sc=ev.scores[m.id];
