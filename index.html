@@ -1814,7 +1814,7 @@ function renderRapport(){
   var c1s=c1.replace("#",""); // for CSS use
   var html='<div style="background:#0a0a1a;border-radius:10px;overflow:hidden">';
   // Event header
-  html+='<div style="background:linear-gradient(90deg,'+c1+' 0%,#0f2347 60%);padding:12px 16px;border-bottom:3px solid '+c2+';display:flex;align-items:center;justify-content:space-between">';
+  html+='<div data-pdf-block="header" style="background:linear-gradient(90deg,'+c1+' 0%,#0f2347 60%);padding:12px 16px;border-bottom:3px solid '+c2+';display:flex;align-items:center;justify-content:space-between">';
     html+='<div>';
       html+='<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em">'+curEV.date+' · '+curEV.lieu+'</div>';
       html+='<div style="font-size:20px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">'+curEV.name+'</div>';
@@ -1827,7 +1827,7 @@ function renderRapport(){
   var curTeamLabel=(S.teams.find(function(t){return t.id===curTID;})||{}).label||curTID;
   if(teamSum){
     var st=teamSum.stats||{};
-    html+='<div style="background:linear-gradient(135deg,'+c2+' 0%,#fde047 100%);padding:14px 16px;border-bottom:3px solid '+c1+'">';
+    html+='<div data-pdf-block="bilan" style="background:linear-gradient(135deg,'+c2+' 0%,#fde047 100%);padding:14px 16px;border-bottom:3px solid '+c1+'">';
       html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
         html+='<div style="font-size:11px;color:'+c1+';font-weight:900;letter-spacing:.08em;text-transform:uppercase">🏁 Bilan compétition · '+curTeamLabel+'</div>';
         html+='<div style="display:flex;gap:5px"><button onclick="_compOpen()" style="background:'+c1+';color:'+c2+';border:none;padding:4px 9px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;letter-spacing:.05em;text-transform:uppercase">Modifier</button><button onclick="_compReset()" style="background:rgba(0,0,0,.15);color:'+c1+';border:none;padding:4px 9px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;letter-spacing:.05em;text-transform:uppercase">Supprimer</button></div>';
@@ -1883,7 +1883,7 @@ function renderRapport(){
     var resultBorder=!played?"rgba(255,255,255,.1)":win?"#4ade80":draw?"rgba(255,255,255,.2)":"#f87171";
     var resultLabel=!played?"A JOUER":notFinalized?(win?"VICTOIRE (non clôturé)":draw?"MATCH NUL (non clôturé)":"DEFAITE (non clôturé)"):(win?"VICTOIRE":draw?"MATCH NUL":"DEFAITE");
     var resultColor2=!played?"rgba(255,255,255,.3)":win?"#4ade80":draw?c2:"#f87171";
-    html+='<div style="border-bottom:1px solid rgba(255,255,255,.06);padding:12px 16px">';
+    html+='<div data-pdf-block="match" style="border-bottom:1px solid rgba(255,255,255,.06);padding:12px 16px">';
       html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
         html+='<div style="font-size:15px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em">vs '+adv+'</div>';
         html+='<div style="font-size:11px;font-weight:700;color:'+resultColor2+';text-transform:uppercase;letter-spacing:.08em">'+resultLabel+'</div>';
@@ -1992,47 +1992,80 @@ function _mExportRapportPDF(){
   }
 
   setTimeout(function(){
-    html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
-      // Restore export button
+    // Capture chaque bloc séparément pour éviter de couper un match en deux pages
+    var container=el;
+    var blocks=Array.prototype.slice.call(container.querySelectorAll('[data-pdf-block]'));
+    if(!blocks.length){
+      // Fallback : ancien comportement (capture monolithique)
+      blocks=[container];
+    }
+    var JPDF2=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+    var pdf=new JPDF2({orientation:"portrait",unit:"mm",format:"a4"});
+    var pw=pdf.internal.pageSize.getWidth();
+    var ph=pdf.internal.pageSize.getHeight();
+    var margin=4; // mm en haut/bas/côté
+    var contentW=pw-2*margin;
+    var pageContentH=ph-2*margin;
+    var cursorY=margin; // position courante sur la page
+    var pageHasContent=false;
+
+    function restoreUI(){
       if(rapportActions)rapportActions.style.display="";
       if(exportBtn)exportBtn.style.display="";
       hiddenButtons.forEach(function(p){p[0].style.display=p[1];});
       if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
+    }
 
-      var JPDF2=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
-      var pdf=new JPDF2({orientation:"portrait",unit:"mm",format:"a4"});
-      var pw=pdf.internal.pageSize.getWidth();
-      var ph=pdf.internal.pageSize.getHeight();
-
-      // Page 1 : rapport (html2canvas)
-      var imgData=canvas.toDataURL("image/png");
-      var ratio=canvas.height/canvas.width;
-      var imgH=pw*ratio;
-      if(imgH<=ph){
-        pdf.addImage(imgData,"PNG",0,0,pw,imgH);
-      } else {
-        var y=0;
-        while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(imgData,"PNG",0,-y,pw,imgH);y+=ph;}
+    // Capture en série pour préserver l'ordre
+    var idx=0;
+    function processNext(){
+      if(idx>=blocks.length){
+        // Page terrain à la fin
+        svgToCanvas(svgEl,function(fc){
+          if(fc){
+            pdf.addPage();
+            var fi=fc.toDataURL("image/png");
+            var fh=contentW*(fc.height/fc.width);
+            var yo=fh<pageContentH?(pageContentH-fh)/2+margin:margin;
+            pdf.addImage(fi,"PNG",margin,yo,contentW,Math.min(fh,pageContentH));
+          }
+          restoreUI();
+          pdf.save("rapport_"+evName+".pdf");
+        });
+        return;
       }
-
-      // Page 2 : terrain
-      svgToCanvas(svgEl,function(fc){
-        if(fc){
+      var blk=blocks[idx++];
+      html2canvas(blk,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
+        var blkW=contentW;
+        var blkH=blkW*(canvas.height/canvas.width);
+        // Si le bloc seul est plus grand qu'une page entière, on le découpe (cas extrême : très long bloc)
+        if(blkH>pageContentH){
+          if(pageHasContent){pdf.addPage();cursorY=margin;pageHasContent=false;}
+          // Découpage progressif du bloc lui-même sur plusieurs pages
+          var imgD=canvas.toDataURL("image/png");
+          var consumed=0;
+          while(consumed<blkH){
+            if(consumed>0){pdf.addPage();cursorY=margin;}
+            pdf.addImage(imgD,"PNG",margin,cursorY-consumed,blkW,blkH);
+            consumed+=pageContentH;
+            pageHasContent=true;
+          }
+          cursorY=margin; // forcer page suivante après un bloc découpé
           pdf.addPage();
-          var fi=fc.toDataURL("image/png");
-          var fh=pw*(fc.height/fc.width);
-          var yo=fh<ph?(ph-fh)/2:0;
-          pdf.addImage(fi,"PNG",0,yo,pw,Math.min(fh,ph));
+          pageHasContent=false;
+        } else {
+          // Vérifier si le bloc tient sur la page courante ; sinon, page suivante
+          if(cursorY+blkH>ph-margin&&pageHasContent){
+            pdf.addPage();cursorY=margin;pageHasContent=false;
+          }
+          pdf.addImage(canvas.toDataURL("image/png"),"PNG",margin,cursorY,blkW,blkH);
+          cursorY+=blkH;
+          pageHasContent=true;
         }
-        pdf.save("rapport_"+evName+".pdf");
-      });
-    }).catch(function(e){
-      if(rapportActions)rapportActions.style.display="";
-      if(exportBtn)exportBtn.style.display="";
-      hiddenButtons.forEach(function(p){p[0].style.display=p[1];});
-      if(wasHidden){terrainPanel.style.display="none";terrainPanel.style.position="";terrainPanel.style.left="";}
-      console.error(e);
-    });
+        processNext();
+      }).catch(function(e){console.error(e);restoreUI();});
+    }
+    processNext();
   },200);
 }
 
