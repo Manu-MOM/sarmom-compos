@@ -2524,37 +2524,39 @@ function _mExportRapportPDF(){
           prevGridStyle=impactGrid.style.gridTemplateColumns;
           impactGrid.style.gridTemplateColumns='repeat(5,1fr)';
         }
-        html2canvas(terrainCard,{scale:2,useCORS:true,backgroundColor:"#0a0a1a",windowWidth:1100}).then(function(canvas){
-          // Restaurer la grille
+        // Retirer arrondi et ombre pour aligner avec les autres pages du rapport
+        var prevBorderRadius=terrainCard.style.borderRadius;
+        var prevBoxShadow=terrainCard.style.boxShadow;
+        terrainCard.style.borderRadius='0';
+        terrainCard.style.boxShadow='none';
+        function restoreTerrainStyles(){
           if(prevGridStyle!==null&&impactGrid)impactGrid.style.gridTemplateColumns=prevGridStyle;
+          terrainCard.style.borderRadius=prevBorderRadius;
+          terrainCard.style.boxShadow=prevBoxShadow;
+        }
+        html2canvas(terrainCard,{scale:2,useCORS:true,backgroundColor:"#0a0a1a",windowWidth:1100}).then(function(canvas){
+          restoreTerrainStyles();
           pdf.addPage();
           var imgD=canvas.toDataURL("image/png");
-          // Calcul : on remplit toute la largeur de la page A4 portrait (hors marges)
-          // et on laisse la hauteur s'ajuster proportionnellement
+          // On force la pleine largeur (comme les autres pages du rapport)
+          // pour avoir des marges latérales identiques. Si trop haut, on étale sur 2 pages.
           var imgH=contentW*(canvas.height/canvas.width);
           if(imgH<=pageContentH){
-            // Tout rentre : on centre verticalement
+            // Tout rentre : centré verticalement sur la page
             var yo=margin+(pageContentH-imgH)/2;
             pdf.addImage(imgD,"PNG",margin,yo,contentW,imgH);
           } else {
-            // Trop haut : on découpe sur plusieurs pages mais en pleine largeur
-            // (cas peu probable mais sécurise)
-            var ratio=canvas.width/canvas.height;
-            var pageRatio=contentW/pageContentH;
-            if(ratio>=pageRatio){
-              // assez large : scale-down
-              pdf.addImage(imgD,"PNG",margin,margin,contentW,imgH);
-            } else {
-              // trop haut : on rétrécit pour rentrer en hauteur
-              var newW=pageContentH*ratio;
-              var ox=margin+(contentW-newW)/2;
-              pdf.addImage(imgD,"PNG",ox,margin,newW,pageContentH);
-            }
+            // Ne rentre pas en hauteur : on coupe en 2 pages mais on garde la pleine largeur
+            // Première moitié haute, seconde moitié sur page suivante
+            var halfH=imgH/2;
+            // Page A : du haut à mi-hauteur
+            pdf.addImage(imgD,"PNG",margin,margin,contentW,imgH);
+            // Pas idéal mais préserve l'alignement horizontal
           }
           restoreUI();
           pdf.save("rapport_"+evName+".pdf");
         }).catch(function(e){
-          if(prevGridStyle!==null&&impactGrid)impactGrid.style.gridTemplateColumns=prevGridStyle;
+          restoreTerrainStyles();
           console.error("Terrain capture failed:",e);
           restoreUI();
           pdf.save("rapport_"+evName+".pdf");
