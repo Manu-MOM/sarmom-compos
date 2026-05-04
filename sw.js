@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT : changer ce numéro à chaque déploiement pour forcer le rafraîchissement du cache.
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = 'sarmom-' + CACHE_VERSION;
 
 // Ressources à mettre en cache au premier chargement

@@ -323,7 +323,22 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
             <div><div style="font-family:var(--fd);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g400);margin-bottom:4px">Remplaçants</div><div id="slots-r"></div></div>
           </div>
         </div>
-        <div id="ev-terrain" style="display:none"><div class="field-wrap"><svg id="field-svg" viewBox="0 0 520 700" style="width:100%;display:block"></svg></div></div>
+        <div id="ev-terrain" style="display:none">
+          <div id="terrain-card" style="background:#0a0a1a;border-radius:var(--rl);overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15)">
+            <div id="terrain-header" style="background:linear-gradient(90deg,#1a3a6b 0%,#0f2347 60%);padding:11px 14px;border-bottom:3px solid #f0c500;display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                <img id="terrain-logo" style="height:34px;width:34px;border-radius:50%;object-fit:cover;border:2px solid #f0c500;flex-shrink:0">
+                <div style="min-width:0">
+                  <div id="terrain-subtitle" style="font-size:9px;color:#f0c500;text-transform:uppercase;letter-spacing:.1em;font-family:'Barlow Condensed',sans-serif;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+                  <div id="terrain-title" style="font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.04em;font-family:'Barlow Condensed',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+                </div>
+              </div>
+              <div id="terrain-mode-badge" style="background:#f0c500;color:#1a3a6b;padding:4px 10px;border-radius:5px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif;flex-shrink:0"></div>
+            </div>
+            <div class="field-wrap" style="padding:8px;background:#0a0a1a"><svg id="field-svg" viewBox="0 0 520 700" style="width:100%;display:block;border-radius:6px"></svg></div>
+            <div id="terrain-impact"></div>
+          </div>
+        </div>
         <div id="ev-export" style="display:none"><div class="exp-wrap" id="export-preview"></div></div>
         <div id="ev-effectif" style="display:none"><div id="effectif-content"></div></div>
         <div id="ev-match" style="display:none"><div id="match-content"></div></div>
@@ -547,6 +562,9 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </div>
   </div>
 </div>
+
+<!-- MODAL TEMPS DE JEU -->
+<div class="mbg" id="m-tof-modal" style="z-index:8500"></div>
 
 <!-- MODAL CLÔTURE COMPÉTITION -->
 <div class="mbg" id="m-compclose">
@@ -1041,16 +1059,114 @@ function drawField(){
   const c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
   const team=S.teams.find(t=>t.id===curTID);
   const m=getMatches(curEV).find(m=>m.id===curMID);
-  let h=`<rect width="520" height="700" fill="#2d7a3a"/>${[0,1,2,3,4,5,6].map(i=>`<rect x="28" y="${36+i*95}" width="464" height="47.5" fill="rgba(0,0,0,${i%2?.05:0})"/>`).join("")}<rect x="28" y="36" width="464" height="628" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><line x1="28" y1="100" x2="492" y2="100" stroke="rgba(255,255,255,.35)" stroke-width="1"/><line x1="28" y1="600" x2="492" y2="600" stroke="rgba(255,255,255,.35)" stroke-width="1"/><line x1="28" y1="350" x2="492" y2="350" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/><circle cx="260" cy="350" r="30" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1"/><line x1="28" y1="192" x2="492" y2="192" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="5,4"/><line x1="28" y1="508" x2="492" y2="508" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="5,4"/><line x1="218" y1="600" x2="218" y2="645" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="302" y1="600" x2="302" y2="645" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="218" y1="628" x2="302" y2="628" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="260" y1="628" x2="260" y2="665" stroke="rgba(255,255,200,.6)" stroke-width="2"/><line x1="218" y1="100" x2="218" y2="55" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="302" y1="100" x2="302" y2="55" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="218" y1="72" x2="302" y2="72" stroke="rgba(255,255,200,.6)" stroke-width="1.8"/><line x1="260" y1="72" x2="260" y2="36" stroke="rgba(255,255,200,.6)" stroke-width="2"/><text x="260" y="22" fill="rgba(255,255,255,.45)" font-size="10" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" letter-spacing=".12em">${team?.label||""} — ${curMode==="base"?"BASE":"vs "+m?.adv||"?"}${isS?" (7)":""}</text>`;
-  resolved.slice(0,subsStart(curEV)).forEach((pid,i)=>{
-    const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;const pos={x:xy[i]?.x||260,y:xy[i]?.y||350};const ovr=isOverridden(i);
-    h+=`<g style="cursor:pointer" onclick="openPick(${i})"><circle r="29" cx="${pos.x}" cy="${pos.y}" fill="${pl?c1:"rgba(0,0,0,.3)"}" stroke="${ovr?"#f97316":pl?c2:"rgba(255,255,255,.3)"}" stroke-width="${pl?2:1.5}" stroke-dasharray="${pl?"none":"5,4"}"/>`;
-    if(pl&&pl.photo){h+=`<defs><clipPath id="cp${i}"><circle cx="${pos.x}" cy="${pos.y}" r="27"/></clipPath></defs><image href="${pl.photo}" x="${pos.x-27}" y="${pos.y-27}" width="54" height="54" clip-path="url(#cp${i})" preserveAspectRatio="xMidYMid slice" opacity="0.75"/><text x="${pos.x}" y="${pos.y+22}" fill="white" font-size="7.5" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700">${(pl.p[0]+"."+pl.n).slice(0,12)}</text>`;}
-    else if(pl){h+=`<text x="${pos.x}" y="${pos.y-7}" fill="${c2}" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,sans-serif">${i+1}</text><text x="${pos.x}" y="${pos.y+8}" fill="white" font-size="7.5" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="600">${(pl.p[0]+"."+pl.n).slice(0,12)}</text>`;}
-    else{h+=`<text x="${pos.x}" y="${pos.y-3}" fill="rgba(255,255,255,.4)" font-size="14" text-anchor="middle" dominant-baseline="central">+</text><text x="${pos.x}" y="${pos.y+10}" fill="rgba(255,255,255,.3)" font-size="6.5" text-anchor="middle" font-family="Barlow Condensed,sans-serif">${Ps[i]?.slice(0,16)||""}</text>`;}
+  const ss2=subsStart(curEV);
+
+  // ── Header haut : logo + titres + badge mode ──
+  const logoEl=document.getElementById("terrain-logo");
+  if(logoEl&&window._LOGO_SM)logoEl.src='data:image/png;base64,'+window._LOGO_SM;
+  const subtitleEl=document.getElementById("terrain-subtitle");
+  const titleEl=document.getElementById("terrain-title");
+  const badgeEl=document.getElementById("terrain-mode-badge");
+  if(subtitleEl&&curEV)subtitleEl.textContent=(curEV.date||"")+(curEV.lieu?" · "+curEV.lieu:"");
+  if(titleEl)titleEl.textContent=(team?.label||"SAR×MOM")+(isS?" · 7s":"");
+  if(badgeEl){
+    if(curMode==="base")badgeEl.textContent="Composition de base";
+    else if(m)badgeEl.textContent="vs "+(m.adv||"?");
+    else badgeEl.textContent="Match";
+  }
+
+  // ── Terrain SVG : conserve le vert, supprime l'ancien titre redondant ──
+  let h=`<defs><linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2d7a3a"/><stop offset="50%" stop-color="#266b32"/><stop offset="100%" stop-color="#2d7a3a"/></linearGradient></defs>`;
+  h+=`<rect width="520" height="700" fill="url(#grass)"/>`;
+  // Bandes alternées de tonte
+  h+=[0,1,2,3,4,5,6].map(i=>`<rect x="28" y="${36+i*95}" width="464" height="47.5" fill="rgba(0,0,0,${i%2?.06:0})"/>`).join("");
+  // Cadre + lignes des 5m
+  h+=`<rect x="28" y="36" width="464" height="628" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.8"/>`;
+  // Lignes 22m
+  h+=`<line x1="28" y1="100" x2="492" y2="100" stroke="rgba(255,255,255,.4)" stroke-width="1.2"/>`;
+  h+=`<line x1="28" y1="600" x2="492" y2="600" stroke="rgba(255,255,255,.4)" stroke-width="1.2"/>`;
+  // Ligne médiane
+  h+=`<line x1="28" y1="350" x2="492" y2="350" stroke="rgba(255,255,255,.55)" stroke-width="1.8"/>`;
+  // Cercle centre
+  h+=`<circle cx="260" cy="350" r="30" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="1.2"/>`;
+  // Lignes 10m pointillées
+  h+=`<line x1="28" y1="192" x2="492" y2="192" stroke="rgba(255,255,255,.22)" stroke-width="1" stroke-dasharray="5,4"/>`;
+  h+=`<line x1="28" y1="508" x2="492" y2="508" stroke="rgba(255,255,255,.22)" stroke-width="1" stroke-dasharray="5,4"/>`;
+  // Poteaux haut
+  h+=`<line x1="218" y1="100" x2="218" y2="55" stroke="rgba(255,255,200,.7)" stroke-width="2"/>`;
+  h+=`<line x1="302" y1="100" x2="302" y2="55" stroke="rgba(255,255,200,.7)" stroke-width="2"/>`;
+  h+=`<line x1="218" y1="72" x2="302" y2="72" stroke="rgba(255,255,200,.7)" stroke-width="2"/>`;
+  h+=`<line x1="260" y1="72" x2="260" y2="36" stroke="rgba(255,255,200,.7)" stroke-width="2.2"/>`;
+  // Poteaux bas
+  h+=`<line x1="218" y1="600" x2="218" y2="645" stroke="rgba(255,255,200,.7)" stroke-width="2"/>`;
+  h+=`<line x1="302" y1="600" x2="302" y2="645" stroke="rgba(255,255,200,.7)" stroke-width="2"/>`;
+  h+=`<line x1="218" y1="628" x2="302" y2="628" stroke="rgba(255,255,200,.7)" stroke-width="2"/>`;
+  h+=`<line x1="260" y1="628" x2="260" y2="665" stroke="rgba(255,255,200,.7)" stroke-width="2.2"/>`;
+
+  // Pastilles joueurs titulaires
+  resolved.slice(0,ss2).forEach((pid,i)=>{
+    const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
+    const pos={x:xy[i]?.x||260,y:xy[i]?.y||350};
+    const ovr=isOverridden(i);
+    h+=`<g style="cursor:pointer" onclick="openPick(${i})">`;
+    // Ombre portée
+    h+=`<ellipse cx="${pos.x}" cy="${pos.y+30}" rx="22" ry="3" fill="rgba(0,0,0,.25)"/>`;
+    h+=`<circle r="29" cx="${pos.x}" cy="${pos.y}" fill="${pl?c1:'rgba(0,0,0,.35)'}" stroke="${ovr?'#f97316':pl?c2:'rgba(255,255,255,.35)'}" stroke-width="${pl?2.5:1.5}" stroke-dasharray="${pl?'none':'5,4'}"/>`;
+    if(pl&&pl.photo){
+      h+=`<defs><clipPath id="cp${i}"><circle cx="${pos.x}" cy="${pos.y}" r="27"/></clipPath></defs>`;
+      h+=`<image href="${pl.photo}" x="${pos.x-27}" y="${pos.y-27}" width="54" height="54" clip-path="url(#cp${i})" preserveAspectRatio="xMidYMid slice" opacity="0.78"/>`;
+      // Numéro encadré en haut
+      h+=`<circle r="10" cx="${pos.x+18}" cy="${pos.y-18}" fill="${c2}" stroke="${c1}" stroke-width="1.5"/>`;
+      h+=`<text x="${pos.x+18}" y="${pos.y-18}" fill="${c1}" font-size="11" font-weight="900" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,sans-serif">${i+1}</text>`;
+      // Nom dessous
+      h+=`<text x="${pos.x}" y="${pos.y+22}" fill="white" font-size="8" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" letter-spacing=".02em">${(pl.p[0]+'.'+pl.n).slice(0,12).toUpperCase()}</text>`;
+    } else if(pl){
+      h+=`<text x="${pos.x}" y="${pos.y-5}" fill="${c2}" font-size="18" font-weight="900" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,sans-serif">${i+1}</text>`;
+      h+=`<text x="${pos.x}" y="${pos.y+11}" fill="white" font-size="8" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" letter-spacing=".02em">${(pl.p[0]+'.'+pl.n).slice(0,12).toUpperCase()}</text>`;
+    } else {
+      h+=`<text x="${pos.x}" y="${pos.y-3}" fill="rgba(255,255,255,.45)" font-size="14" text-anchor="middle" dominant-baseline="central">+</text>`;
+      h+=`<text x="${pos.x}" y="${pos.y+11}" fill="rgba(255,255,255,.4)" font-size="6.5" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="600">${(Ps[i]||"").slice(0,16)}</text>`;
+    }
     h+=`</g>`;
   });
   svg.innerHTML=h;
+
+  // ── Liste IMPACT PLAYERS sous le terrain ──
+  const impactEl=document.getElementById("terrain-impact");
+  if(impactEl){
+    const subs=resolved.slice(ss2);
+    let hi='<div style="background:#0a0a1a;padding:10px 14px 14px;border-top:1px solid rgba(240,197,0,.2)">';
+    hi+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+    hi+='<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.12em;font-weight:800;font-family:\'Barlow Condensed\',sans-serif">⚡ Impact players</div>';
+    const filledSubs=subs.filter(Boolean).length;
+    hi+='<div style="font-size:9px;color:rgba(255,255,255,.45);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.05em">'+filledSubs+' / '+subs.length+'</div>';
+    hi+='</div>';
+    hi+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:5px">';
+    subs.forEach((pid,i)=>{
+      const idx=i+ss2;
+      const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;
+      const ovr=isOverridden(idx);
+      const numColor=pl?c2:'rgba(255,255,255,.3)';
+      const bgColor=pl?'linear-gradient(90deg,rgba(26,58,107,.6),rgba(26,58,107,.3))':'rgba(255,255,255,.04)';
+      const borderColor=ovr?'#f97316':(pl?'rgba(240,197,0,.25)':'rgba(255,255,255,.1)');
+      const initials=pl?(pl.p[0]+pl.n[0]).toUpperCase():'';
+      hi+='<div onclick="openPick('+idx+')" style="cursor:pointer;background:'+bgColor+';border:1px solid '+borderColor+';border-radius:6px;padding:5px 7px;display:flex;align-items:center;gap:7px;transition:all .15s" onmouseover="this.style.background=\'rgba(26,58,107,.8)\'" onmouseout="this.style.background=\''+bgColor.replace(/'/g,'\\\'')+'\'">';
+      // Numéro
+      hi+='<div style="background:'+(pl?c1:'rgba(0,0,0,.3)')+';color:'+numColor+';width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:13px;flex-shrink:0;border:1.5px solid '+(pl?c2:'rgba(255,255,255,.2)')+'">'+(idx+1)+'</div>';
+      // Photo ou initiales
+      if(pl&&pl.photo){
+        hi+='<img src="'+pl.photo+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(240,197,0,.3)">';
+      } else if(pl){
+        hi+='<div style="width:24px;height:24px;border-radius:50%;background:'+c1+';color:'+c2+';display:flex;align-items:center;justify-content:center;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:9px;flex-shrink:0;border:1px solid rgba(240,197,0,.3)">'+initials+'</div>';
+      }
+      // Nom
+      const nameTxt=pl?(pl.n.toUpperCase()+' '+pl.p[0]+'.'):'À définir';
+      hi+='<div style="min-width:0;flex:1;font-family:\'Barlow Condensed\',sans-serif;font-weight:'+(pl?'700':'500')+';font-size:11px;color:'+(pl?'#fff':'rgba(255,255,255,.4)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em">'+nameTxt+'</div>';
+      hi+='</div>';
+    });
+    hi+='</div></div>';
+    impactEl.innerHTML=hi;
+  }
 }
 
 // EXPORT - STYLE TOP 14
@@ -1380,6 +1496,292 @@ var _mActiveMatchId=null,_mActiveMatchAdv='',_mPickerCallback=null;
 var _mV2_ENABLED=false;
 
 function _mGetMatch(ev){if(!ev.match)ev.match={config:{periods:2,duration:20,reverse:false},byMatch:{}};if(!ev.match.byMatch)ev.match.byMatch={};return ev.match;}
+
+// ═══════════════════════════════════════════════════════════════
+// TEMPS DE JEU PAR JOUEUR
+// ═══════════════════════════════════════════════════════════════
+// Modèle : md.timeOnField = { "<pid>": { intervals: [[startSec,endSec],…], current: startSec|null, yellowUntil: sec|null } }
+// "Temps absolu" = secondes depuis le coup d'envoi du match (cumul toutes périodes)
+// On utilise _mGetAbsSec(md) qui calcule la position absolue actuelle.
+
+function _mGetAbsSec(md){
+  // Position absolue depuis le début du match : (périodes complètes terminées)*durée + secondes courantes
+  var cfg=_mGetMatch(curEV).config;
+  var dur=(cfg.duration||20)*60;
+  var p=md.currentPeriod||0;
+  return p*dur+(md.seconds||_mSeconds||0);
+}
+
+function _mTOFInit(md){
+  if(!md.timeOnField)md.timeOnField={};
+  return md.timeOnField;
+}
+
+function _mTOFGetTitulaires(){
+  // Renvoie la liste des PIDs titulaires (postes 1..ss2) du match en cours, équipe courante
+  if(!_mActiveMatchId||!curEV)return [];
+  var ss2=subsStart(curEV);
+  var resolved=getResolved(curEV,curTID,_mActiveMatchId);
+  return resolved.slice(0,ss2).filter(Boolean).map(String);
+}
+
+function _mTOFGetSubs(){
+  if(!_mActiveMatchId||!curEV)return [];
+  var ss2=subsStart(curEV);
+  var resolved=getResolved(curEV,curTID,_mActiveMatchId);
+  return resolved.slice(ss2).filter(Boolean).map(String);
+}
+
+function _mTOFStartMatch(md){
+  // Au coup d'envoi : tous les titulaires démarrent leur compteur à 0
+  var tof=_mTOFInit(md);
+  var titulaires=_mTOFGetTitulaires();
+  titulaires.forEach(function(pid){
+    if(!tof[pid])tof[pid]={intervals:[],current:0,yellowUntil:null};
+    if(tof[pid].current==null)tof[pid].current=0;
+  });
+  // Les remplaçants ont juste une fiche prête, sans current actif
+  _mTOFGetSubs().forEach(function(pid){
+    if(!tof[pid])tof[pid]={intervals:[],current:null,yellowUntil:null};
+  });
+}
+
+function _mTOFOnPause(md){
+  // Quand on met en pause, on referme les intervalles courants
+  var tof=_mTOFInit(md);
+  var abs=_mGetAbsSec(md);
+  Object.keys(tof).forEach(function(pid){
+    if(tof[pid].current!=null){
+      tof[pid].intervals.push([tof[pid].current,abs]);
+      tof[pid].current=null;
+      tof[pid]._wasOnField=true; // mémo pour reprise
+    }
+  });
+}
+
+function _mTOFOnResume(md){
+  // À la reprise, on rouvre un intervalle pour ceux qui étaient sur le terrain
+  var tof=_mTOFInit(md);
+  var abs=_mGetAbsSec(md);
+  Object.keys(tof).forEach(function(pid){
+    // Vérifier si le joueur est exclu temporairement (carton jaune)
+    if(tof[pid].yellowUntil!=null&&abs<tof[pid].yellowUntil)return;
+    if(tof[pid]._wasOnField){
+      tof[pid].current=abs;
+      delete tof[pid]._wasOnField;
+    }
+  });
+}
+
+function _mTOFRemplacement(md,outPid,inPid){
+  // Sortant : ferme intervalle ; Entrant : ouvre intervalle
+  var tof=_mTOFInit(md);
+  var abs=_mGetAbsSec(md);
+  if(outPid){
+    if(!tof[outPid])tof[outPid]={intervals:[],current:null,yellowUntil:null};
+    if(tof[outPid].current!=null){
+      tof[outPid].intervals.push([tof[outPid].current,abs]);
+      tof[outPid].current=null;
+    }
+  }
+  if(inPid){
+    if(!tof[inPid])tof[inPid]={intervals:[],current:null,yellowUntil:null};
+    if(tof[inPid].current==null)tof[inPid].current=abs;
+  }
+}
+
+function _mTOFCartonJaune(md,pid){
+  // M14 : 5 minutes d'exclusion temporaire
+  if(!pid)return;
+  var tof=_mTOFInit(md);
+  var abs=_mGetAbsSec(md);
+  if(!tof[pid])tof[pid]={intervals:[],current:null,yellowUntil:null};
+  if(tof[pid].current!=null){
+    tof[pid].intervals.push([tof[pid].current,abs]);
+    tof[pid].current=null;
+  }
+  tof[pid].yellowUntil=abs+5*60;
+}
+
+function _mTOFCartonRouge(md,pid){
+  // Sortie définitive
+  if(!pid)return;
+  var tof=_mTOFInit(md);
+  var abs=_mGetAbsSec(md);
+  if(!tof[pid])tof[pid]={intervals:[],current:null,yellowUntil:null};
+  if(tof[pid].current!=null){
+    tof[pid].intervals.push([tof[pid].current,abs]);
+    tof[pid].current=null;
+  }
+  tof[pid].redCard=true;
+}
+
+function _mTOFTick(md){
+  // Vérifier les retours de carton jaune
+  var tof=md.timeOnField;
+  if(!tof)return;
+  var abs=_mGetAbsSec(md);
+  Object.keys(tof).forEach(function(pid){
+    if(tof[pid].yellowUntil!=null&&abs>=tof[pid].yellowUntil&&!tof[pid].redCard){
+      // Retour automatique sur le terrain
+      tof[pid].yellowUntil=null;
+      if(tof[pid].current==null)tof[pid].current=abs;
+    }
+  });
+}
+
+function _mTOFGetSeconds(md,pid){
+  // Cumul de secondes pour un joueur
+  var tof=md.timeOnField;
+  if(!tof||!tof[pid])return 0;
+  var sum=0;
+  (tof[pid].intervals||[]).forEach(function(iv){sum+=Math.max(0,iv[1]-iv[0]);});
+  if(tof[pid].current!=null){
+    sum+=Math.max(0,_mGetAbsSec(md)-tof[pid].current);
+  }
+  return sum;
+}
+
+function _mTOFFormat(secs){
+  var m=Math.floor(secs/60),s=Math.floor(secs%60);
+  return m+"' "+(s<10?"0":"")+s+"''";
+}
+
+function _mTOFFormatMin(secs){
+  return Math.floor(secs/60)+" min";
+}
+
+function _mTOFIsOnField(md,pid){
+  return md.timeOnField&&md.timeOnField[pid]&&md.timeOnField[pid].current!=null;
+}
+
+function _mTOFIsYellow(md,pid){
+  if(!md.timeOnField||!md.timeOnField[pid])return false;
+  var abs=_mGetAbsSec(md);
+  var y=md.timeOnField[pid].yellowUntil;
+  return y!=null&&abs<y;
+}
+
+function _mShowEquityToast(md){
+  // Affiche un toast en bas d'écran sur les joueurs qui ont peu joué jusqu'ici
+  if(!md||!md.timeOnField)return;
+  var cfg=_mGetMatch(curEV).config;
+  // Seuil bas : moins de 25% du temps écoulé
+  var elapsed=_mGetAbsSec(md);
+  if(elapsed<60)return; // pas assez écoulé pour évaluer
+  var threshold=elapsed*0.25;
+  var underused=[];
+  // On considère tous les joueurs convoqués (titulaires + remplaçants)
+  var allConvoked=_mTOFGetTitulaires().concat(_mTOFGetSubs());
+  allConvoked.forEach(function(pid){
+    var secs=_mTOFGetSeconds(md,pid);
+    if(secs<threshold){
+      var pl=S.players.find(function(p){return String(p.id)===String(pid);});
+      if(pl)underused.push({name:pl.p+" "+pl.n,secs:secs});
+    }
+  });
+  if(!underused.length)return;
+  // Construit le message
+  underused.sort(function(a,b){return a.secs-b.secs;});
+  var msg='<div style="font-weight:800;margin-bottom:6px;font-size:13px;color:#fde047">⚠ Équité de jeu</div>';
+  msg+='<div style="font-size:11px;opacity:.85;margin-bottom:4px">Joueurs sous-utilisés ('+_mTOFFormatMin(threshold)+' attendues) :</div>';
+  underused.slice(0,8).forEach(function(u){
+    msg+='<div style="font-size:12px;padding:2px 0">• '+u.name+' — <b>'+_mTOFFormatMin(u.secs)+'</b></div>';
+  });
+  if(underused.length>8)msg+='<div style="font-size:11px;opacity:.65;font-style:italic">… et '+(underused.length-8)+' autre(s)</div>';
+  // Affiche le toast
+  var toast=document.createElement('div');
+  toast.id='equity-toast';
+  toast.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1a3a6b 0%,#0f2347 100%);color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:9000;max-width:90vw;width:340px;font-family:-apple-system,sans-serif;border:2px solid #fde047';
+  toast.innerHTML=msg+'<button onclick="this.parentNode.remove()" style="margin-top:8px;width:100%;background:#fde047;color:#1a3a6b;border:none;padding:7px;border-radius:5px;font-weight:800;font-size:11px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase">OK</button>';
+  // Retirer un éventuel toast précédent
+  var old=document.getElementById('equity-toast');if(old)old.remove();
+  document.body.appendChild(toast);
+  // Auto-dismiss après 12s
+  setTimeout(function(){if(toast.parentNode)toast.remove();},12000);
+}
+
+// ── Modale "Temps de jeu" pendant et après le match ───────────
+var _mTOFLiveTimer=null;
+
+function _mTOFOpenPanel(){
+  if(!_mActiveMatchId){alert("Aucun match actif.");return;}
+  _mTOFRenderPanel();
+  document.getElementById('m-tof-modal').classList.add('open');
+  // Refresh live tant que le match tourne
+  clearInterval(_mTOFLiveTimer);
+  _mTOFLiveTimer=setInterval(function(){
+    if(_mRunning&&document.getElementById('m-tof-modal').classList.contains('open')){
+      _mTOFRenderPanel();
+    } else if(!document.getElementById('m-tof-modal').classList.contains('open')){
+      clearInterval(_mTOFLiveTimer);_mTOFLiveTimer=null;
+    }
+  },1000);
+}
+
+function _mTOFClosePanel(){
+  clearInterval(_mTOFLiveTimer);_mTOFLiveTimer=null;
+  document.getElementById('m-tof-modal').classList.remove('open');
+}
+
+function _mTOFRenderPanel(){
+  if(!_mActiveMatchId)return;
+  var md=_mGetMatchData(curEV,_mActiveMatchId);
+  var elapsed=_mGetAbsSec(md);
+  var titulaires=_mTOFGetTitulaires();
+  var subs=_mTOFGetSubs();
+  var allConvoked=titulaires.concat(subs);
+  // Calcul des temps
+  var rows=allConvoked.map(function(pid){
+    var pl=S.players.find(function(p){return String(p.id)===String(pid);});
+    if(!pl)return null;
+    var secs=_mTOFGetSeconds(md,pid);
+    var onField=_mTOFIsOnField(md,pid);
+    var isYellow=_mTOFIsYellow(md,pid);
+    var redCard=md.timeOnField&&md.timeOnField[pid]&&md.timeOnField[pid].redCard;
+    return {pid:pid,name:pl.p+" "+pl.n,secs:secs,onField:onField,yellow:isYellow,red:redCard,wasStarter:titulaires.includes(pid)};
+  }).filter(Boolean);
+  // Tri par temps de jeu décroissant
+  rows.sort(function(a,b){return b.secs-a.secs;});
+
+  var html='<div style="background:linear-gradient(135deg,#1a3a6b,#0f2347);padding:14px 16px;border-bottom:3px solid #fde047;display:flex;align-items:center;justify-content:space-between">';
+    html+='<div><div style="font-size:9px;color:#fde047;text-transform:uppercase;letter-spacing:.1em;font-weight:700">⏱ Temps de jeu</div><div style="font-size:18px;color:#fff;font-weight:800;letter-spacing:.04em">vs '+(_mActiveMatchAdv||'')+' — '+_mTOFFormat(elapsed)+'</div></div>';
+    html+='<button onclick="_mTOFClosePanel()" style="background:rgba(255,255,255,.1);color:#fde047;border:1px solid rgba(253,224,71,.3);padding:6px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.05em">Fermer</button>';
+  html+='</div>';
+
+  // Zone scrollable
+  html+='<div style="max-height:60vh;overflow-y:auto;padding:0;background:#fff">';
+  if(!rows.length){
+    html+='<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px">Aucune donnée disponible.<br>Le temps de jeu se calcule automatiquement quand le chrono tourne.</div>';
+  } else {
+    // Seuil équité : 50% du temps écoulé (plus permissif que le toast à 25%)
+    var threshold=elapsed>0?elapsed*0.40:0;
+    rows.forEach(function(r,i){
+      var pct=elapsed>0?Math.round(r.secs*100/elapsed):0;
+      var pctClamped=Math.min(100,pct);
+      var statusBadge='';
+      if(r.red)statusBadge='<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:800;margin-left:6px">🔴 EXCLU</span>';
+      else if(r.yellow)statusBadge='<span style="background:#fef9c3;color:#854d0e;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:800;margin-left:6px">🟡 SORTI</span>';
+      else if(r.onField)statusBadge='<span style="background:#dcfce7;color:#16a34a;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:800;margin-left:6px">● TERRAIN</span>';
+      else statusBadge='<span style="background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:800;margin-left:6px">BANC</span>';
+      var underused=r.secs<threshold&&!r.red;
+      var nameColor=underused?'#dc2626':'#1a3a6b';
+      var bg=i%2===0?'#fff':'#f9fafb';
+      var barColor=r.red?'#dc2626':r.yellow?'#f59e0b':underused?'#fb923c':'#16a34a';
+      html+='<div style="padding:9px 14px;background:'+bg+';border-bottom:1px solid #f3f4f6">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px">';
+      html+='<div style="font-size:13px;font-weight:700;color:'+nameColor+';display:flex;align-items:center;flex-wrap:wrap">'+(r.wasStarter?'':'<span style="font-size:9px;color:#9ca3af;margin-right:5px;font-weight:600">REMP·</span>')+r.name+statusBadge+'</div>';
+      html+='<div style="font-size:14px;font-weight:900;color:'+nameColor+';white-space:nowrap">'+_mTOFFormat(r.secs)+'</div>';
+      html+='</div>';
+      // Barre de progression
+      html+='<div style="height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden"><div style="height:100%;background:'+barColor+';width:'+pctClamped+'%;transition:width .3s"></div></div>';
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  document.getElementById('m-tof-modal').innerHTML='<div style="background:#fff;border-radius:10px;overflow:hidden;width:96vw;max-width:520px;box-shadow:0 10px 40px rgba(0,0,0,.4)">'+html+'</div>';
+}
 function _mGetMatchData(ev,mid){var m=_mGetMatch(ev);if(!m.byMatch[mid])m.byMatch[mid]={periods:[],currentPeriod:0,status:"idle",seconds:0};return m.byMatch[mid];}
 function _mCurrentPeriod(md){var i=md.currentPeriod||0;if(!md.periods)md.periods=[];while(md.periods.length<=i)md.periods.push(null);if(!md.periods[i])md.periods[i]={score_us:0,score_them:0,events:[]};return md.periods[i];}
 function _mTotalScore(md,key){return(md.periods||[]).reduce(function(a,p){return a+(p&&p[key]||0);},0);}
@@ -1397,17 +1799,26 @@ function _mStartStop(){
   if(!_mActiveMatchId){alert("Selectionnez un match.");return;}
   var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
   if(_mRunning){
-    clearInterval(_mTimer);_mRunning=false;md.seconds=_mSeconds;md.status="paused";sv();
+    clearInterval(_mTimer);_mRunning=false;md.seconds=_mSeconds;md.status="paused";
+    _mTOFOnPause(md);
+    sv();
     var b=document.getElementById("m-btn-ss");
     if(b){b.textContent="▶ Démarrer";b.style.background="rgba(255,255,255,.95)";b.style.color="var(--c1)";}
   } else {
     _mRunning=true;md.status="running";
+    // Premier démarrage du match : initialiser les compteurs des titulaires
+    if(!md.timeOnField||Object.keys(md.timeOnField).length===0){
+      _mTOFStartMatch(md);
+    } else {
+      _mTOFOnResume(md);
+    }
     var b=document.getElementById("m-btn-ss");
     if(b){b.textContent="⏸ Pause";b.style.background="rgba(255,255,255,.2)";b.style.color="#fff";}
     var dur=(cfg.duration||20)*60;
     _mTimer=setInterval(function(){
       _mSeconds++;md.seconds=_mSeconds;
-      if(_mSeconds>=dur){clearInterval(_mTimer);_mRunning=false;md.status="ended";md.seconds=_mSeconds;sv();renderMatchTab();}
+      _mTOFTick(md);
+      if(_mSeconds>=dur){clearInterval(_mTimer);_mRunning=false;md.status="ended";md.seconds=_mSeconds;_mTOFOnPause(md);sv();_mShowEquityToast(md);renderMatchTab();}
       else{_mUpdateDisplay();}
     },1000);
     sv();
@@ -1417,12 +1828,16 @@ function _mNextPeriod(){
   if(!_mActiveMatchId)return;
   var md=_mGetMatchData(curEV,_mActiveMatchId),cfg=_mGetMatch(curEV).config;
   clearInterval(_mTimer);_mRunning=false;
+  // Avant de basculer la période, on referme les intervalles courants au temps absolu actuel
+  _mTOFOnPause(md);
+  // Toast d'équité de jeu pour la période qui se termine
+  _mShowEquityToast(md);
   if((md.currentPeriod||0)<(cfg.periods||2)-1){md.currentPeriod=(md.currentPeriod||0)+1;}
   else{md.status="ended";}
   _mSeconds=0;md.seconds=0;sv();renderMatchTab();
 }
 function _mReset(){
-  if(!_mActiveMatchId||!confirm("Reinitialiser ce match ?"))return;
+  if(!_mActiveMatchId||!confirm("Reinitialiser ce match ?\nCela efface aussi les temps de jeu calculés."))return;
   clearInterval(_mTimer);_mRunning=false;_mSeconds=0;
   delete _mGetMatch(curEV).byMatch[_mActiveMatchId];
   sv();renderMatchTab();
@@ -1463,10 +1878,10 @@ function _mDoAdvEssai(){_mScore("essai",false);_mAddEvt("essai",{forUs:false,pts
 function _mDoAdvTransfo(){_mScore("transfo",false);_mAddEvt("transfo",{forUs:false,pts:2,name:"Adv"});}
 function _mDoAdvPenalite(){_mScore("penalite",false);_mAddEvt("penalite",{forUs:false,pts:3,name:"Adv"});}
 function _mDoAdvDrop(){_mScore("drop",false);_mAddEvt("drop",{forUs:false,pts:3,name:"Adv"});}
-function _mDoRemplacement(){_mShowPicker("Sort - Qui ?",function(p1,n1){_mShowPicker("Entre - Qui ?",function(p2,n2){_mAddEvt("remplacement",{out:p1,outName:n1,in:p2,inName:n2});});});}
+function _mDoRemplacement(){_mShowPicker("Sort - Qui ?",function(p1,n1){_mShowPicker("Entre - Qui ?",function(p2,n2){_mAddEvt("remplacement",{out:p1,outName:n1,in:p2,inName:n2});var md=_mGetMatchData(curEV,_mActiveMatchId);_mTOFRemplacement(md,p1,p2);sv();});});}
 function _mDoAvertissement(){_mShowPicker("Avertissement ?",function(pid,n){_mAddEvt("avertissement",{pid:pid,name:n});});}
-function _mDoCartonJ(){_mShowPicker("Carton jaune ?",function(pid,n){_mAddEvt("carton_jaune",{pid:pid,name:n});});}
-function _mDoCartonR(){_mShowPicker("Carton rouge ?",function(pid,n){_mAddEvt("carton_rouge",{pid:pid,name:n});});}
+function _mDoCartonJ(){_mShowPicker("Carton jaune ?",function(pid,n){_mAddEvt("carton_jaune",{pid:pid,name:n});var md=_mGetMatchData(curEV,_mActiveMatchId);_mTOFCartonJaune(md,pid);sv();});}
+function _mDoCartonR(){_mShowPicker("Carton rouge ?",function(pid,n){_mAddEvt("carton_rouge",{pid:pid,name:n});var md=_mGetMatchData(curEV,_mActiveMatchId);_mTOFCartonRouge(md,pid);sv();});}
 function _mDoBlessure(){_mShowPicker("Blessure ?",function(pid,n){var nat=prompt("Nature :","");_mAddEvt("blessure",{pid:pid,name:n,nat:nat||"-"});});}
 
 // ── Annulation de la dernière action saisie ────────────────────
@@ -1492,6 +1907,24 @@ function _mUndoLast(){
     var p=md.periods[latestPi];
     if(latest.forUs===false)p.score_them=Math.max(0,(p.score_them||0)-pts);
     else p.score_us=Math.max(0,(p.score_us||0)-pts);
+  }
+  // Annuler l'effet sur le temps de jeu si applicable
+  if(latest.type==="remplacement"){
+    // On inverse : le sortant rentre, l'entrant ressort
+    _mTOFRemplacement(md,latest["in"],latest.out);
+  } else if(latest.type==="carton_jaune"&&latest.pid){
+    // Annuler le carton jaune : retirer yellowUntil et remettre le joueur sur le terrain
+    var tof=md.timeOnField||{};
+    if(tof[latest.pid]){
+      tof[latest.pid].yellowUntil=null;
+      if(tof[latest.pid].current==null)tof[latest.pid].current=_mGetAbsSec(md);
+    }
+  } else if(latest.type==="carton_rouge"&&latest.pid){
+    var tof=md.timeOnField||{};
+    if(tof[latest.pid]){
+      tof[latest.pid].redCard=false;
+      if(tof[latest.pid].current==null)tof[latest.pid].current=_mGetAbsSec(md);
+    }
   }
   // Retirer l'événement
   md.periods[latestPi].events.splice(latestIdx,1);
@@ -1732,6 +2165,11 @@ function renderMatchTab(){
     html+='</div>';
   }
 
+  // Temps de jeu (visible si le match a démarré)
+  html+='<div style="border-top:1px solid rgba(255,255,255,.06);padding:10px 14px">';
+    html+='<button onclick="_mTOFOpenPanel()" style="width:100%;background:linear-gradient(135deg,rgba(253,224,71,.15),rgba(240,197,0,.1));border:1px solid rgba(253,224,71,.3);color:#fde047;padding:10px;border-radius:8px;cursor:pointer;font-family:var(--fd);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px">⏱ Temps de jeu par joueur</button>';
+  html+='</div>';
+
   // Historique
   html+='<div style="border-top:1px solid rgba(255,255,255,.06)">';
     html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">';
@@ -1932,6 +2370,26 @@ function renderRapport(){
             if(e.pts&&e.forUs!==false)html+='<span style="font-size:14px;font-weight:700;color:'+c2+'">+'+e.pts+'</span>';
           html+='</div>';
         });
+      }
+      // Tableau temps de jeu si données présentes
+      if(md&&md.timeOnField&&Object.keys(md.timeOnField).length){
+        var tofRows=[];
+        Object.keys(md.timeOnField).forEach(function(pid){
+          var pl=S.players.find(function(p){return String(p.id)===String(pid);});
+          if(!pl)return;
+          var s=_mTOFGetSeconds(md,pid);
+          if(s>0)tofRows.push({name:pl.p+" "+pl.n,secs:s,red:md.timeOnField[pid].redCard});
+        });
+        tofRows.sort(function(a,b){return b.secs-a.secs;});
+        if(tofRows.length){
+          html+='<div style="margin-top:10px;padding:8px 0 0;border-top:1px solid rgba(255,255,255,.05)">';
+          html+='<div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:6px">⏱ Temps de jeu</div>';
+          html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px">';
+          tofRows.forEach(function(r){
+            html+='<div style="font-size:11px;color:rgba(255,255,255,.85);display:flex;justify-content:space-between;padding:2px 6px;background:rgba(255,255,255,.04);border-radius:4px"><span>'+r.name+(r.red?' 🔴':'')+'</span><b style="color:'+c2+'">'+_mTOFFormatMin(r.secs)+'</b></div>';
+          });
+          html+='</div></div>';
+        }
       }
     html+='</div>';
   });
@@ -2204,7 +2662,7 @@ function computePlayerStats(){
         res.forEach(function(pid){
           if(!pid)return;
           var k=String(pid);
-          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0};
+          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,playSecs:0};
           stats[k].matchs++;
         });
       });
@@ -2216,13 +2674,26 @@ function computePlayerStats(){
         (p.events||[]).forEach(function(evt){
           if(!evt.pid||evt.forUs===false)return;
           var k=String(evt.pid);
-          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0};
+          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,playSecs:0};
           if(evt.type==="essai")stats[k].essais++;
           if(evt.type==="carton_jaune")stats[k].cartons_j++;
           if(evt.type==="carton_rouge")stats[k].cartons_r++;
           if(evt.type==="blessure")stats[k].blessures++;
         });
       });
+      // Cumul du temps de jeu sur ce match
+      if(md.timeOnField){
+        Object.keys(md.timeOnField).forEach(function(pid){
+          var k=String(pid);
+          if(!stats[k])stats[k]={matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,playSecs:0};
+          var tof=md.timeOnField[pid];
+          var sum=0;
+          (tof.intervals||[]).forEach(function(iv){sum+=Math.max(0,iv[1]-iv[0]);});
+          // current encore ouvert : on suppose que le match n'est pas terminé proprement (oubli "Fin")
+          // On ne compte que les intervalles fermés pour les stats
+          stats[k].playSecs+=sum;
+        });
+      }
     });
   });
   return stats;
@@ -2231,7 +2702,7 @@ function computePlayerStats(){
 function renderPlayerStats(pid){
   var el=document.getElementById("mp-stats");if(!el)return;
   var stats=computePlayerStats();
-  var st=stats[String(pid)]||{matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0};
+  var st=stats[String(pid)]||{matchs:0,essais:0,cartons_j:0,cartons_r:0,blessures:0,playSecs:0};
   var p=S.players.find(function(pp){return String(pp.id)===String(pid);});
   // Détails complémentaires : nombre d'événements auxquels le joueur a participé, points marqués (essais)
   var nbEvents=0,nbPoints=st.essais*5;
@@ -2249,6 +2720,7 @@ function renderPlayerStats(pid){
   var html='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">';
   html+='<span style="background:#e0f2fe;color:#0369a1;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700">'+st.matchs+' match'+(st.matchs>1?'s':'')+'</span>';
   if(nbEvents)html+='<span style="background:#ede9fe;color:#5b21b6;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700">'+nbEvents+' évén.</span>';
+  if(st.playSecs)html+='<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700">⏱ '+Math.floor(st.playSecs/60)+' min jouées</span>';
   if(st.essais)html+='<span style="background:#dcfce7;color:#16a34a;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700">'+st.essais+' essai'+(st.essais>1?'s':'')+'</span>';
   if(nbPoints)html+='<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700">'+nbPoints+' pts marqués</span>';
   if(st.cartons_j)html+='<span style="background:#fef9c3;color:#854d0e;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700">'+st.cartons_j+' c. jaune</span>';
