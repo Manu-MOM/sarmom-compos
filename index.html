@@ -2497,15 +2497,43 @@ function _mExportRapportPDF(){
     var idx=0;
     function processNext(){
       if(idx>=blocks.length){
-        // Page terrain à la fin
-        svgToCanvas(svgEl,function(fc){
-          if(fc){
-            pdf.addPage();
-            var fi=fc.toDataURL("image/png");
-            var fh=contentW*(fc.height/fc.width);
-            var yo=fh<pageContentH?(pageContentH-fh)/2+margin:margin;
-            pdf.addImage(fi,"PNG",margin,yo,contentW,Math.min(fh,pageContentH));
+        // Page terrain à la fin — capturer la carte complète (header + terrain + impact players)
+        var terrainCard=document.getElementById("terrain-card");
+        if(!terrainCard){
+          // fallback ancienne méthode si la nouvelle structure n'est pas là
+          svgToCanvas(svgEl,function(fc){
+            if(fc){
+              pdf.addPage();
+              var fi=fc.toDataURL("image/png");
+              var fh=contentW*(fc.height/fc.width);
+              var yo=fh<pageContentH?(pageContentH-fh)/2+margin:margin;
+              pdf.addImage(fi,"PNG",margin,yo,contentW,Math.min(fh,pageContentH));
+            }
+            restoreUI();
+            pdf.save("rapport_"+evName+".pdf");
+          });
+          return;
+        }
+        // Capture HTML2canvas du bloc complet
+        html2canvas(terrainCard,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
+          pdf.addPage();
+          var imgD=canvas.toDataURL("image/png");
+          var imgH=contentW*(canvas.height/canvas.width);
+          // Si trop haut pour une page, on scale pour rentrer
+          if(imgH>pageContentH){
+            var scale=pageContentH/imgH;
+            var newW=contentW*scale;
+            var newH=pageContentH;
+            var ox=margin+(contentW-newW)/2;
+            pdf.addImage(imgD,"PNG",ox,margin,newW,newH);
+          } else {
+            var yo=(pageContentH-imgH)/2+margin;
+            pdf.addImage(imgD,"PNG",margin,yo,contentW,imgH);
           }
+          restoreUI();
+          pdf.save("rapport_"+evName+".pdf");
+        }).catch(function(e){
+          console.error("Terrain capture failed:",e);
           restoreUI();
           pdf.save("rapport_"+evName+".pdf");
         });
