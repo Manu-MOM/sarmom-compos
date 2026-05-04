@@ -1509,21 +1509,242 @@ function _gCheckRedirectToken(){
 function _gFindOrCreateFile(){
   gUpdateDriveStatus("syncing");
   var q="name='"+_G_FILE_NAME+"' and trashed=false";
-  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)",{
+  fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name,modifiedTime)",{
     headers:{Authorization:"Bearer "+_gAccessToken}
   }).then(function(r){return r.json();})
   .then(function(data){
-    if(data.files&&data.files.length>0){_gComposFileId=data.files[0].id;gUpdateDriveStatus("connected");}
+    if(data.files&&data.files.length>0){
+      _gComposFileId=data.files[0].id;
+      _gDriveModifiedTime=data.files[0].modifiedTime;
+      gUpdateDriveStatus("connected");
+      // Vérifier si on doit synchroniser au démarrage
+      _gCheckSync();
+    }
     else{_gUploadFile(S,function(){gUpdateDriveStatus("connected");});}
   }).catch(function(){gUpdateDriveStatus("error");});
 }
 
+// Variable mémoire de la date Drive connue (mise à jour à chaque check ou upload)
+var _gDriveModifiedTime=null;
+var _gPeriodicCheckTimer=null;
+
+// Récupère le modifiedTime du fichier Drive sans télécharger le contenu
+function _gFetchDriveModifiedTime(cb){
+  if(!_gAccessToken||!_gComposFileId){if(cb)cb(null);return;}
+  fetch("https://www.googleapis.com/drive/v3/files/"+_gComposFileId+"?fields=modifiedTime",{
+    headers:{Authorization:"Bearer "+_gAccessToken}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    if(data&&data.modifiedTime){
+      _gDriveModifiedTime=data.modifiedTime;
+      if(cb)cb(data.modifiedTime);
+    } else {
+      if(cb)cb(null);
+    }
+  }).catch(function(){if(cb)cb(null);});
+}
+
+// ─────────────────────────────────────────────────────────────
+// AUTO-SYNC : compare local et Drive au démarrage et périodiquement
+// ─────────────────────────────────────────────────────────────
+// Trois timestamps stockés en localStorage :
+// - sarmom_lastPushedAt : date du dernier push réussi vers Drive (= ce que contient Drive selon nous)
+// - sarmom_lastLocalChange : date de la dernière modification locale
+// - sarmom_driveModifiedTime : modifiedTime de Drive lors de notre dernier check/push
+function _gMarkLocalChange(){
+  localStorage.setItem("sarmom_lastLocalChange",String(Date.now()));
+}
+function _gMarkPushed(driveModTime){
+  var now=Date.now();
+  localStorage.setItem("sarmom_lastPushedAt",String(now));
+  localStorage.setItem("sarmom_lastLocalChange",String(now));
+  if(driveModTime)localStorage.setItem("sarmom_driveModifiedTime",driveModTime);
+}
+function _gMarkPulled(driveModTime){
+  var now=Date.now();
+  localStorage.setItem("sarmom_lastPushedAt",String(now));
+  localStorage.setItem("sarmom_lastLocalChange",String(now));
+  if(driveModTime)localStorage.setItem("sarmom_driveModifiedTime",driveModTime);
+}
+
+// La fonction centrale : analyse l'état des 4 cas possibles
+function _gCheckSync(){
+  if(!_gAccessToken||!_gComposFileId)return;
+  // Démarrer la vérification périodique (toutes les 15 min) si pas déjà
+  if(!_gPeriodicCheckTimer){
+    _gPeriodicCheckTimer=setInterval(function(){
+      if(_gAccessToken&&_gComposFileId)_gCheckSync();
+    },15*60*1000);
+  }
+  _gFetchDriveModifiedTime(function(driveTime){
+    if(!driveTime)return;
+    var lastKnownDriveTime=localStorage.getItem("sarmom_driveModifiedTime")||"";
+    var lastLocalChange=parseInt(localStorage.getItem("sarmom_lastLocalChange")||"0");
+    var lastPushed=parseInt(localStorage.getItem("sarmom_lastPushedAt")||"0");
+
+    // Cas spécial : premier check après installation, on aligne sans rien faire
+    if(!lastKnownDriveTime){
+      localStorage.setItem("sarmom_driveModifiedTime",driveTime);
+      return;
+    }
+    var driveChanged=(driveTime!==lastKnownDriveTime);
+    var localChanged=(lastLocalChange>lastPushed);
+
+    if(driveChanged&&localChanged){
+      // CONFLIT : les deux ont changé → modale de choix
+      _gShowConflictModal(driveTime);
+    } else if(driveChanged&&!localChanged){
+      // Drive seul a changé → propose de tirer
+      _gShowPullToast(driveTime);
+    } else if(!driveChanged&&localChanged){
+      // Local seul a changé → push silencieux
+      // (le sv() du localStorage l'a déjà programmé via _gSaveCompos, on ne fait rien de plus)
+    }
+    // Sinon : tout est synchronisé, rien à faire
+  });
+}
+
+// Toast en bas d'écran : "Nouvelle version Drive disponible"
+function _gShowPullToast(driveTime){
+  if(document.getElementById('sync-pull-toast'))return;
+  var toast=document.createElement('div');
+  toast.id='sync-pull-toast';
+  toast.style.cssText='position:fixed;bottom:20px;right:20px;z-index:9000;background:linear-gradient(135deg,#1a3a6b,#0f2347);color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:90vw;width:340px;font-family:-apple-system,sans-serif;border:2px solid #f0c500;animation:slideUp .3s ease-out';
+  var dt=new Date(driveTime);
+  var hh=dt.getHours().toString().padStart(2,'0')+':'+dt.getMinutes().toString().padStart(2,'0');
+  toast.innerHTML='<style>@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}</style>'
+    +'<div style="font-weight:800;margin-bottom:6px;font-size:13px;color:#f0c500">📥 Nouvelle version sur Drive</div>'
+    +'<div style="font-size:11px;opacity:.85;margin-bottom:10px">Modifiée à '+hh+' depuis un autre appareil. Charger ?</div>'
+    +'<div style="display:flex;gap:6px">'
+    +'<button onclick="_gPullFromDrive();this.parentNode.parentNode.remove()" style="flex:2;background:#f0c500;color:#1a3a6b;border:none;padding:7px;border-radius:5px;font-weight:800;font-size:11px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase">Charger</button>'
+    +'<button onclick="this.parentNode.parentNode.remove()" style="flex:1;background:transparent;color:#f0c500;border:1px solid rgba(240,197,0,.4);padding:7px;border-radius:5px;font-weight:700;font-size:11px;cursor:pointer">Plus tard</button>'
+    +'</div>';
+  document.body.appendChild(toast);
+}
+
+// Modale de conflit : les deux ont changé indépendamment
+function _gShowConflictModal(driveTime){
+  if(document.getElementById('sync-conflict-modal'))return;
+  var lastLocal=parseInt(localStorage.getItem("sarmom_lastLocalChange")||"0");
+  var dtDrive=new Date(driveTime);
+  var dtLocal=new Date(lastLocal);
+  function fmt(d){return d.toLocaleDateString('fr-FR')+" "+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+  var modal=document.createElement('div');
+  modal.id='sync-conflict-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,sans-serif';
+  modal.innerHTML='<div style="background:#fff;border-radius:12px;max-width:480px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
+    +'<div style="background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;padding:14px 18px;border-bottom:3px solid #f0c500">'
+    +'<div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.1em;font-weight:700">⚠ Conflit de synchronisation</div>'
+    +'<div style="font-size:18px;font-weight:800;margin-top:3px">Versions différentes</div>'
+    +'</div>'
+    +'<div style="padding:18px">'
+    +'<div style="font-size:13px;color:#374151;margin-bottom:14px;line-height:1.5">Les données ont été modifiées <b>à la fois localement et sur Drive</b> depuis votre dernière sync. Quelle version voulez-vous garder ?</div>'
+    +'<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:11px;margin-bottom:8px">'
+      +'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:3px">📥 Drive (autre appareil)</div>'
+      +'<div style="font-size:12px;color:#1f2937">Modifiée le '+fmt(dtDrive)+'</div>'
+    +'</div>'
+    +'<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:11px;margin-bottom:14px">'
+      +'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:3px">💻 Cet appareil</div>'
+      +'<div style="font-size:12px;color:#1f2937">Modifiée le '+fmt(dtLocal)+'</div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:#6b7280;font-style:italic;margin-bottom:12px;padding:8px;background:#fef3c7;border-radius:6px;border-left:3px solid #f59e0b">💡 Une copie de vos données locales sera téléchargée automatiquement avant de basculer sur la version Drive, par sécurité.</div>'
+    +'<div style="display:flex;gap:8px;flex-direction:column">'
+      +'<button onclick="_gResolveConflict(\'pull\')" style="background:#1a3a6b;color:#fff;border:none;padding:11px;border-radius:7px;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:.04em">📥 Garder Drive (avec sauvegarde locale)</button>'
+      +'<button onclick="_gResolveConflict(\'push\')" style="background:#fff;color:#1a3a6b;border:2px solid #1a3a6b;padding:11px;border-radius:7px;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:.04em">💻 Garder cet appareil (écraser Drive)</button>'
+      +'<button onclick="_gResolveConflict(\'cancel\')" style="background:transparent;color:#6b7280;border:none;padding:7px;font-size:12px;cursor:pointer;text-decoration:underline">Décider plus tard</button>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
+  document.body.appendChild(modal);
+}
+
+function _gResolveConflict(choice){
+  var modal=document.getElementById('sync-conflict-modal');
+  if(modal)modal.remove();
+  if(choice==='pull'){
+    // Sauvegarde locale automatique avant pull
+    _gExportLocalBackup();
+    setTimeout(function(){_gPullFromDrive();},500);
+  } else if(choice==='push'){
+    // Force push : on écrase Drive avec la version locale
+    _gUploadFile(S,function(ok){
+      if(ok){
+        _gFetchDriveModifiedTime(function(t){_gMarkPushed(t);});
+        gUpdateDriveStatus("saved");
+        setTimeout(function(){gUpdateDriveStatus("connected");},2000);
+      }
+    });
+  }
+  // 'cancel' : on ne fait rien, le conflit reste détecté à la prochaine ouverture
+}
+
+// Export d'une copie de sauvegarde locale (téléchargement JSON)
+function _gExportLocalBackup(){
+  try{
+    var blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    var d=new Date();
+    var stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+      +'_'+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');
+    a.download='sarmom_compos_BACKUP_'+stamp+'.json';
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1000);
+  }catch(e){console.error("[Sync] Backup local failed:",e);}
+}
+
+// Pull silencieux depuis Drive (utilise la même logique qu'impFromDrive mais sans alert)
+function _gPullFromDrive(){
+  if(!_gAccessToken||!_gComposFileId)return;
+  gUpdateDriveStatus("syncing");
+  fetch("https://www.googleapis.com/drive/v3/files/"+_gComposFileId+"?alt=media",{
+    headers:{Authorization:"Bearer "+_gAccessToken}
+  }).then(function(r){return r.json();})
+  .then(function(json){
+    if(!json)return;
+    var merged=Object.assign({players:INIT_PL,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}},json);
+    if(!merged.players||merged.players.length<60)merged.players=INIT_PL;
+    S=merged;
+    // Sauve localement sans déclencher de push
+    _gPullInProgress=true;
+    try{localStorage.setItem("sm7",JSON.stringify(S));}catch(e){}
+    _gPullInProgress=false;
+    _gFetchDriveModifiedTime(function(t){_gMarkPulled(t);});
+    rdash();revents();if(typeof rsettings==="function")rsettings();
+    gUpdateDriveStatus("saved");
+    setTimeout(function(){gUpdateDriveStatus("connected");},2000);
+    // Petit toast confirmant
+    _gShowSyncToast("✅ Données mises à jour depuis Drive");
+  }).catch(function(e){
+    console.error("[Sync] Pull failed:",e);
+    gUpdateDriveStatus("error");
+  });
+}
+
+// Flag pour empêcher push pendant pull (évite la boucle)
+var _gPullInProgress=false;
+
+function _gShowSyncToast(msg){
+  var toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:8800;background:#16a34a;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);font-family:-apple-system,sans-serif';
+  toast.textContent=msg;
+  document.body.appendChild(toast);
+  setTimeout(function(){toast.style.transition='opacity .3s';toast.style.opacity='0';setTimeout(function(){toast.remove();},300);},3000);
+}
+
 function _gSaveCompos(){
+  // Skip si on est en train de pull (évite la boucle pull → save → push)
+  if(_gPullInProgress)return;
+  _gMarkLocalChange();
   clearTimeout(_gSaveTimer);
   _gSaveTimer=setTimeout(function(){
     if(!_gAccessToken||!S)return;
     _gUploadFile(S,function(ok){
       gUpdateDriveStatus(ok?"saved":"error");
+      if(ok){
+        _gFetchDriveModifiedTime(function(t){_gMarkPushed(t);});
+      }
       setTimeout(function(){if(_gDriveReady)gUpdateDriveStatus("connected");},2000);
     });
   },1500);
