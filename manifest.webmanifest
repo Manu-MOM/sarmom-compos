@@ -1,0 +1,20 @@
+{
+  "name": "SAR×MOM Compos",
+  "short_name": "SAR×MOM",
+  "description": "Gestion des compositions d'équipe rugby — entente SAR×MOM, école de rugby Mutzig Ovalie Molsheim",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a3a6b",
+  "theme_color": "#1a3a6b",
+  "lang": "fr",
+  "categories": ["sports", "productivity"],
+  "icons": [
+    { "src": "pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "pwa/icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "pwa/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
