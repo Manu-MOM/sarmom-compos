@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT : changer ce numéro à chaque déploiement pour forcer le rafraîchissement du cache.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = 'sarmom-' + CACHE_VERSION;
 
 // Ressources à mettre en cache au premier chargement
@@ -23,7 +23,8 @@ const PRECACHE_URLS = [
   './pwa/apple-touch-icon-152.png',
   './pwa/apple-touch-icon-120.png',
   './pwa/favicon-32.png',
-  './pwa/favicon-16.png'
+  './pwa/favicon-16.png',
+  './pwa/icon-maskable-512.png'
 ];
 
 // Domaines des libs externes (CDN) qu'on met en cache à la volée
