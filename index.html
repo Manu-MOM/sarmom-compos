@@ -2529,39 +2529,27 @@ function _mExportRapportPDF(){
         var prevBoxShadow=terrainCard.style.boxShadow;
         terrainCard.style.borderRadius='0';
         terrainCard.style.boxShadow='none';
-        // Limiter la hauteur du SVG terrain pour libérer de la place pour Impact Players
-        // (préserve le ratio largeur ; compense avec plus de padding bleu autour)
+        // Réduire le terrain à 80% de sa hauteur pour libérer de la place pour Impact Players
+        // On joue sur la largeur max du SVG : à 80% le SVG carré se réduit en largeur ET hauteur ensemble
         var fieldWrap=terrainCard.querySelector('.field-wrap');
-        var fieldSvgEl=document.getElementById('field-svg');
-        var prevSvgStyle=null,prevWrapStyle=null;
-        if(fieldSvgEl){
-          prevSvgStyle={width:fieldSvgEl.style.width,height:fieldSvgEl.style.height,maxWidth:fieldSvgEl.style.maxWidth,margin:fieldSvgEl.style.margin};
-          // SVG ratio 520/700 = 0.743 (portrait étroit). On force max-height 520px.
-          // Largeur correspondante : 520 * 0.743 = 386px
-          fieldSvgEl.style.height='520px';
-          fieldSvgEl.style.width='auto';
-          fieldSvgEl.style.maxWidth='100%';
-          fieldSvgEl.style.margin='0 auto';
-        }
+        var prevWrapStyle=null;
         if(fieldWrap){
-          prevWrapStyle={padding:fieldWrap.style.padding,textAlign:fieldWrap.style.textAlign};
-          // Plus de padding pour donner de la "présence" au cadre bleu autour
-          fieldWrap.style.padding='14px 16px';
-          fieldWrap.style.textAlign='center';
+          prevWrapStyle={maxWidth:fieldWrap.style.maxWidth,margin:fieldWrap.style.margin,padding:fieldWrap.style.padding};
+          // Le SVG a un viewBox fixe 520×700 et width:100% -> on contraint la largeur du wrap
+          // pour que le SVG (et donc la zone verte) rétrécisse proportionnellement.
+          // 75% de la largeur dispo = SVG plus petit, plus de bleu marine autour
+          fieldWrap.style.maxWidth='75%';
+          fieldWrap.style.margin='0 auto';
+          fieldWrap.style.padding='10px 0';
         }
         function restoreTerrainStyles(){
           if(prevGridStyle!==null&&impactGrid)impactGrid.style.gridTemplateColumns=prevGridStyle;
           terrainCard.style.borderRadius=prevBorderRadius;
           terrainCard.style.boxShadow=prevBoxShadow;
-          if(fieldSvgEl&&prevSvgStyle){
-            fieldSvgEl.style.width=prevSvgStyle.width;
-            fieldSvgEl.style.height=prevSvgStyle.height;
-            fieldSvgEl.style.maxWidth=prevSvgStyle.maxWidth;
-            fieldSvgEl.style.margin=prevSvgStyle.margin;
-          }
           if(fieldWrap&&prevWrapStyle){
+            fieldWrap.style.maxWidth=prevWrapStyle.maxWidth;
+            fieldWrap.style.margin=prevWrapStyle.margin;
             fieldWrap.style.padding=prevWrapStyle.padding;
-            fieldWrap.style.textAlign=prevWrapStyle.textAlign;
           }
         }
         html2canvas(terrainCard,{scale:2,useCORS:true,backgroundColor:"#0a0a1a",windowWidth:1100}).then(function(canvas){
@@ -2569,16 +2557,10 @@ function _mExportRapportPDF(){
           pdf.addPage();
           var imgD=canvas.toDataURL("image/png");
           // On force la pleine largeur (comme les autres pages du rapport)
-          // pour avoir des marges latérales identiques.
+          // pour avoir des marges latérales identiques. Pas de centrage vertical
+          // → le contenu démarre en haut de la page comme les autres
           var imgH=contentW*(canvas.height/canvas.width);
-          if(imgH<=pageContentH){
-            // Tout rentre : centré verticalement
-            var yo=margin+(pageContentH-imgH)/2;
-            pdf.addImage(imgD,"PNG",margin,yo,contentW,imgH);
-          } else {
-            // Si malgré tout ça ne rentre pas : on garde la pleine largeur en haut
-            pdf.addImage(imgD,"PNG",margin,margin,contentW,imgH);
-          }
+          pdf.addImage(imgD,"PNG",margin,margin,contentW,imgH);
           restoreUI();
           pdf.save("rapport_"+evName+".pdf");
         }).catch(function(e){
