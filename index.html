@@ -695,7 +695,7 @@ const INIT_COACHES=[{id:"c1",role:"Entraîneur principal",name:"Vivien RULFO"},{
 function load(){
   try{
     const s=localStorage.getItem("sm7");
-    if(s){const d=JSON.parse(s);if((d.players||[]).length<60)d.players=INIT_PL;if((d.events||[]).length>2&&!d._cleaned){localStorage.removeItem("sm7");return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}};}return d;}
+    if(s){const d=JSON.parse(s);if((d.players||[]).length<60)d.players=INIT_PL;return d;}
   }catch(e){}
   return{players:INIT_PL,events:INIT_EV,teams:INIT_TEAMS,coaches:INIT_COACHES,settings:{name:"Entente SAR×MOM M14",season:"2025/2026",c1:"#1a3a6b",c2:"#f0c500"}};
 }
@@ -1752,6 +1752,25 @@ function _gSaveCompos(){
 
 function _gUploadFile(data,cb){
   if(!_gAccessToken){if(cb)cb(false);return;}
+  // ─────────── GARDE DE SÉCURITÉ ANTI-DESTRUCTION ───────────
+  // Empêche de pousser un état suspect vers Drive (qui écraserait les sauvegardes)
+  var nbEvents=(data.events||[]).length;
+  var nbCoaches=(data.coaches||[]).length;
+  var nbPlayers=(data.players||[]).length;
+  // Cas suspects : 0 événements + 0 coachs avec un fichier Drive existant > 100 KB
+  // (= on s'apprête à écraser une grosse sauvegarde avec un état vide)
+  if(_gComposFileId&&nbEvents===0&&nbCoaches===0){
+    console.warn("[Drive] Push BLOQUÉ : état local quasi vide alors que Drive contient des données.");
+    if(cb)cb(false);
+    // Notifier l'utilisateur
+    var alertMsg="⚠ Sauvegarde Drive bloquée par sécurité : vos données locales semblent vides ou corrompues. "
+      +"Pour récupérer vos données :\n\n"
+      +"1. NE FAITES PAS de modifications\n"
+      +"2. Allez dans Réglages → Importer ☁️ Drive\n"
+      +"3. Cela rechargera la version saine depuis Drive";
+    setTimeout(function(){alert(alertMsg);},100);
+    return;
+  }
   var fileId=_gComposFileId||_G_FILE_ID;
   var body=JSON.stringify(data);
   var boundary="sarmom_b";
