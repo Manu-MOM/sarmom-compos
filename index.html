@@ -22,7 +22,6 @@
 <title>🏉 SAR×MOM — Gestionnaire M14</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Bebas+Neue&display=swap');
 :root{
@@ -1327,9 +1326,8 @@ _initCustomLogo();rdash();revents();rsettings();alert('Import OK — '+S.events.
 function _mClosePickerOverlay(){var o=document.getElementById('m-pick-overlay');if(o)o.remove();}
 // ═══════════════════════════════════════════════════════════════
 // GOOGLE DRIVE — OAuth2 implicit redirect flow
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
-// GOOGLE DRIVE — Google Identity Services (GIS) avec reconnexion silencieuse
+// (flow simple et fiable, sans dépendance à GIS qui pose problème
+// avec les en-têtes Cross-Origin-Opener-Policy de GitHub Pages)
 // ═══════════════════════════════════════════════════════════════
 var _gAccessToken = null;
 var _gComposFileId = null;
@@ -1337,116 +1335,13 @@ var _gDriveReady = false;
 var _gSaveTimer = null;
 var _G_FILE_NAME = "sarmom_compos.json";
 var _G_FILE_ID = "";
-// Nouveau : client GIS instancié à la demande
-var _gTokenClient = null;
-// Flag pour indiquer si une tentative silencieuse a déjà été faite
-var _gSilentTried = false;
+var _gDriveModifiedTime = null;
+var _gPeriodicCheckTimer = null;
+var _gRefreshTimer = null;
+var _gPullInProgress = false;
 
 function _gGetClientId(){return localStorage.getItem("sarmom_gClientId")||"";}
 
-// Construit (lazy) le tokenClient GIS si le SDK est prêt
-function _gBuildTokenClient(callback){
-  var cid=_gGetClientId();
-  if(!cid)return null;
-  if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){
-    return null; // SDK pas encore chargé
-  }
-  return google.accounts.oauth2.initTokenClient({
-    client_id: cid,
-    scope: "https://www.googleapis.com/auth/drive.file",
-    callback: function(response){
-      if(response.error){
-        // Échec — par exemple "interaction_required" en mode silencieux
-        console.warn("[Drive] Token request failed:",response.error);
-        if(callback)callback(false,response);
-        return;
-      }
-      _gAccessToken=response.access_token;
-      _gDriveReady=true;
-      var expiresIn=parseInt(response.expires_in||"3600");
-      localStorage.setItem("sarmom_gtoken",response.access_token);
-      localStorage.setItem("sarmom_gtoken_exp",String(Date.now()+expiresIn*1000-60000));
-      gUpdateDriveStatus("connected");
-      _gFindOrCreateFile();
-      if(callback)callback(true,response);
-    },
-    error_callback: function(err){
-      console.warn("[Drive] OAuth error:",err);
-      if(callback)callback(false,err);
-    }
-  });
-}
-
-// Reconnexion silencieuse au démarrage de l'app : utilise prompt:'' (rien)
-// Si l'utilisateur s'est déjà autorisé sur ce navigateur, Google renvoie un nouveau token
-// sans afficher de pop-up. Sinon échec silencieux et on laisse l'utilisateur cliquer.
-function _gTrySilentReconnect(){
-  if(_gSilentTried)return;
-  _gSilentTried=true;
-  // 1) Token encore valide en localStorage ? On le réutilise sans demander Google.
-  var saved=localStorage.getItem("sarmom_gtoken");
-  var savedExp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
-  if(saved&&Date.now()<savedExp-30000){
-    _gAccessToken=saved;_gDriveReady=true;
-    gUpdateDriveStatus("connected");
-    _gFindOrCreateFile();
-    // Programmer un refresh anticipé avant expiration
-    _gScheduleTokenRefresh(savedExp);
-    return;
-  }
-  // 2) Token expiré ou inexistant → tenter une demande silencieuse via GIS
-  // (uniquement si le client_id est connu et le SDK chargé)
-  var cid=_gGetClientId();
-  if(!cid)return;
-  // Attendre que GIS soit chargé (script async)
-  function tryNow(){
-    if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){
-      // SDK pas encore prêt, on retente dans 200ms (max 5 tentatives)
-      _gSilentRetries=(_gSilentRetries||0)+1;
-      if(_gSilentRetries>20)return;
-      setTimeout(tryNow,200);
-      return;
-    }
-    _gTokenClient=_gBuildTokenClient(function(ok){
-      if(ok){
-        // Reconnexion réussie : programmer le prochain refresh
-        var exp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
-        _gScheduleTokenRefresh(exp);
-      }
-      // Sinon échec silencieux : l'utilisateur verra "Non connecté" et cliquera
-    });
-    if(_gTokenClient){
-      try{
-        // prompt:'' = pas de pop-up, échoue si interaction nécessaire
-        _gTokenClient.requestAccessToken({prompt:''});
-      }catch(e){console.warn("[Drive] Silent reconnect failed:",e);}
-    }
-  }
-  tryNow();
-}
-var _gSilentRetries=0;
-
-// Programme un refresh automatique avant expiration du token
-var _gRefreshTimer=null;
-function _gScheduleTokenRefresh(expTimestamp){
-  if(_gRefreshTimer)clearTimeout(_gRefreshTimer);
-  // Refresh 5 min avant l'expiration
-  var when=Math.max(60000,expTimestamp-Date.now()-5*60*1000);
-  _gRefreshTimer=setTimeout(function(){
-    if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2)return;
-    if(!_gTokenClient)_gTokenClient=_gBuildTokenClient(function(ok){
-      if(ok){
-        var exp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
-        _gScheduleTokenRefresh(exp);
-      }
-    });
-    if(_gTokenClient){
-      try{_gTokenClient.requestAccessToken({prompt:''});}catch(e){}
-    }
-  },when);
-}
-
-// Fonction appelée au clic sur "Connecter Drive" — affiche le pop-up Google
 function gConnectDrive(){
   var cid=_gGetClientId();
   if(!cid){gShowClientIdPrompt();return;}
@@ -1455,34 +1350,43 @@ function gConnectDrive(){
   var savedExp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
   if(saved&&Date.now()<savedExp){
     _gAccessToken=saved;_gDriveReady=true;
-    gUpdateDriveStatus("connected");_gFindOrCreateFile();return;
-  }
-  // Sinon : ouvrir le pop-up Google Identity Services
-  if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){
-    alert("La librairie Google n'est pas encore chargée. Vérifiez votre connexion et réessayez dans quelques secondes.");
+    gUpdateDriveStatus("connected");_gFindOrCreateFile();
+    _gScheduleTokenRefresh(savedExp);
     return;
   }
-  if(!_gTokenClient){
-    _gTokenClient=_gBuildTokenClient(function(ok){
-      if(ok){
-        var exp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
-        _gScheduleTokenRefresh(exp);
-      }
-    });
-  }
-  if(_gTokenClient){
-    try{
-      // prompt:'consent' force l'affichage de la fenêtre de choix de compte
-      // (utilisé seulement au clic explicite)
-      _gTokenClient.requestAccessToken({prompt:'consent'});
-    }catch(e){
-      console.error("[Drive] Connect failed:",e);
-      gUpdateDriveStatus("error");
-    }
-  }
+  // Sinon : redirection vers Google OAuth (flow implicit)
+  var redirectUri=window.location.origin+window.location.pathname;
+  var params=new URLSearchParams({
+    client_id:cid,redirect_uri:redirectUri,response_type:"token",
+    scope:"https://www.googleapis.com/auth/drive.file",
+    include_granted_scopes:"true",state:"drive_auth"
+  });
+  window.location.href="https://accounts.google.com/o/oauth2/v2/auth?"+params.toString();
 }
 
-// Conservée pour compat : nettoie l'URL si un ancien token traîne dans le hash
+// Programme un refresh automatique avant expiration du token
+// (uniquement tant que l'app reste ouverte)
+function _gScheduleTokenRefresh(expTimestamp){
+  if(_gRefreshTimer)clearTimeout(_gRefreshTimer);
+  // Refresh 5 min avant l'expiration
+  var when=Math.max(60000,expTimestamp-Date.now()-5*60*1000);
+  _gRefreshTimer=setTimeout(function(){
+    // Au moment du refresh : redirection silencieuse en mode prompt=none
+    // Si l'utilisateur a toujours sa session Google, ça revient avec un nouveau token
+    // Sinon il devra re-cliquer. Pour ne pas perturber, on n'agit que si l'app est visible.
+    if(document.hidden)return;
+    var cid=_gGetClientId();
+    if(!cid)return;
+    // On ne déclenche pas de redirection automatique pour ne pas perturber le user
+    // au milieu d'une saisie. On prévient juste que le token va bientôt expirer.
+    gUpdateDriveStatus("connected");
+    var el=document.getElementById("drive-status");
+    if(el){
+      el.innerHTML='<span style="color:#d97706">⚠ Token bientôt expiré — recliquez sur Connecter Drive avant 1h</span>';
+    }
+  },when);
+}
+
 function _gCheckRedirectToken(){
   var hash=window.location.hash;
   if(hash&&hash.indexOf("access_token")>=0){
@@ -1502,8 +1406,15 @@ function _gCheckRedirectToken(){
       return;
     }
   }
-  // Sinon : tenter la reconnexion silencieuse via GIS
-  _gTrySilentReconnect();
+  // Token encore valide en localStorage ? On le réutilise.
+  var saved=localStorage.getItem("sarmom_gtoken");
+  var savedExp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
+  if(saved&&Date.now()<savedExp-30000){
+    _gAccessToken=saved;_gDriveReady=true;
+    gUpdateDriveStatus("connected");
+    _gFindOrCreateFile();
+    _gScheduleTokenRefresh(savedExp);
+  }
 }
 
 function _gFindOrCreateFile(){
@@ -1523,10 +1434,6 @@ function _gFindOrCreateFile(){
     else{_gUploadFile(S,function(){gUpdateDriveStatus("connected");});}
   }).catch(function(){gUpdateDriveStatus("error");});
 }
-
-// Variable mémoire de la date Drive connue (mise à jour à chaque check ou upload)
-var _gDriveModifiedTime=null;
-var _gPeriodicCheckTimer=null;
 
 // Récupère le modifiedTime du fichier Drive sans télécharger le contenu
 function _gFetchDriveModifiedTime(cb){
@@ -1721,9 +1628,6 @@ function _gPullFromDrive(){
     gUpdateDriveStatus("error");
   });
 }
-
-// Flag pour empêcher push pendant pull (évite la boucle)
-var _gPullInProgress=false;
 
 function _gShowSyncToast(msg){
   var toast=document.createElement('div');
