@@ -2498,10 +2498,10 @@ function _mExportRapportPDF(){
     var idx=0;
     function processNext(){
       if(idx>=blocks.length){
-        // Page terrain à la fin — capturer la carte complète (header + terrain + impact players)
+        // Page terrain : capture conforme à l'onglet Terrain (portrait, header + terrain + impact players)
         var terrainCard=document.getElementById("terrain-card");
         if(!terrainCard){
-          // fallback ancienne méthode si la nouvelle structure n'est pas là
+          // fallback : capture du seul SVG si la nouvelle structure n'existe pas
           svgToCanvas(svgEl,function(fc){
             if(fc){
               pdf.addPage();
@@ -2515,25 +2515,46 @@ function _mExportRapportPDF(){
           });
           return;
         }
-        // Capture HTML2canvas du bloc complet
-        html2canvas(terrainCard,{scale:2,useCORS:true,backgroundColor:"#0a0a1a"}).then(function(canvas){
+        // Capture html2canvas du bloc complet (header + terrain + impact players)
+        // On force temporairement 5 colonnes sur la grille d'Impact Players pour
+        // que le bloc soit compact (sinon auto-fill avec petit viewport = 1 par ligne)
+        var impactGrid=terrainCard.querySelector('#terrain-impact > div > div:last-child');
+        var prevGridStyle=null;
+        if(impactGrid&&impactGrid.style.gridTemplateColumns&&impactGrid.style.gridTemplateColumns.indexOf('auto-fill')>=0){
+          prevGridStyle=impactGrid.style.gridTemplateColumns;
+          impactGrid.style.gridTemplateColumns='repeat(5,1fr)';
+        }
+        html2canvas(terrainCard,{scale:2,useCORS:true,backgroundColor:"#0a0a1a",windowWidth:1100}).then(function(canvas){
+          // Restaurer la grille
+          if(prevGridStyle!==null&&impactGrid)impactGrid.style.gridTemplateColumns=prevGridStyle;
           pdf.addPage();
           var imgD=canvas.toDataURL("image/png");
+          // Calcul : on remplit toute la largeur de la page A4 portrait (hors marges)
+          // et on laisse la hauteur s'ajuster proportionnellement
           var imgH=contentW*(canvas.height/canvas.width);
-          // Si trop haut pour une page, on scale pour rentrer
-          if(imgH>pageContentH){
-            var scale=pageContentH/imgH;
-            var newW=contentW*scale;
-            var newH=pageContentH;
-            var ox=margin+(contentW-newW)/2;
-            pdf.addImage(imgD,"PNG",ox,margin,newW,newH);
-          } else {
-            var yo=(pageContentH-imgH)/2+margin;
+          if(imgH<=pageContentH){
+            // Tout rentre : on centre verticalement
+            var yo=margin+(pageContentH-imgH)/2;
             pdf.addImage(imgD,"PNG",margin,yo,contentW,imgH);
+          } else {
+            // Trop haut : on découpe sur plusieurs pages mais en pleine largeur
+            // (cas peu probable mais sécurise)
+            var ratio=canvas.width/canvas.height;
+            var pageRatio=contentW/pageContentH;
+            if(ratio>=pageRatio){
+              // assez large : scale-down
+              pdf.addImage(imgD,"PNG",margin,margin,contentW,imgH);
+            } else {
+              // trop haut : on rétrécit pour rentrer en hauteur
+              var newW=pageContentH*ratio;
+              var ox=margin+(contentW-newW)/2;
+              pdf.addImage(imgD,"PNG",ox,margin,newW,pageContentH);
+            }
           }
           restoreUI();
           pdf.save("rapport_"+evName+".pdf");
         }).catch(function(e){
+          if(prevGridStyle!==null&&impactGrid)impactGrid.style.gridTemplateColumns=prevGridStyle;
           console.error("Terrain capture failed:",e);
           restoreUI();
           pdf.save("rapport_"+evName+".pdf");
