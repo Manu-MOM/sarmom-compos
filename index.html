@@ -1313,10 +1313,20 @@ function openPM(id=null){
 function toggleInjForm(){const inj=document.getElementById("mp-inj").checked;document.getElementById("mp-inj-fields").style.display=inj?"block":"none";}
 function loadPhoto(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{const data=e.target.result;document.getElementById("mp-photo-data").value=data;const preview=document.getElementById("mp-photo-preview");preview.src=data;preview.style.display="block";document.getElementById("mp-photo-placeholder").style.display="none";};r.readAsDataURL(file);}
 function savePl(){
-  const id=parseInt(document.getElementById("mp-id").value)||null;
+  const idRaw=document.getElementById("mp-id").value;
+  const id=idRaw||null;  // Garder en string, ne pas parseInt (les IDs peuvent être textuels comme 'edr_M14F15_39')
   const apt=[...document.querySelectorAll("#mp-apts input:checked")].map(i=>i.value);
   const data={p:document.getElementById("mp-p").value.trim(),n:document.getElementById("mp-n").value.trim().toUpperCase(),club:document.getElementById("mp-club").value,cat:document.getElementById("mp-cat").value,pos:document.getElementById("mp-pos").value.split(",").map(s=>s.trim()).filter(Boolean),h:parseFloat(document.getElementById("mp-h").value)||null,w:parseFloat(document.getElementById("mp-w").value)||null,apt,jdd:document.getElementById("mp-jdd").value,arb:document.getElementById("mp-arb").value,inj:document.getElementById("mp-inj").checked,injNat:document.getElementById("mp-inj-nat").value,injFrom:document.getElementById("mp-inj-from").value,injTo:document.getElementById("mp-inj-to").value,photo:document.getElementById("mp-photo-data").value};
-  if(id){const p=S.players.find(p=>p.id===id);Object.assign(p,data);}else{S.players.push({id:Math.max(0,...S.players.map(p=>p.id))+1,...data});}
+  if(id){
+    // Comparer en strings car les IDs peuvent être textuels ou numériques
+    const p=S.players.find(p=>String(p.id)===String(id));
+    if(p)Object.assign(p,data);
+  } else {
+    // Nouveau joueur : générer un ID numérique unique en évitant les IDs existants
+    var existingNumIds=S.players.map(p=>typeof p.id==="number"?p.id:0);
+    var newId=Math.max(0,...existingNumIds)+1;
+    S.players.push({id:newId,...data});
+  }
   sv();cm("m-pl");rplayers();
 }
 
