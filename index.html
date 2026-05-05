@@ -3124,8 +3124,8 @@ function renderPlayerStats(pid){
   html+='</div>';
   // Boutons d'édition / clôture
   html+='<div style="display:flex;gap:6px;margin-top:6px">';
-  html+='<button type="button" onclick="_pPrintStats('+pid+')" style="flex:1;padding:8px;background:#1a3a6b;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">🖨 Édition stats</button>';
-  html+='<button type="button" onclick="_pCloseSeason('+pid+')" style="flex:1;padding:8px;background:#f0c500;color:#1a3a6b;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">📦 Clôturer saison</button>';
+  html+='<button type="button" onclick="_pPrintStats(\''+pid+'\')" style="flex:1;padding:8px;background:#1a3a6b;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">🖨 Édition stats</button>';
+  html+='<button type="button" onclick="_pCloseSeason(\''+pid+'\')" style="flex:1;padding:8px;background:#f0c500;color:#1a3a6b;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">📦 Clôturer saison</button>';
   html+='</div>';
   // Saisons clôturées
   if(p&&p.seasonReports&&p.seasonReports.length){
@@ -3135,8 +3135,8 @@ function renderPlayerStats(pid){
       html+='<div style="background:#f9fafb;padding:6px 10px;border-radius:6px;margin-bottom:3px;font-size:11px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e7eb">';
       html+='<div><b>'+sr.season+'</b> · '+sr.matchs+' match(s) · '+sr.essais+' essai(s)'+(sr.cartons_j||sr.cartons_r?' · '+(sr.cartons_j+sr.cartons_r)+' carton(s)':'')+'</div>';
       html+='<div style="display:flex;gap:4px">';
-        html+='<button type="button" onclick="_pPrintSeasonReport('+pid+','+i+')" title="Imprimer" style="background:none;border:none;color:#1a3a6b;cursor:pointer;font-size:13px;padding:0 3px">📄</button>';
-        html+='<button type="button" onclick="_pDeleteSeasonReport('+pid+','+i+')" title="Supprimer" style="background:none;border:none;color:#991b1b;cursor:pointer;font-size:13px;padding:0 3px">🗑</button>';
+        html+='<button type="button" onclick="_pPrintSeasonReport(\''+pid+'\','+i+')" title="Imprimer" style="background:none;border:none;color:#1a3a6b;cursor:pointer;font-size:13px;padding:0 3px">📄</button>';
+        html+='<button type="button" onclick="_pDeleteSeasonReport(\''+pid+'\','+i+')" title="Supprimer" style="background:none;border:none;color:#991b1b;cursor:pointer;font-size:13px;padding:0 3px">🗑</button>';
       html+='</div>';
       html+='</div>';
     });
