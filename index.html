@@ -1311,6 +1311,39 @@ function openPM(id=null){
   document.getElementById("m-pl").classList.add("open");if(id)renderPlayerStats(id);else{var ste=document.getElementById("mp-stats");if(ste)ste.innerHTML="";}
 }
 function toggleInjForm(){const inj=document.getElementById("mp-inj").checked;document.getElementById("mp-inj-fields").style.display=inj?"block":"none";}
+
+// ─── Helpers pour le dropdown de postes (modale joueur) ──────────
+// Initialise les checkboxes du dropdown selon les postes actuels du joueur,
+// puis met à jour l'affichage des chips et la valeur de l'input caché mp-pos.
+function _mInitPosDropdown(currentPositions){
+  var arr=Array.isArray(currentPositions)?currentPositions:[];
+  document.querySelectorAll(".mp-pos-cb").forEach(function(cb){
+    cb.checked=arr.indexOf(cb.value)>=0;
+  });
+  _mUpdatePosDisplay();
+}
+// Met à jour la zone d'affichage des chips et la valeur de l'input caché mp-pos
+// (cette dernière sert au moment de l'enregistrement par savePl).
+function _mUpdatePosDisplay(){
+  var checked=[].slice.call(document.querySelectorAll(".mp-pos-cb:checked")).map(function(cb){return cb.value;});
+  var hidden=document.getElementById("mp-pos");
+  if(hidden)hidden.value=checked.join(", ");
+  var disp=document.getElementById("mp-pos-display");
+  if(!disp)return;
+  if(checked.length===0){
+    disp.innerHTML='<span style="color:var(--g400);font-size:12px">Sélectionner des postes…</span>';
+  } else {
+    disp.innerHTML=checked.map(function(p){
+      return '<span style="background:#1a3a6b;color:#fff;padding:2px 8px;border-radius:11px;font-size:11px;font-weight:600">'+p+'</span>';
+    }).join('');
+  }
+}
+// Fermer le dropdown quand on clique en dehors
+document.addEventListener("click",function(e){
+  var dd=document.getElementById("mp-pos-dropdown");
+  var list=document.getElementById("mp-pos-list");
+  if(!dd||!list||!dd.contains(e.target))list&&list.style&&(list.style.display="none");
+});
 function loadPhoto(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{const data=e.target.result;document.getElementById("mp-photo-data").value=data;const preview=document.getElementById("mp-photo-preview");preview.src=data;preview.style.display="block";document.getElementById("mp-photo-placeholder").style.display="none";};r.readAsDataURL(file);}
 function savePl(){
   const idRaw=document.getElementById("mp-id").value;
