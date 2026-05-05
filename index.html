@@ -1354,14 +1354,45 @@ function gConnectDrive(){
     _gScheduleTokenRefresh(savedExp);
     return;
   }
-  // Sinon : redirection vers Google OAuth (flow implicit)
+  // Sinon : redirection vers Google OAuth (avec prompt=consent pour clic explicite)
+  _gRedirectToGoogle('consent');
+}
+
+// Redirige vers la page d'auth Google.
+// promptMode = 'consent' (pop-up de choix de compte / consentement) — clic explicite
+// promptMode = 'none' (silencieux : retour token si session active, erreur sinon)
+function _gRedirectToGoogle(promptMode){
+  var cid=_gGetClientId();
+  if(!cid)return;
   var redirectUri=window.location.origin+window.location.pathname;
-  var params=new URLSearchParams({
+  var p={
     client_id:cid,redirect_uri:redirectUri,response_type:"token",
     scope:"https://www.googleapis.com/auth/drive.file",
     include_granted_scopes:"true",state:"drive_auth"
-  });
+  };
+  if(promptMode)p.prompt=promptMode;
+  var params=new URLSearchParams(p);
   window.location.href="https://accounts.google.com/o/oauth2/v2/auth?"+params.toString();
+}
+
+// Tentative de reconnexion silencieuse au démarrage de l'app.
+// Conditions :
+//   - Client ID configuré
+//   - Drapeau sarmom_gAuthorized présent (l'utilisateur a déjà autorisé l'app)
+//   - Pas de tentative silencieuse échouée dans les 5 dernières minutes
+//   - Pas déjà en train de revenir d'une redirection (hash access_token ou error)
+function _gTrySilentRedirect(){
+  var cid=_gGetClientId();
+  if(!cid)return false;
+  if(localStorage.getItem("sarmom_gAuthorized")!=="1")return false;
+  // Ne pas retenter si on revient d'une redirection (succès ou échec)
+  if(window.location.hash&&(window.location.hash.indexOf("access_token")>=0||window.location.hash.indexOf("error")>=0))return false;
+  // Ne pas boucler si la dernière tentative a échoué récemment
+  var lastFail=parseInt(localStorage.getItem("sarmom_silentFailAt")||"0");
+  if(Date.now()-lastFail<5*60*1000)return false;
+  // OK, on tente la redirection silencieuse
+  _gRedirectToGoogle('none');
+  return true;
 }
 
 // Programme un refresh automatique avant expiration du token
@@ -1371,14 +1402,20 @@ function _gScheduleTokenRefresh(expTimestamp){
   // Refresh 5 min avant l'expiration
   var when=Math.max(60000,expTimestamp-Date.now()-5*60*1000);
   _gRefreshTimer=setTimeout(function(){
-    // Au moment du refresh : redirection silencieuse en mode prompt=none
-    // Si l'utilisateur a toujours sa session Google, ça revient avec un nouveau token
-    // Sinon il devra re-cliquer. Pour ne pas perturber, on n'agit que si l'app est visible.
-    if(document.hidden)return;
-    var cid=_gGetClientId();
-    if(!cid)return;
-    // On ne déclenche pas de redirection automatique pour ne pas perturber le user
-    // au milieu d'une saisie. On prévient juste que le token va bientôt expirer.
+    // Au moment du refresh : on tente une redirection silencieuse si l'app est en arrière-plan,
+    // sinon on prévient juste l'utilisateur (pour ne pas l'interrompre s'il est en pleine saisie)
+    if(document.hidden){
+      // App pas visible : on tente le refresh silencieux
+      var cid=_gGetClientId();
+      if(cid&&localStorage.getItem("sarmom_gAuthorized")==="1"){
+        var lastFail=parseInt(localStorage.getItem("sarmom_silentFailAt")||"0");
+        if(Date.now()-lastFail>=5*60*1000){
+          _gRedirectToGoogle('none');
+          return;
+        }
+      }
+    }
+    // Sinon : prévenir l'utilisateur
     gUpdateDriveStatus("connected");
     var el=document.getElementById("drive-status");
     if(el){
@@ -1389,6 +1426,7 @@ function _gScheduleTokenRefresh(expTimestamp){
 
 function _gCheckRedirectToken(){
   var hash=window.location.hash;
+  // Cas 1 : retour d'une redirection avec succès (token dans le hash)
   if(hash&&hash.indexOf("access_token")>=0){
     var params=new URLSearchParams(hash.substring(1));
     var token=params.get("access_token");
@@ -1397,6 +1435,10 @@ function _gCheckRedirectToken(){
       _gAccessToken=token;_gDriveReady=true;
       localStorage.setItem("sarmom_gtoken",token);
       localStorage.setItem("sarmom_gtoken_exp",String(Date.now()+expiresIn*1000-60000));
+      // Mémoriser que l'utilisateur a autorisé l'app : permettra les redirections silencieuses
+      localStorage.setItem("sarmom_gAuthorized","1");
+      // Reset du compteur d'échec silencieux
+      localStorage.removeItem("sarmom_silentFailAt");
       history.replaceState(null,"",window.location.pathname);
       gUpdateDriveStatus("connected");
       var se=document.getElementById("drive-status");
@@ -1406,7 +1448,25 @@ function _gCheckRedirectToken(){
       return;
     }
   }
-  // Token encore valide en localStorage ? On le réutilise.
+  // Cas 2 : retour d'une redirection avec erreur (échec de prompt=none typiquement)
+  if(hash&&hash.indexOf("error")>=0){
+    var errParams=new URLSearchParams(hash.substring(1));
+    var err=errParams.get("error")||"";
+    console.warn("[Drive] OAuth redirect error:",err);
+    // Marquer l'échec pour ne pas reboucler avant 5 min
+    localStorage.setItem("sarmom_silentFailAt",String(Date.now()));
+    // Si l'erreur indique que la session Google est expirée ou que l'autorisation n'est plus valide,
+    // on retire le drapeau d'autorisation pour forcer un clic explicite
+    if(err==="login_required"||err==="consent_required"||err==="invalid_grant"){
+      localStorage.removeItem("sarmom_gAuthorized");
+    }
+    history.replaceState(null,"",window.location.pathname);
+    gUpdateDriveStatus("error");
+    var se=document.getElementById("drive-status");
+    if(se)se.innerHTML='<span style="color:#9ca3af">⚪ Non connecté — cliquez sur « Connecter Drive »</span>';
+    return;
+  }
+  // Cas 3 : token encore valide en localStorage ? On le réutilise.
   var saved=localStorage.getItem("sarmom_gtoken");
   var savedExp=parseInt(localStorage.getItem("sarmom_gtoken_exp")||"0");
   if(saved&&Date.now()<savedExp-30000){
@@ -1414,7 +1474,11 @@ function _gCheckRedirectToken(){
     gUpdateDriveStatus("connected");
     _gFindOrCreateFile();
     _gScheduleTokenRefresh(savedExp);
+    return;
   }
+  // Cas 4 : pas de token valide, on tente une redirection silencieuse
+  // (uniquement si l'utilisateur s'est déjà autorisé une fois)
+  _gTrySilentRedirect();
 }
 
 function _gFindOrCreateFile(){
