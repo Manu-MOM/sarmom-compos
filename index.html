@@ -242,6 +242,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     <button class="ntab" onclick="gp('events')">Calendrier</button>
     
     <button class="ntab" onclick="gp('players')">Joueurs</button>
+    <button class="ntab" onclick="gp('bilan')">📊 Bilan</button>
     <button class="ntab" onclick="gp('settings')">Réglages</button>
   </div>
 </nav>
@@ -371,6 +372,21 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     <select class="fsel" id="p-inj" onchange="rplayers()"><option value="">Tous états</option><option value="ok">Disponibles</option><option value="inj">Blessés</option></select>
   </div>
   <div class="pg" id="players-grid"></div>
+</div>
+
+<!-- BILAN DE SAISON -->
+<div id="page-bilan" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:12px;flex-wrap:wrap">
+    <div>
+      <div class="ptitle" style="margin:0">📊 Bilan de saison</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px" id="bilan-subtitle"></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="bilan-team-filter" onchange="rbilan()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;background:#fff;cursor:pointer;font-family:var(--fd);font-weight:600"></select>
+      <button class="btn btn-g" onclick="_bilanExportPDF()" style="padding:6px 12px;font-size:11px">📄 Exporter PDF</button>
+    </div>
+  </div>
+  <div id="bilan-inner"></div>
 </div>
 
 <!-- SETTINGS -->
@@ -732,7 +748,7 @@ function getEditable(){if(curMode==="base")return getBase(curEV,curTID);if(isInd
 function isOverridden(idx){if(curMode!=="match"||isInd(curEV,curTID,curMID))return false;return idx in getOvr(curEV,curTID,curMID);}
 
 // NAV
-function gp(n){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".ntab").forEach(t=>t.classList.remove("active"));const pages=["dashboard","events","editor","players","settings"];document.getElementById("page-"+n).classList.add("active");document.querySelectorAll(".ntab")[pages.indexOf(n)]?.classList.add("active");if(n==="dashboard")rdash();else if(n==="events")revents();else if(n==="players")rplayers();else if(n==="settings")rsettings();}
+function gp(n){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".ntab").forEach(t=>t.classList.remove("active"));const pages=["dashboard","events","editor","players","bilan","settings"];document.getElementById("page-"+n).classList.add("active");document.querySelectorAll(".ntab")[pages.indexOf(n)]?.classList.add("active");if(n==="dashboard")rdash();else if(n==="events")revents();else if(n==="players")rplayers();else if(n==="bilan")rbilan();else if(n==="settings")rsettings();}
 
 // DATE FORMAT
 function fd(d){return d?new Date(d).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}):"—";}
@@ -1302,6 +1318,320 @@ function savePl(){
   const data={p:document.getElementById("mp-p").value.trim(),n:document.getElementById("mp-n").value.trim().toUpperCase(),club:document.getElementById("mp-club").value,cat:document.getElementById("mp-cat").value,pos:document.getElementById("mp-pos").value.split(",").map(s=>s.trim()).filter(Boolean),h:parseFloat(document.getElementById("mp-h").value)||null,w:parseFloat(document.getElementById("mp-w").value)||null,apt,jdd:document.getElementById("mp-jdd").value,arb:document.getElementById("mp-arb").value,inj:document.getElementById("mp-inj").checked,injNat:document.getElementById("mp-inj-nat").value,injFrom:document.getElementById("mp-inj-from").value,injTo:document.getElementById("mp-inj-to").value,photo:document.getElementById("mp-photo-data").value};
   if(id){const p=S.players.find(p=>p.id===id);Object.assign(p,data);}else{S.players.push({id:Math.max(0,...S.players.map(p=>p.id))+1,...data});}
   sv();cm("m-pl");rplayers();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BILAN DE SAISON GLOBAL
+// ═══════════════════════════════════════════════════════════════
+
+function _bilanComputeStats(teamFilter){
+  // teamFilter = 'all' ou un teamId spécifique
+  var stats={
+    nbEvents:0,nbMatchsPlayed:0,nbMatchsScheduled:0,
+    wins:0,draws:0,losses:0,
+    pointsFor:0,pointsAgainst:0,
+    eventsList:[],
+    topScorers:{},   // pid -> nbEssais
+    topPlayTime:{},  // pid -> seconds
+    matchPresence:{},// pid -> nbMatchs
+    cardsYellow:0,cardsRed:0,injuries:0,
+    cardYellowByPlayer:{},cardRedByPlayer:{},injuryByPlayer:{}
+  };
+  (S.events||[]).forEach(function(ev){
+    // Si filtre par équipe, vérifier que cette équipe est concernée
+    if(teamFilter!=='all'){
+      if(!(ev.teams||[]).includes(teamFilter))return;
+    }
+    var ms=getMatches(ev);
+    var hasPlayedMatch=false;
+    var evScores=[];
+    var md2=(ev.match&&ev.match.byMatch)||{};
+    ms.forEach(function(m){
+      stats.nbMatchsScheduled++;
+      // Score : on cherche d'abord dans ev.scores, sinon on agrège les périodes du chrono
+      var sc=ev.scores&&ev.scores[m.id];
+      var f=null,a=null;
+      if(sc&&sc.f!=null&&sc.f!==''){
+        f=parseInt(sc.f);
+        a=parseInt(sc.a);
+      } else if(md2[m.id]&&md2[m.id].periods){
+        // Agrège les périodes du chrono
+        var sumF=0,sumA=0,hasData=false;
+        md2[m.id].periods.forEach(function(p){
+          if(p&&(p.score_us!=null||p.score_them!=null)){hasData=true;sumF+=(p.score_us||0);sumA+=(p.score_them||0);}
+        });
+        if(hasData){f=sumF;a=sumA;}
+      }
+      if(f!=null&&a!=null&&!isNaN(f)&&!isNaN(a)){
+        stats.nbMatchsPlayed++;
+        stats.pointsFor+=f;stats.pointsAgainst+=a;
+        if(f>a)stats.wins++;
+        else if(f===a)stats.draws++;
+        else stats.losses++;
+        hasPlayedMatch=true;
+        evScores.push({adv:m.adv,f:f,a:a,result:f>a?'V':f===a?'N':'D'});
+      }
+      // Compter présences (joueurs sur la feuille de match)
+      (ev.teams||[]).forEach(function(tid){
+        if(teamFilter!=='all'&&tid!==teamFilter)return;
+        var res=getResolved(ev,tid,m.id);
+        res.forEach(function(pid){
+          if(!pid)return;
+          var k=String(pid);
+          stats.matchPresence[k]=(stats.matchPresence[k]||0)+1;
+        });
+      });
+    });
+    if(hasPlayedMatch||ms.length>0){
+      stats.nbEvents++;
+      stats.eventsList.push({
+        id:ev.id,name:ev.name,date:ev.date,lieu:ev.lieu,type:ev.type,
+        scores:evScores,nbMatchs:ms.length
+      });
+    }
+    // Stats joueurs : essais, cartons, blessures, temps de jeu
+    var md2=(ev.match&&ev.match.byMatch)||{};
+    Object.values(md2).forEach(function(md){
+      (md.periods||[]).forEach(function(p){
+        if(!p)return;
+        (p.events||[]).forEach(function(evt){
+          if(!evt.pid||evt.forUs===false)return;
+          var k=String(evt.pid);
+          if(evt.type==="essai")stats.topScorers[k]=(stats.topScorers[k]||0)+1;
+          if(evt.type==="carton_jaune"){
+            stats.cardsYellow++;
+            stats.cardYellowByPlayer[k]=(stats.cardYellowByPlayer[k]||0)+1;
+          }
+          if(evt.type==="carton_rouge"){
+            stats.cardsRed++;
+            stats.cardRedByPlayer[k]=(stats.cardRedByPlayer[k]||0)+1;
+          }
+          if(evt.type==="blessure"){
+            stats.injuries++;
+            stats.injuryByPlayer[k]=(stats.injuryByPlayer[k]||0)+1;
+          }
+        });
+      });
+      // Temps de jeu
+      if(md.timeOnField){
+        Object.keys(md.timeOnField).forEach(function(pid){
+          var k=String(pid);
+          var tof=md.timeOnField[pid];
+          var sum=0;
+          (tof.intervals||[]).forEach(function(iv){sum+=Math.max(0,iv[1]-iv[0]);});
+          stats.topPlayTime[k]=(stats.topPlayTime[k]||0)+sum;
+        });
+      }
+    });
+  });
+  // Tri par date décroissante des événements
+  stats.eventsList.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  return stats;
+}
+
+function rbilan(){
+  // Initialiser le sélecteur d'équipes au premier rendu
+  var sel=document.getElementById("bilan-team-filter");
+  if(sel&&sel.options.length===0){
+    sel.innerHTML='<option value="all">🏉 Toutes équipes</option>'+
+      (S.teams||[]).map(function(t){return '<option value="'+t.id+'">'+t.label+'</option>';}).join("");
+  }
+  var teamFilter=sel?sel.value:'all';
+  var stats=_bilanComputeStats(teamFilter);
+  var c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
+  var season=S.settings.season||"";
+  var teamLabel=teamFilter==='all'?'Toutes équipes':((S.teams||[]).find(function(t){return t.id===teamFilter;})||{label:'?'}).label;
+
+  var sub=document.getElementById("bilan-subtitle");
+  if(sub)sub.textContent=(season?'Saison '+season+' · ':'')+teamLabel+' · '+stats.nbEvents+' événement'+(stats.nbEvents>1?'s':'');
+
+  var el=document.getElementById("bilan-inner");
+  if(!el)return;
+
+  if(stats.nbEvents===0){
+    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#9ca3af;font-size:13px">Aucun événement enregistré pour ce filtre.</div>';
+    return;
+  }
+
+  // Helper joueur depuis pid
+  function playerLabel(pid){
+    var p=(S.players||[]).find(function(pp){return String(pp.id)===String(pid);});
+    return p?(p.p+' '+p.n):'(joueur supprimé)';
+  }
+
+  var html='';
+
+  // ── Bloc 1 : Bandeau résumé ──
+  var pct=stats.nbMatchsPlayed?Math.round(stats.wins*100/stats.nbMatchsPlayed):0;
+  var diff=stats.pointsFor-stats.pointsAgainst;
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px">';
+    html+='<div class="card" style="text-align:center;padding:14px;background:linear-gradient(135deg,'+c1+',#0f2347);color:#fff;border:none">';
+      html+='<div style="font-size:9px;color:'+c2+';text-transform:uppercase;letter-spacing:.1em;font-weight:700">Événements</div>';
+      html+='<div style="font-size:32px;font-weight:900;margin:4px 0">'+stats.nbEvents+'</div>';
+      html+='<div style="font-size:10px;opacity:.7">'+stats.nbMatchsPlayed+' match'+(stats.nbMatchsPlayed>1?'s':'')+' joué'+(stats.nbMatchsPlayed>1?'s':'')+'</div>';
+    html+='</div>';
+    html+='<div class="card" style="text-align:center;padding:14px">';
+      html+='<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Bilan V/N/D</div>';
+      html+='<div style="display:flex;justify-content:center;gap:10px;margin:6px 0">';
+        html+='<div><div style="font-size:22px;font-weight:900;color:#16a34a">'+stats.wins+'</div><div style="font-size:9px;color:#6b7280">V</div></div>';
+        html+='<div><div style="font-size:22px;font-weight:900;color:#6b7280">'+stats.draws+'</div><div style="font-size:9px;color:#6b7280">N</div></div>';
+        html+='<div><div style="font-size:22px;font-weight:900;color:#dc2626">'+stats.losses+'</div><div style="font-size:9px;color:#6b7280">D</div></div>';
+      html+='</div>';
+      html+='<div style="font-size:11px;color:#1a3a6b;font-weight:700">'+pct+'% victoires</div>';
+    html+='</div>';
+    html+='<div class="card" style="text-align:center;padding:14px">';
+      html+='<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Points</div>';
+      html+='<div style="display:flex;justify-content:center;gap:10px;margin:6px 0;align-items:baseline">';
+        html+='<div><div style="font-size:22px;font-weight:900;color:#16a34a">'+stats.pointsFor+'</div><div style="font-size:9px;color:#6b7280">Pour</div></div>';
+        html+='<div style="color:#9ca3af;font-size:14px">/</div>';
+        html+='<div><div style="font-size:22px;font-weight:900;color:#dc2626">'+stats.pointsAgainst+'</div><div style="font-size:9px;color:#6b7280">Contre</div></div>';
+      html+='</div>';
+      html+='<div style="font-size:11px;color:'+(diff>=0?'#16a34a':'#dc2626')+';font-weight:700">Diff. '+(diff>=0?'+':'')+diff+'</div>';
+    html+='</div>';
+    if(stats.cardsYellow||stats.cardsRed||stats.injuries){
+      html+='<div class="card" style="text-align:center;padding:14px">';
+        html+='<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Discipline</div>';
+        html+='<div style="display:flex;justify-content:center;gap:10px;margin:6px 0">';
+          if(stats.cardsYellow)html+='<div><div style="font-size:18px;font-weight:900;color:#854d0e">🟡 '+stats.cardsYellow+'</div></div>';
+          if(stats.cardsRed)html+='<div><div style="font-size:18px;font-weight:900;color:#991b1b">🔴 '+stats.cardsRed+'</div></div>';
+          if(stats.injuries)html+='<div><div style="font-size:18px;font-weight:900;color:#6d28d9">🚑 '+stats.injuries+'</div></div>';
+        html+='</div>';
+        html+='<div style="font-size:10px;color:#6b7280">cartons / blessures</div>';
+      html+='</div>';
+    }
+  html+='</div>';
+
+  // ── Bloc 2 : Tops joueurs (3 colonnes) ──
+  function buildTopList(title,emoji,obj,formatter,color){
+    var entries=Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    if(entries.length===0)return '';
+    var h='<div class="card" style="padding:14px">';
+    h+='<div style="font-size:10px;color:'+(color||'#6b7280')+';text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:10px">'+emoji+' '+title+'</div>';
+    entries.forEach(function(e,i){
+      var rank=i+1;
+      var medal=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank+'.';
+      h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;'+(i<entries.length-1?'border-bottom:1px solid #f3f4f6':'')+'">';
+      h+='<div style="display:flex;align-items:center;gap:8px;font-size:12px;min-width:0;flex:1"><span style="font-weight:700;color:'+(rank<=3?'#1a3a6b':'#9ca3af')+';flex-shrink:0;width:22px;text-align:center">'+medal+'</span><span style="font-weight:'+(rank<=3?'700':'500')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+playerLabel(e[0])+'</span></div>';
+      h+='<span style="font-weight:800;color:'+(color||c1)+';font-size:13px;flex-shrink:0">'+formatter(e[1])+'</span>';
+      h+='</div>';
+    });
+    h+='</div>';
+    return h;
+  }
+
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:18px">';
+    html+=buildTopList('Top scoreurs','🏆',stats.topScorers,function(v){return v+' essai'+(v>1?'s':'');},'#16a34a');
+    html+=buildTopList('Top temps de jeu','⏱',stats.topPlayTime,function(v){return Math.floor(v/60)+' min';},'#0369a1');
+    html+=buildTopList('Top présences','📋',stats.matchPresence,function(v){return v+' match'+(v>1?'s':'');},'#7c3aed');
+  html+='</div>';
+
+  // ── Bloc 3 : Discipline détaillée (si applicable) ──
+  if(stats.cardsYellow||stats.cardsRed||stats.injuries){
+    html+='<div class="card" style="padding:14px;margin-bottom:18px">';
+    html+='<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:10px">⚠️ Discipline détaillée</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">';
+    function disciplineBlock(label,color,obj){
+      var entries=Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];});
+      if(entries.length===0)return '';
+      var h='<div><div style="font-size:11px;font-weight:700;color:'+color+';margin-bottom:5px">'+label+'</div>';
+      entries.forEach(function(e){
+        h+='<div style="font-size:11px;color:#374151;padding:2px 0">'+playerLabel(e[0])+' <b>('+e[1]+')</b></div>';
+      });
+      h+='</div>';
+      return h;
+    }
+    html+=disciplineBlock('🟡 Cartons jaunes','#854d0e',stats.cardYellowByPlayer);
+    html+=disciplineBlock('🔴 Cartons rouges','#991b1b',stats.cardRedByPlayer);
+    html+=disciplineBlock('🚑 Blessures','#6d28d9',stats.injuryByPlayer);
+    html+='</div></div>';
+  }
+
+  // ── Bloc 4 : Récap chronologique des événements ──
+  html+='<div class="card" style="padding:14px">';
+  html+='<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:10px">📅 Récapitulatif des événements</div>';
+  stats.eventsList.forEach(function(ev){
+    var typeColor='#9ca3af',typeLabel=(ev.type||'').toUpperCase();
+    if(ev.type==='championnat-1'){typeColor='var(--champ1)';typeLabel='CHAMP. P1';}
+    else if(ev.type==='championnat-2'){typeColor='var(--champ2)';typeLabel='CHAMP. P2';}
+    else if(ev.type==='vie'){typeColor='var(--vie)';typeLabel='VIÉ';}
+    else if(ev.type==='federal'){typeColor='var(--fed)';typeLabel='FÉDÉRAL';}
+    else if(ev.type==='tournoi'){typeColor='var(--tour)';typeLabel='TOURNOI';}
+    else if(ev.type==='amical'){typeColor='#9ca3af';typeLabel='AMICAL';}
+    var d=ev.date?new Date(ev.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'';
+    html+='<div onclick="openEditor(\''+ev.id+'\')" style="padding:8px 10px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap" onmouseover="this.style.background=\'#f9fafb\'" onmouseout="this.style.background=\'transparent\'">';
+    html+='<div style="background:'+typeColor+';color:#fff;font-size:8px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:.04em;flex-shrink:0">'+typeLabel+'</div>';
+    html+='<div style="font-size:10px;color:#6b7280;font-weight:700;width:60px;flex-shrink:0">'+d+'</div>';
+    html+='<div style="font-size:13px;font-weight:700;color:#1a3a6b;flex:1;min-width:140px">'+ev.name+'</div>';
+    if(ev.scores.length){
+      var v=ev.scores.filter(function(s){return s.result==='V';}).length;
+      var n=ev.scores.filter(function(s){return s.result==='N';}).length;
+      var d2=ev.scores.filter(function(s){return s.result==='D';}).length;
+      html+='<div style="font-size:10px;font-weight:700;display:flex;gap:4px">';
+      if(v)html+='<span style="color:#16a34a">'+v+'V</span>';
+      if(n)html+='<span style="color:#6b7280">'+n+'N</span>';
+      if(d2)html+='<span style="color:#dc2626">'+d2+'D</span>';
+      html+='</div>';
+    } else {
+      html+='<div style="font-size:10px;color:#9ca3af;font-style:italic">à venir</div>';
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+
+  el.innerHTML=html;
+}
+
+// Export PDF du bilan
+function _bilanExportPDF(){
+  var JPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF||null;
+  if(!JPDF){alert("PDF non disponible — rechargez la page");return;}
+  if(typeof html2canvas==="undefined"){alert("html2canvas non disponible");return;}
+  var inner=document.getElementById("bilan-inner");
+  if(!inner||!inner.innerHTML){alert("Aucun contenu à exporter");return;}
+  var teamSel=document.getElementById("bilan-team-filter");
+  var teamLabel=teamSel?teamSel.options[teamSel.selectedIndex].text:'';
+  var season=S.settings.season||"";
+  var clubName=S.settings.name||"SAR×MOM";
+  var c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
+  // On capture le bloc inner, mais on encadre avec un header de bilan
+  var stage=document.createElement('div');
+  stage.style.cssText='position:fixed;left:-9999px;top:0;width:1100px;background:#fff;padding:18px;font-family:-apple-system,sans-serif;z-index:-1';
+  var header='<div style="background:linear-gradient(90deg,'+c1+' 0%,#0f2347 60%);padding:14px 18px;border-bottom:4px solid '+c2+';color:#fff;border-radius:6px 6px 0 0;margin-bottom:14px">'
+    +'<div style="font-size:10px;color:'+c2+';text-transform:uppercase;letter-spacing:.14em;font-weight:700">📊 Bilan de saison</div>'
+    +'<div style="font-size:22px;font-weight:900;margin-top:3px">'+clubName+(season?' · Saison '+season:'')+'</div>'
+    +'<div style="font-size:12px;opacity:.85;margin-top:2px">'+teamLabel+' — Édité le '+new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+'</div>'
+    +'</div>';
+  stage.innerHTML=header+inner.innerHTML;
+  document.body.appendChild(stage);
+  setTimeout(function(){
+    html2canvas(stage,{scale:2,useCORS:true,backgroundColor:"#ffffff"}).then(function(canvas){
+      var pdf=new JPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      var pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+      var margin=4;
+      var contentW=pw-2*margin;
+      var imgD=canvas.toDataURL("image/png");
+      var imgH=contentW*(canvas.height/canvas.width);
+      // Si imgH > ph, on découpe sur plusieurs pages
+      if(imgH<=ph-2*margin){
+        pdf.addImage(imgD,"PNG",margin,margin,contentW,imgH);
+      } else {
+        // Découpe en plusieurs pages
+        var totalPages=Math.ceil(imgH/(ph-2*margin));
+        for(var i=0;i<totalPages;i++){
+          if(i>0)pdf.addPage();
+          var yOffset=-i*(ph-2*margin);
+          pdf.addImage(imgD,"PNG",margin,margin+yOffset,contentW,imgH);
+        }
+      }
+      stage.remove();
+      var fname='bilan_'+(season||'saison').replace(/\//g,'-')+'_'+(teamLabel||'').replace(/[^A-Za-z0-9]/g,'')+'.pdf';
+      pdf.save(fname);
+    }).catch(function(e){
+      console.error("Bilan PDF capture failed:",e);
+      stage.remove();
+      alert("Erreur lors de l'export PDF.");
+    });
+  },300);
 }
 
 // SETTINGS
