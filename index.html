@@ -507,6 +507,11 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <div class="fg"><label class="fl">Adversaire 1</label><input class="fi" id="me-a1"></div>
       <div class="fg" id="me-a2w"><label class="fl">Adversaire 2 (triangulaire)</label><input class="fi" id="me-a2"></div>
     </div>
+    <div class="fg" id="me-adv-by-team-wrap" style="display:none">
+      <label class="fl">Adversaires par équipe</label>
+      <div style="font-size:10px;color:var(--g500);margin-bottom:5px">Chaque équipe peut affronter ses propres adversaires. Laissez vide pour utiliser les adversaires généraux ci-dessus.</div>
+      <div id="me-adv-by-team" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
     <div id="me-tour" style="display:none">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g600);margin-bottom:7px">Phases et matchs</div>
       <div id="me-phases"></div>
@@ -738,6 +743,14 @@ function subsStart(ev,tid){return _subsStart(ev,tid);}
 function getMatches(ev,tid){
   if(!ev)return[];
   if(ev.type==="championnat-1"||ev.type==="championnat-2"||ev.type==="amical"||ev.type==="seven"){
+    // Cas 1 : adversaires par équipe (advByTeam) — chaque équipe a sa liste
+    if(tid&&ev.advByTeam&&ev.advByTeam[tid]&&Array.isArray(ev.advByTeam[tid])){
+      var arr=ev.advByTeam[tid];
+      return arr.filter(function(a){return a&&a.length>0;}).map(function(a,i){
+        return {id:"mADV_"+tid+"_"+i,adv:a};
+      });
+    }
+    // Cas 2 (fallback rétrocompat) : adv1/adv2 globaux
     const r=[];
     if(ev.adv1)r.push({id:"mADV1",adv:ev.adv1});
     if(ev.adv2)r.push({id:"mADV2",adv:ev.adv2});
@@ -922,9 +935,10 @@ function openEM(id=null){
     document.getElementById("me-staff-wrap").style.display="block";
   } else if(document.getElementById("me-staff-wrap")) document.getElementById("me-staff-wrap").style.display="none";
   phC=0;document.getElementById("me-phases").innerHTML=(e?.phases||[]).map(p=>{phC++;return phHTML(phC,p);}).join("");
-  document.getElementById("me-teams").innerHTML=S.teams.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t.id}" ${(e?.teams||[]).includes(t.id)?"checked":""} onchange="_meRefreshFormatByTeam()"> ${t.label}</label>`).join("");
-  // Mémoriser le formatByTeam existant pour pré-remplir
+  document.getElementById("me-teams").innerHTML=S.teams.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t.id}" ${(e?.teams||[]).includes(t.id)?"checked":""} onchange="_meRefreshFormatByTeam();_meRefreshAdvByTeam()"> ${t.label}</label>`).join("");
+  // Mémoriser le formatByTeam et advByTeam existants pour pré-remplir
   window._meFormatByTeamCache=Object.assign({},(e&&e.formatByTeam)||{});
+  window._meAdvByTeamCache=Object.assign({},(e&&e.advByTeam)||{});
   updateMEF();document.getElementById("m-ev").classList.add("open");
   setTimeout(()=>{const inp=document.getElementById("me-lieu");if(inp)initLieuAC(inp);},120);
 }
@@ -943,6 +957,8 @@ function updateMEF(){
   if(fi&&COMPOS_FORMATS[fmt]){fi.textContent="Postes : "+COMPOS_FORMATS[fmt].postes.join(", ");fi.style.display="block";}
   // Mettre à jour le panneau "Format par équipe"
   if(typeof _meRefreshFormatByTeam==="function")_meRefreshFormatByTeam();
+  // Mettre à jour le panneau "Adversaires par équipe"
+  if(typeof _meRefreshAdvByTeam==="function")_meRefreshAdvByTeam();
 }
 
 // Affiche les sélecteurs de format par équipe en fonction des équipes cochées.
@@ -978,6 +994,50 @@ function _meRefreshFormatByTeam(){
     return '<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="min-width:90px;font-weight:600">'+label+' :</span><select class="me-fbt-sel" data-tid="'+tid+'" onchange="window._meFormatByTeamCache[this.dataset.tid]=this.value" style="flex:1;padding:4px 7px;border:1px solid var(--g200);border-radius:5px;font-size:12px;background:#fff">'+opts+'</select></div>';
   }).join("");
 }
+
+// Affiche les champs d'adversaires par équipe en fonction des équipes cochées.
+// N'apparaît que pour les types d'événements à matchs simples (championnat, amical, seven)
+// ET quand 2+ équipes sont cochées. Sinon les champs adv1/adv2 globaux suffisent.
+function _meRefreshAdvByTeam(){
+  var wrap=document.getElementById("me-adv-by-team-wrap");
+  var inner=document.getElementById("me-adv-by-team");
+  if(!wrap||!inner)return;
+  var t=document.getElementById("me-type").value;
+  var isChamp=t.startsWith("championnat")||t==="amical"||t==="seven";
+  var checkedTeams=[].slice.call(document.querySelectorAll("#me-teams input:checked")).map(function(i){return i.value;});
+  // N'afficher que si type "simple" ET 2+ équipes cochées
+  if(!isChamp||checkedTeams.length<2){
+    wrap.style.display="none";
+    inner.innerHTML="";
+    return;
+  }
+  wrap.style.display="block";
+  // Combien d'adversaires par équipe ? 1 pour amical, 2 pour championnat/seven (triangulaire possible)
+  var nbAdv=(t.startsWith("championnat")||t==="seven")?2:1;
+  var cache=window._meAdvByTeamCache||{};
+  inner.innerHTML=checkedTeams.map(function(tid){
+    var team=S.teams.find(function(t){return t.id===tid;});
+    var label=team?team.label:tid;
+    var arr=Array.isArray(cache[tid])?cache[tid]:[];
+    var inputs='';
+    for(var i=0;i<nbAdv;i++){
+      var val=(arr[i]||"").replace(/"/g,'&quot;');
+      var ph=i===0?"Adversaire principal":"Adversaire 2 (triangulaire, optionnel)";
+      inputs+='<input class="me-adv-input" data-tid="'+tid+'" data-idx="'+i+'" value="'+val+'" placeholder="'+ph+'" oninput="_meSyncAdvCache(this)" style="flex:1;min-width:120px;padding:5px 8px;border:1px solid var(--g200);border-radius:5px;font-size:12px;background:#fff">';
+    }
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap"><span style="min-width:90px;font-weight:600;flex-shrink:0">'+label+' :</span><div style="flex:1;display:flex;gap:5px;flex-wrap:wrap">'+inputs+'</div></div>';
+  }).join("");
+}
+
+// Synchronise un input d'adversaire avec le cache window._meAdvByTeamCache
+function _meSyncAdvCache(inp){
+  var tid=inp.dataset.tid;
+  var idx=parseInt(inp.dataset.idx);
+  if(!window._meAdvByTeamCache)window._meAdvByTeamCache={};
+  if(!window._meAdvByTeamCache[tid])window._meAdvByTeamCache[tid]=[];
+  window._meAdvByTeamCache[tid][idx]=inp.value;
+}
+
 function phHTML(idx,ph=null){const ms=ph?.matches||[];return`<div class="card" data-phid="${ph?.id||""}" style="padding:8px;margin-bottom:6px" id="phd-${idx}"><div style="display:flex;gap:4px;margin-bottom:5px"><input class="fi" placeholder="Nom de la phase" value="${ph?.name||""}" id="phn-${idx}" style="flex:1"><input type="date" class="fi" value="${ph?.date||""}" id="phdd-${idx}" style="width:130px"><button class="btn btn-r" onclick="document.getElementById('phd-${idx}').remove()" style="padding:2px 6px">✕</button></div><div id="phm-${idx}">${ms.map((m,mi)=>pmHTML(idx,mi,m)).join("")}</div><button class="btn btn-g" onclick="addPM(${idx})" style="margin-top:3px">+ Match</button></div>`;}
 function pmHTML(pi,mi,m=null){
   // Sélecteur d'équipe : seulement si 2+ équipes sont cochées dans l'éditeur
@@ -1005,7 +1065,22 @@ function saveEvent(){
     if(sel.value)formatByTeam[sel.dataset.tid]=sel.value;
   });
   const staffCBs=[...document.querySelectorAll("#me-staff-checks input:checked")].map(i=>i.value);
-  const data={type,format:fmtVal,formatByTeam,name:document.getElementById("me-name").value||"Événement",date:document.getElementById("me-date").value,lieu:(document.getElementById("me-lieu")||{}).value||"",teams,staff:staffCBs};
+  // Récupérer advByTeam depuis les inputs (uniquement pour les équipes encore cochées)
+  const advByTeam={};
+  document.querySelectorAll('#me-adv-by-team .me-adv-input').forEach(function(inp){
+    var tid=inp.dataset.tid;
+    var idx=parseInt(inp.dataset.idx);
+    if(!teams.includes(tid))return; // Sécurité : on ne garde que les équipes cochées
+    if(!advByTeam[tid])advByTeam[tid]=[];
+    advByTeam[tid][idx]=inp.value;
+  });
+  // Nettoyer les listes vides ou avec uniquement des chaînes vides
+  Object.keys(advByTeam).forEach(function(tid){
+    var arr=advByTeam[tid].filter(function(a){return a&&a.length>0;});
+    if(arr.length===0)delete advByTeam[tid];
+    else advByTeam[tid]=arr;
+  });
+  const data={type,format:fmtVal,formatByTeam,advByTeam,name:document.getElementById("me-name").value||"Événement",date:document.getElementById("me-date").value,lieu:(document.getElementById("me-lieu")||{}).value||"",teams,staff:staffCBs};
   const isChamp=type.startsWith("championnat")||type==="amical"||type==="seven";
   if(isChamp){data.adv1=document.getElementById("me-a1").value;data.adv2=["championnat-1","championnat-2","seven"].includes(type)?document.getElementById("me-a2").value:"";}
   if(!isChamp){
