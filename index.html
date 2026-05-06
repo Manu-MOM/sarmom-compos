@@ -1019,20 +1019,25 @@ function _meRefreshAdvByTeam(){
     return;
   }
   wrap.style.display="block";
-  // Combien d'adversaires par équipe ? 1 pour amical, 2 pour championnat/seven (triangulaire possible)
-  var nbAdv=(t.startsWith("championnat")||t==="seven")?2:1;
   var cache=window._meAdvByTeamCache||{};
   inner.innerHTML=checkedTeams.map(function(tid){
     var team=S.teams.find(function(t){return t.id===tid;});
     var label=team?team.label:tid;
-    var arr=Array.isArray(cache[tid])?cache[tid]:[];
-    var inputs='';
-    for(var i=0;i<nbAdv;i++){
-      var val=(arr[i]||"").replace(/"/g,'&quot;');
-      var ph=i===0?"Adversaire principal":"Adversaire 2 (triangulaire, optionnel)";
-      inputs+='<input class="me-adv-input" data-tid="'+tid+'" data-idx="'+i+'" value="'+val+'" placeholder="'+ph+'" oninput="_meSyncAdvCache(this)" style="flex:1;min-width:120px;padding:5px 8px;border:1px solid var(--g200);border-radius:5px;font-size:12px;background:#fff">';
-    }
-    return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap"><span style="min-width:90px;font-weight:600;flex-shrink:0">'+label+' :</span><div style="flex:1;display:flex;gap:5px;flex-wrap:wrap">'+inputs+'</div></div>';
+    var arr=Array.isArray(cache[tid])?cache[tid].slice():[];
+    // Si l'équipe n'a aucun adversaire, on initialise avec une ligne vide pour l'UX
+    if(arr.length===0)arr=[""];
+    var inputs=arr.map(function(val,i){
+      var safeVal=(val||"").replace(/"/g,'&quot;');
+      return '<div class="me-adv-row" data-tid="'+tid+'" data-idx="'+i+'" style="display:flex;gap:4px;align-items:center;margin-bottom:3px">'+
+             '<input class="me-adv-input" data-tid="'+tid+'" data-idx="'+i+'" value="'+safeVal+'" placeholder="Adversaire" oninput="_meSyncAdvCache(this)" style="flex:1;padding:5px 8px;border:1px solid var(--g200);border-radius:5px;font-size:12px;background:#fff">'+
+             '<button type="button" onclick="_meRemoveAdv(\''+tid+'\','+i+')" title="Supprimer" style="padding:3px 8px;background:none;border:1px solid var(--g200);border-radius:4px;font-size:11px;cursor:pointer;color:#991b1b">✕</button>'+
+             '</div>';
+    }).join("");
+    return '<div style="margin-bottom:8px;padding:7px;background:#f9fafb;border-radius:6px">'+
+           '<div style="font-size:11px;font-weight:700;color:var(--g600);margin-bottom:5px">'+label+'</div>'+
+           '<div data-team-advs="'+tid+'">'+inputs+'</div>'+
+           '<button type="button" onclick="_meAddAdv(\''+tid+'\')" style="padding:4px 9px;background:#fff;border:1px dashed var(--g300);border-radius:5px;font-size:11px;cursor:pointer;color:var(--g600);margin-top:3px">+ Ajouter un adversaire</button>'+
+           '</div>';
   }).join("");
 }
 
@@ -1043,6 +1048,33 @@ function _meSyncAdvCache(inp){
   if(!window._meAdvByTeamCache)window._meAdvByTeamCache={};
   if(!window._meAdvByTeamCache[tid])window._meAdvByTeamCache[tid]=[];
   window._meAdvByTeamCache[tid][idx]=inp.value;
+}
+
+// Ajoute un adversaire vide pour une équipe et redessine la liste
+function _meAddAdv(tid){
+  if(!window._meAdvByTeamCache)window._meAdvByTeamCache={};
+  if(!window._meAdvByTeamCache[tid])window._meAdvByTeamCache[tid]=[];
+  // D'abord, on synchronise les valeurs actuelles depuis les inputs (au cas où l'utilisateur ait tapé sans déclencher input)
+  document.querySelectorAll('#me-adv-by-team .me-adv-input').forEach(function(inp){
+    var t=inp.dataset.tid,i=parseInt(inp.dataset.idx);
+    if(!window._meAdvByTeamCache[t])window._meAdvByTeamCache[t]=[];
+    window._meAdvByTeamCache[t][i]=inp.value;
+  });
+  window._meAdvByTeamCache[tid].push("");
+  _meRefreshAdvByTeam();
+}
+
+// Supprime un adversaire (par index) pour une équipe et redessine la liste
+function _meRemoveAdv(tid,idx){
+  if(!window._meAdvByTeamCache)window._meAdvByTeamCache={};
+  // Resync avant de supprimer
+  document.querySelectorAll('#me-adv-by-team .me-adv-input').forEach(function(inp){
+    var t=inp.dataset.tid,i=parseInt(inp.dataset.idx);
+    if(!window._meAdvByTeamCache[t])window._meAdvByTeamCache[t]=[];
+    window._meAdvByTeamCache[t][i]=inp.value;
+  });
+  if(window._meAdvByTeamCache[tid])window._meAdvByTeamCache[tid].splice(idx,1);
+  _meRefreshAdvByTeam();
 }
 
 function phHTML(idx,ph=null){const ms=ph?.matches||[];return`<div class="card" data-phid="${ph?.id||""}" style="padding:8px;margin-bottom:6px" id="phd-${idx}"><div style="display:flex;gap:4px;margin-bottom:5px"><input class="fi" placeholder="Nom de la phase" value="${ph?.name||""}" id="phn-${idx}" style="flex:1"><input type="date" class="fi" value="${ph?.date||""}" id="phdd-${idx}" style="width:130px"><button class="btn btn-r" onclick="document.getElementById('phd-${idx}').remove()" style="padding:2px 6px">✕</button></div><div id="phm-${idx}">${ms.map((m,mi)=>pmHTML(idx,mi,m)).join("")}</div><button class="btn btn-g" onclick="addPM(${idx})" style="margin-top:3px">+ Match</button></div>`;}
