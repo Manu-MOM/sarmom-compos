@@ -486,7 +486,8 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
         <div id="me-lieu-suggestions" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:0 0 7px 7px;z-index:50;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15)"></div>
       </div>
     </div>
-    <div class="fg"><label class="fl">Format de jeu</label>
+    <div class="fg"><label class="fl">Équipes engagées</label><div id="me-teams" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px"></div></div>
+    <div class="fg" id="me-format-wrap"><label class="fl">Format de jeu</label>
       <select class="fs" id="me-format" onchange="updateMEF()" style="width:100%">
         <option value="15">À 15 — XV de départ + 8 remplaçants</option>
         <option value="13">À 13 — 13 titulaires + 6 remplaçants</option>
@@ -499,8 +500,8 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <div id="me-format-hint" style="font-size:10px;color:var(--cg);margin-top:3px;display:none"></div>
     </div>
     <div class="fg" id="me-format-by-team-wrap" style="display:none">
-      <label class="fl">Format par équipe (optionnel)</label>
-      <div style="font-size:10px;color:var(--g500);margin-bottom:5px">Si certaines équipes jouent dans un format différent, précisez-le ici. Sinon, le format global ci-dessus s'applique.</div>
+      <label class="fl">Format par équipe</label>
+      <div style="font-size:10px;color:var(--g500);margin-bottom:5px">Chaque équipe joue dans son propre format.</div>
       <div id="me-format-by-team" style="display:flex;flex-direction:column;gap:5px"></div>
     </div>
     <div id="me-champ">
@@ -509,7 +510,7 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
     </div>
     <div class="fg" id="me-adv-by-team-wrap" style="display:none">
       <label class="fl">Adversaires par équipe</label>
-      <div style="font-size:10px;color:var(--g500);margin-bottom:5px">Chaque équipe peut affronter ses propres adversaires. Laissez vide pour utiliser les adversaires généraux ci-dessus.</div>
+      <div style="font-size:10px;color:var(--g500);margin-bottom:5px">Chaque équipe affronte ses propres adversaires.</div>
       <div id="me-adv-by-team" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
     <div id="me-tour" style="display:none">
@@ -518,7 +519,6 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       <button class="btn btn-g" onclick="addPhase()" style="margin-bottom:9px">+ Phase</button>
       <div style="font-size:11px;color:var(--g600);background:#fef3c7;padding:7px;border-radius:5px;margin-bottom:9px">💡 La compo de base s'applique à tous les matchs. Vous pourrez modifier par match depuis l'éditeur.</div>
     </div>
-    <div class="fg"><label class="fl">Équipes engagées</label><div id="me-teams" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px"></div></div>
     <div class="fg" id="me-staff-wrap">
       <label class="fl">Staff présent à cet événement</label>
       <div id="me-staff-checks" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
@@ -935,7 +935,7 @@ function openEM(id=null){
     document.getElementById("me-staff-wrap").style.display="block";
   } else if(document.getElementById("me-staff-wrap")) document.getElementById("me-staff-wrap").style.display="none";
   phC=0;document.getElementById("me-phases").innerHTML=(e?.phases||[]).map(p=>{phC++;return phHTML(phC,p);}).join("");
-  document.getElementById("me-teams").innerHTML=S.teams.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t.id}" ${(e?.teams||[]).includes(t.id)?"checked":""} onchange="_meRefreshFormatByTeam();_meRefreshAdvByTeam()"> ${t.label}</label>`).join("");
+  document.getElementById("me-teams").innerHTML=S.teams.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t.id}" ${(e?.teams||[]).includes(t.id)?"checked":""} onchange="updateMEF()"> ${t.label}</label>`).join("");
   // Mémoriser le formatByTeam et advByTeam existants pour pré-remplir
   window._meFormatByTeamCache=Object.assign({},(e&&e.formatByTeam)||{});
   window._meAdvByTeamCache=Object.assign({},(e&&e.advByTeam)||{});
@@ -945,8 +945,15 @@ function openEM(id=null){
 function updateMEF(){
   const t=document.getElementById("me-type").value;
   const isChamp=t.startsWith("championnat")||t==="amical"||t==="seven";
-  document.getElementById("me-champ").style.display=isChamp?"block":"none";
-  document.getElementById("me-a2w").style.display=(t.startsWith("championnat")||t==="seven")?"block":"none";
+  // Compter les équipes cochées
+  const checkedTeamsCount=document.querySelectorAll("#me-teams input:checked").length;
+  const has2Teams=checkedTeamsCount>=2;
+  // "Format de jeu" global : caché dès qu'on a 2+ équipes (le panneau "Format par équipe" prend le relais)
+  const fmtWrap=document.getElementById("me-format-wrap");
+  if(fmtWrap)fmtWrap.style.display=has2Teams?"none":"block";
+  // Bloc "me-champ" (adversaires globaux 1 et 2) : caché dès qu'on a 2+ équipes (le panneau "Adversaires par équipe" prend le relais)
+  document.getElementById("me-champ").style.display=(isChamp&&!has2Teams)?"block":"none";
+  document.getElementById("me-a2w").style.display=((t.startsWith("championnat")||t==="seven")&&!has2Teams)?"block":"none";
   document.getElementById("me-tour").style.display=!isChamp?"block":"none";
   // Auto-set format for seven
   const fEl=document.getElementById("me-format");
