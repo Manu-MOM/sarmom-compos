@@ -498,6 +498,11 @@ body{font-family:var(--fb);background:var(--g50);color:var(--g800);min-height:10
       </select>
       <div id="me-format-hint" style="font-size:10px;color:var(--cg);margin-top:3px;display:none"></div>
     </div>
+    <div class="fg" id="me-format-by-team-wrap" style="display:none">
+      <label class="fl">Format par équipe (optionnel)</label>
+      <div style="font-size:10px;color:var(--g500);margin-bottom:5px">Si certaines équipes jouent dans un format différent, précisez-le ici. Sinon, le format global ci-dessus s'applique.</div>
+      <div id="me-format-by-team" style="display:flex;flex-direction:column;gap:5px"></div>
+    </div>
     <div id="me-champ">
       <div class="fg"><label class="fl">Adversaire 1</label><input class="fi" id="me-a1"></div>
       <div class="fg" id="me-a2w"><label class="fl">Adversaire 2 (triangulaire)</label><input class="fi" id="me-a2"></div>
@@ -629,12 +634,19 @@ const COMPOS_FORMATS = {
 
 const FXY13=[{x:130,y:198},{x:260,y:185},{x:390,y:198},{x:193,y:265},{x:327,y:265},{x:260,y:340},{x:260,y:420},{x:340,y:462},{x:95,y:515},{x:208,y:505},{x:312,y:505},{x:425,y:515},{x:260,y:570}];
 
-function _getFormat(ev){return ev&&ev.format?parseInt(ev.format):(ev&&ev.type==="seven"?7:15);}
-function _postes(ev){const fmt=_getFormat(ev);return COMPOS_FORMATS[fmt]?COMPOS_FORMATS[fmt].postes:P15;}
-function _lineupSize(ev){const fmt=_getFormat(ev);return COMPOS_FORMATS[fmt]?COMPOS_FORMATS[fmt].postes.length+(COMPOS_FORMATS[fmt].subs||8):23;}
-function _subsStart(ev){const fmt=_getFormat(ev);return COMPOS_FORMATS[fmt]?COMPOS_FORMATS[fmt].postes.length:15;}
-function _getFieldXY(ev){
-  const fmt=_getFormat(ev);const ss=_subsStart(ev);
+// Format de l'événement, éventuellement spécifique à une équipe.
+// Si formatByTeam[tid] existe → utilisé. Sinon → fallback sur ev.format global.
+function _getFormat(ev,tid){
+  if(!ev)return 15;
+  if(tid&&ev.formatByTeam&&ev.formatByTeam[tid])return parseInt(ev.formatByTeam[tid]);
+  if(ev.format)return parseInt(ev.format);
+  return ev.type==="seven"?7:15;
+}
+function _postes(ev,tid){const fmt=_getFormat(ev,tid);return COMPOS_FORMATS[fmt]?COMPOS_FORMATS[fmt].postes:P15;}
+function _lineupSize(ev,tid){const fmt=_getFormat(ev,tid);return COMPOS_FORMATS[fmt]?COMPOS_FORMATS[fmt].postes.length+(COMPOS_FORMATS[fmt].subs||8):23;}
+function _subsStart(ev,tid){const fmt=_getFormat(ev,tid);return COMPOS_FORMATS[fmt]?COMPOS_FORMATS[fmt].postes.length:15;}
+function _getFieldXY(ev,tid){
+  const fmt=_getFormat(ev,tid);const ss=_subsStart(ev,tid);
   if(fmt<=4){const rows=fmt<=2?1:2;const perRow=Math.ceil(ss/rows);const pos=[];for(let r=0;r<rows;r++){const inRow=r===rows-1?ss-r*perRow:perRow;const y=250+r*100;for(let c=0;c<inRow;c++)pos.push({x:Math.round(520/(inRow+1)*(c+1)),y});}return pos;}
   if(fmt<=7)return FXY7.slice(0,ss);
   if(fmt===13)return FXY13.slice(0,ss);
@@ -719,11 +731,11 @@ let S=load();
 
 // Lineup helpers
 function isSeven(ev){return ev&&(ev.type==="seven"||(ev.format&&parseInt(ev.format)===7));}
-function postes(ev){return _postes(ev);}
-function lineupSize(ev){return _lineupSize(ev);}
-function subsStart(ev){return _subsStart(ev);}
+function postes(ev,tid){return _postes(ev,tid);}
+function lineupSize(ev,tid){return _lineupSize(ev,tid);}
+function subsStart(ev,tid){return _subsStart(ev,tid);}
 
-function getMatches(ev){
+function getMatches(ev,tid){
   if(!ev)return[];
   if(ev.type==="championnat-1"||ev.type==="championnat-2"||ev.type==="amical"||ev.type==="seven"){
     const r=[];
@@ -732,16 +744,23 @@ function getMatches(ev){
     return r;
   }
   const r=[];
-  (ev.phases||[]).forEach(ph=>ph.matches.forEach(m=>r.push({...m,phaseId:ph.id,phaseName:ph.name})));
+  (ev.phases||[]).forEach(ph=>ph.matches.forEach(m=>{
+    // Filtre par équipe : si tid fourni, on garde le match si :
+    //   - pas de teamId sur le match (compat ancienne version : commun à toutes équipes)
+    //   - OU teamId === tid
+    //   - OU teamId === 'all' (explicitement marqué "toutes équipes")
+    if(tid&&m.teamId&&m.teamId!=='all'&&m.teamId!==tid)return;
+    r.push({...m,phaseId:ph.id,phaseName:ph.name});
+  }));
   return r;
 }
-function getBase(ev,tid){const k=`BASE_${tid}`;if(!ev.lineups[k])ev.lineups[k]=Array(lineupSize(ev)).fill(null);return ev.lineups[k];}
+function getBase(ev,tid){const k=`BASE_${tid}`;if(!ev.lineups[k])ev.lineups[k]=Array(lineupSize(ev,tid)).fill(null);return ev.lineups[k];}
 function getOvr(ev,tid,mid){const k=`OVR_${tid}_${mid}`;if(!ev.lineups[k])ev.lineups[k]={};return ev.lineups[k];}
 function isInd(ev,tid,mid){return!!ev.lineups[`IND_${tid}_${mid}`];}
-function setInd(ev,tid,mid,val){const k=`IND_${tid}_${mid}`;if(val){if(!ev.lineups[k])ev.lineups[k]=Array(lineupSize(ev)).fill(null);}else{delete ev.lineups[k];}}
-function getInd(ev,tid,mid){const k=`IND_${tid}_${mid}`;if(!ev.lineups[k])ev.lineups[k]=Array(lineupSize(ev)).fill(null);return ev.lineups[k];}
+function setInd(ev,tid,mid,val){const k=`IND_${tid}_${mid}`;if(val){if(!ev.lineups[k])ev.lineups[k]=Array(lineupSize(ev,tid)).fill(null);}else{delete ev.lineups[k];}}
+function getInd(ev,tid,mid){const k=`IND_${tid}_${mid}`;if(!ev.lineups[k])ev.lineups[k]=Array(lineupSize(ev,tid)).fill(null);return ev.lineups[k];}
 function getResolved(ev,tid,mid){if(isInd(ev,tid,mid))return getInd(ev,tid,mid);const base=getBase(ev,tid);const ovr=getOvr(ev,tid,mid);const r=[...base];Object.keys(ovr).forEach(i=>{r[parseInt(i)]=ovr[i];});return r;}
-function countCompos(ev){let done=0,total=0;const m=getMatches(ev);(ev.teams||[]).forEach(tid=>{m.forEach(mm=>{total++;if(getResolved(ev,tid,mm.id).some(v=>v!==null))done++;});});return{done,total};}
+function countCompos(ev){let done=0,total=0;(ev.teams||[]).forEach(tid=>{const m=getMatches(ev,tid);m.forEach(mm=>{total++;if(getResolved(ev,tid,mm.id).some(v=>v!==null))done++;});});return{done,total};}
 function setSlot(idx,pid){if(curMode==="base"){getBase(curEV,curTID)[idx]=pid;}else if(isInd(curEV,curTID,curMID)){getInd(curEV,curTID,curMID)[idx]=pid;}else{const base=getBase(curEV,curTID);const ovr=getOvr(curEV,curTID,curMID);if(base[idx]===pid)delete ovr[idx];else ovr[idx]=pid;}sv();}
 function clearSlot(idx){if(curMode==="base"){getBase(curEV,curTID)[idx]=null;}else if(isInd(curEV,curTID,curMID)){getInd(curEV,curTID,curMID)[idx]=null;}else{const base=getBase(curEV,curTID);const ovr=getOvr(curEV,curTID,curMID);if(base[idx]===null)delete ovr[idx];else ovr[idx]=null;}sv();}
 function getEditable(){if(curMode==="base")return getBase(curEV,curTID);if(isInd(curEV,curTID,curMID))return getInd(curEV,curTID,curMID);return getResolved(curEV,curTID,curMID);}
@@ -903,7 +922,9 @@ function openEM(id=null){
     document.getElementById("me-staff-wrap").style.display="block";
   } else if(document.getElementById("me-staff-wrap")) document.getElementById("me-staff-wrap").style.display="none";
   phC=0;document.getElementById("me-phases").innerHTML=(e?.phases||[]).map(p=>{phC++;return phHTML(phC,p);}).join("");
-  document.getElementById("me-teams").innerHTML=S.teams.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t.id}" ${(e?.teams||[]).includes(t.id)?"checked":""}> ${t.label}</label>`).join("");
+  document.getElementById("me-teams").innerHTML=S.teams.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="${t.id}" ${(e?.teams||[]).includes(t.id)?"checked":""} onchange="_meRefreshFormatByTeam()"> ${t.label}</label>`).join("");
+  // Mémoriser le formatByTeam existant pour pré-remplir
+  window._meFormatByTeamCache=Object.assign({},(e&&e.formatByTeam)||{});
   updateMEF();document.getElementById("m-ev").classList.add("open");
   setTimeout(()=>{const inp=document.getElementById("me-lieu");if(inp)initLieuAC(inp);},120);
 }
@@ -920,20 +941,100 @@ function updateMEF(){
   const fmt=parseInt((fEl||{}).value||"15");
   const fi=document.getElementById("me-format-hint");
   if(fi&&COMPOS_FORMATS[fmt]){fi.textContent="Postes : "+COMPOS_FORMATS[fmt].postes.join(", ");fi.style.display="block";}
+  // Mettre à jour le panneau "Format par équipe"
+  if(typeof _meRefreshFormatByTeam==="function")_meRefreshFormatByTeam();
+}
+
+// Affiche les sélecteurs de format par équipe en fonction des équipes cochées.
+// Apparaît dès qu'une équipe est cochée. Si une seule équipe, le sélecteur permet
+// quand même d'override le format global, mais il est facultatif.
+function _meRefreshFormatByTeam(){
+  var wrap=document.getElementById("me-format-by-team-wrap");
+  var inner=document.getElementById("me-format-by-team");
+  if(!wrap||!inner)return;
+  var checkedTeams=[].slice.call(document.querySelectorAll("#me-teams input:checked")).map(function(i){return i.value;});
+  // Cache afficher uniquement si 2+ équipes sont cochées
+  if(checkedTeams.length<2){
+    wrap.style.display="none";
+    inner.innerHTML="";
+    return;
+  }
+  wrap.style.display="block";
+  var cache=window._meFormatByTeamCache||{};
+  inner.innerHTML=checkedTeams.map(function(tid){
+    var team=S.teams.find(function(t){return t.id===tid;});
+    var label=team?team.label:tid;
+    var current=cache[tid]||"";
+    var opts=[
+      ["","— Format global —"],
+      ["15","À 15"],
+      ["13","À 13"],
+      ["12","À 12"],
+      ["10","À 10"],
+      ["9","À 9"],
+      ["8","À 8"],
+      ["7","Seven (7)"]
+    ].map(function(o){return '<option value="'+o[0]+'"'+(current===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join("");
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="min-width:90px;font-weight:600">'+label+' :</span><select class="me-fbt-sel" data-tid="'+tid+'" onchange="window._meFormatByTeamCache[this.dataset.tid]=this.value" style="flex:1;padding:4px 7px;border:1px solid var(--g200);border-radius:5px;font-size:12px;background:#fff">'+opts+'</select></div>';
+  }).join("");
 }
 function phHTML(idx,ph=null){const ms=ph?.matches||[];return`<div class="card" data-phid="${ph?.id||""}" style="padding:8px;margin-bottom:6px" id="phd-${idx}"><div style="display:flex;gap:4px;margin-bottom:5px"><input class="fi" placeholder="Nom de la phase" value="${ph?.name||""}" id="phn-${idx}" style="flex:1"><input type="date" class="fi" value="${ph?.date||""}" id="phdd-${idx}" style="width:130px"><button class="btn btn-r" onclick="document.getElementById('phd-${idx}').remove()" style="padding:2px 6px">✕</button></div><div id="phm-${idx}">${ms.map((m,mi)=>pmHTML(idx,mi,m)).join("")}</div><button class="btn btn-g" onclick="addPM(${idx})" style="margin-top:3px">+ Match</button></div>`;}
-function pmHTML(pi,mi,m=null){return`<div data-mid="${m?.id||""}" style="display:flex;gap:4px;margin-bottom:3px" id="pmr-${pi}-${mi}"><input class="fi" placeholder="Adversaire" value="${m?.adv||""}" style="flex:1"><button class="btn btn-r" onclick="document.getElementById('pmr-${pi}-${mi}').remove()" style="padding:2px 6px">✕</button></div>`;}
+function pmHTML(pi,mi,m=null){
+  // Sélecteur d'équipe : seulement si 2+ équipes sont cochées dans l'éditeur
+  var checkedTeams=[].slice.call(document.querySelectorAll("#me-teams input:checked")).map(function(i){return i.value;});
+  var teamSelHTML='';
+  if(checkedTeams.length>=2){
+    var current=(m&&m.teamId)||'all';
+    var opts='<option value="all"'+(current==='all'?' selected':'')+'>👥 Toutes</option>'+checkedTeams.map(function(tid){
+      var t=S.teams.find(function(tt){return tt.id===tid;});
+      return '<option value="'+tid+'"'+(current===tid?' selected':'')+'>'+(t?t.label:tid)+'</option>';
+    }).join("");
+    teamSelHTML='<select class="pm-team-sel" style="padding:4px 6px;border:1px solid var(--g200);border-radius:5px;font-size:11px;background:#fff;width:120px">'+opts+'</select>';
+  }
+  return `<div data-mid="${m?.id||""}" style="display:flex;gap:4px;margin-bottom:3px" id="pmr-${pi}-${mi}"><input class="fi" placeholder="Adversaire" value="${m?.adv||""}" style="flex:1">${teamSelHTML}<button class="btn btn-r" onclick="document.getElementById('pmr-${pi}-${mi}').remove()" style="padding:2px 6px">✕</button></div>`;
+}
 function addPhase(){phC++;document.getElementById("me-phases").insertAdjacentHTML("beforeend",phHTML(phC));}
 function addPM(pi){const c=document.getElementById("phm-"+pi);c.insertAdjacentHTML("beforeend",pmHTML(pi,c.children.length));}
 function saveEvent(){
   const id=document.getElementById("me-id").value;const type=document.getElementById("me-type").value;
   const teams=[...document.querySelectorAll("#me-teams input:checked")].map(i=>i.value);
   const fmtVal=(document.getElementById("me-format")||{}).value||"15";
+  // Récupérer formatByTeam depuis les sélecteurs du panneau
+  const formatByTeam={};
+  document.querySelectorAll('#me-format-by-team .me-fbt-sel').forEach(function(sel){
+    if(sel.value)formatByTeam[sel.dataset.tid]=sel.value;
+  });
   const staffCBs=[...document.querySelectorAll("#me-staff-checks input:checked")].map(i=>i.value);
-  const data={type,format:fmtVal,name:document.getElementById("me-name").value||"Événement",date:document.getElementById("me-date").value,lieu:(document.getElementById("me-lieu")||{}).value||"",teams,staff:staffCBs};
+  const data={type,format:fmtVal,formatByTeam,name:document.getElementById("me-name").value||"Événement",date:document.getElementById("me-date").value,lieu:(document.getElementById("me-lieu")||{}).value||"",teams,staff:staffCBs};
   const isChamp=type.startsWith("championnat")||type==="amical"||type==="seven";
   if(isChamp){data.adv1=document.getElementById("me-a1").value;data.adv2=["championnat-1","championnat-2","seven"].includes(type)?document.getElementById("me-a2").value:"";}
-  if(!isChamp){data.phases=[];const _existingEv=id?S.events.find(e=>e.id===id):null;const _existingById={};if(_existingEv&&_existingEv.phases){_existingEv.phases.forEach(ph=>(ph.matches||[]).forEach(mm=>{_existingById[mm.id]=mm;}));}document.querySelectorAll("[id^='phd-']").forEach(phDiv=>{const pi=phDiv.id.split("-")[1];const ms=[];phDiv.querySelectorAll("[id^='pmr-']").forEach(mr=>{const adv=mr.querySelector("input")?.value||"";if(adv){const _existingMid=mr.dataset.mid||"";const _existingMatch=_existingMid?_existingById[_existingMid]:null;ms.push({id:_existingMid||("m"+Date.now()+"_"+Math.random().toString(36).slice(2)),adv,score:_existingMatch?.score||{f:null,a:null}});}});data.phases.push({id:phDiv.dataset.phid||("ph"+Date.now()+"_"+pi),name:document.getElementById("phn-"+pi)?.value||"Phase",date:document.getElementById("phdd-"+pi)?.value||"",matches:ms});});}
+  if(!isChamp){
+    data.phases=[];
+    const _existingEv=id?S.events.find(e=>e.id===id):null;
+    const _existingById={};
+    if(_existingEv&&_existingEv.phases){_existingEv.phases.forEach(ph=>(ph.matches||[]).forEach(mm=>{_existingById[mm.id]=mm;}));}
+    document.querySelectorAll("[id^='phd-']").forEach(phDiv=>{
+      const pi=phDiv.id.split("-")[1];
+      const ms=[];
+      phDiv.querySelectorAll("[id^='pmr-']").forEach(mr=>{
+        const adv=mr.querySelector("input")?.value||"";
+        if(adv){
+          const _existingMid=mr.dataset.mid||"";
+          const _existingMatch=_existingMid?_existingById[_existingMid]:null;
+          // Récupérer le teamId si un sélecteur d'équipe est présent dans cette ligne
+          var teamSel=mr.querySelector(".pm-team-sel");
+          var teamId=teamSel?teamSel.value:'all';
+          ms.push({
+            id:_existingMid||("m"+Date.now()+"_"+Math.random().toString(36).slice(2)),
+            adv,
+            teamId:teamId,
+            score:_existingMatch?.score||{f:null,a:null}
+          });
+        }
+      });
+      data.phases.push({id:phDiv.dataset.phid||("ph"+Date.now()+"_"+pi),name:document.getElementById("phn-"+pi)?.value||"Phase",date:document.getElementById("phdd-"+pi)?.value||"",matches:ms});
+    });
+  }
   if(id){const e=S.events.find(e=>e.id===id);if(!e.lineups)e.lineups={};if(!e.scores)e.scores={};Object.assign(e,data);}
   else{S.events.push({id:"e"+Date.now(),lineups:{},scores:{},... data});}
   sv();cm("m-ev");revents();
@@ -943,7 +1044,7 @@ function saveEvent(){
 let curEV=null,curTID=null,curMID=null,curMode="base",curEVview="liste",curSlot=null;
 function openEditor(eid,tid,mid,mode){
   curEV=S.events.find(e=>e.id===eid);if(!curEV){gp("editor");return;}
-  curTID=tid||curEV.teams[0];const matches=getMatches(curEV);
+  curTID=tid||curEV.teams[0];const matches=getMatches(curEV,curTID);
   curMID=mid||matches[0]?.id||null;curMode=mode||"base";
   // Auto-link match tracker to current match
   if(curMode!=="base"&&curMID){
@@ -1003,7 +1104,7 @@ function openEditor(eid,tid,mid,mode){
   },150);
 }
 function renderEdBtns(){
-  const matches=getMatches(curEV);
+  const matches=getMatches(curEV,curTID);
   let html=`<div style="display:flex;gap:3px;align-items:center;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px"><span style="font-size:9px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">Équipe :</span>${(curEV.teams||[]).map(tid=>{const t=S.teams.find(t=>t.id===tid);return`<button class="btn ${tid===curTID?"btn-b":"btn-g"}" onclick="switchTeam('${tid}')">${t?.label||tid}</button>`;}). join("")}</div>`;
   html+=`<div style="display:flex;gap:3px;align-items:center;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px"><span style="font-size:9px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.05em">Mode :</span><button class="btn ${curMode==="base"?"btn-b":"btn-g"}" onclick="switchMode('base')" style="${curMode==="base"?"":"border-color:#93c5fd;color:#1e40af"}">📋 Base</button>${matches.map(m=>`<button class="btn ${curMode==="match"&&curMID===m.id?"btn-b":"btn-g"}" onclick="switchMode('match','${m.id}')">✏️ vs ${m.adv}</button>`).join("")}</div>`;
   if(curMode==="match"&&(curEV.type.startsWith("championnat")||curEV.type==="amical"||curEV.type==="seven")){const ind=isInd(curEV,curTID,curMID);html+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 9px;background:${ind?"#fff7ed":"var(--g50)"};border-radius:6px;border:1px solid ${ind?"#f97316":"var(--g200)"};font-size:11px"><label style="cursor:pointer;display:flex;align-items:center;gap:5px"><input type="checkbox" ${ind?"checked":""} onchange="toggleInd(this.checked)"> Compo entièrement indépendante pour ce match</label></div>`;}
@@ -1039,7 +1140,7 @@ function renderPool(){
 }
 
 function renderSlots(){
-  const resolved=getEditable();const Ps=postes(curEV);const ss2=subsStart(curEV);
+  const resolved=getEditable();const Ps=postes(curEV,curTID);const ss2=subsStart(curEV,curTID);
   const ss=document.getElementById("slots-s");const sr=document.getElementById("slots-r");if(!ss)return;
   ss.innerHTML=Array.from({length:ss2},(_,i)=>{
     const pid=resolved[i];const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;const ovr=isOverridden(i);
@@ -1047,7 +1148,7 @@ function renderSlots(){
     const photoHtml=pl&&pl.photo?`<div class="sav"><img src="${pl.photo}"></div>`:"";
     return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?'':'openPick('+i+')'}" style="cursor:${pl?"default":"pointer"}"><div class="snum">${i+1}</div><div class="spos">${Ps[i]||""}</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"Cliquer…"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px">${tags}</div>${pl?`<button class="srm" onclick="rmSlot(${i})">×</button>`:""}</div>`;
   }).join("");
-  sr.innerHTML=Array.from({length:lineupSize(curEV)-ss2},(_,i)=>{
+  sr.innerHTML=Array.from({length:lineupSize(curEV,curTID)-ss2},(_,i)=>{
     const idx=i+ss2;const pid=resolved[idx];const pl=pid?S.players.find(p=>String(p.id)===String(pid)):null;const ovr=isOverridden(idx);
     const photoHtml=pl&&pl.photo?`<div class="sav"><img src="${pl.photo}"></div>`:"";
     return`<div class="slot ${pl?"filled":""} ${ovr?"ovr":""}" onclick="${pl?'':'openPick('+idx+')'}" style="cursor:${pl?"default":"pointer"}"><div class="snum sub">${idx+1}</div><div class="spos">Remplaçant</div>${photoHtml}<div class="sname ${pl?"":"empty"}">${pl?pl.p+" "+pl.n:"—"}</div>${ovr?'<span class="ovr-lbl">modif.</span>':""}<div style="display:flex;gap:2px"></div>${pl?`<button class="srm" onclick="rmSlot(${idx})">×</button>`:""}</div>`;
@@ -1055,11 +1156,11 @@ function renderSlots(){
   if(curEVview==="terrain")drawField();if(curEVview==="export")drawExport();
 }
 function rmSlot(idx){clearSlot(idx);renderPool();renderSlots();}
-function pickD(pid){const r=getEditable();const i=r.findIndex((v,i)=>i<subsStart(curEV)&&v===null);const idx=i!==-1?i:r.findIndex(v=>v===null);if(idx===-1)return;setSlot(idx,pid);sv();renderPool();renderSlots();}
-function openPick(idx){curSlot=idx;const Ps=postes(curEV);document.getElementById("mpk-title").textContent=idx<subsStart(curEV)?`Poste ${idx+1} — ${Ps[idx]}`:"Remplaçant";document.getElementById("mpk-s").value="";renderPick();document.getElementById("m-pick").classList.add("open");}
+function pickD(pid){const r=getEditable();const i=r.findIndex((v,i)=>i<subsStart(curEV,curTID)&&v===null);const idx=i!==-1?i:r.findIndex(v=>v===null);if(idx===-1)return;setSlot(idx,pid);sv();renderPool();renderSlots();}
+function openPick(idx){curSlot=idx;const Ps=postes(curEV,curTID);document.getElementById("mpk-title").textContent=idx<subsStart(curEV,curTID)?`Poste ${idx+1} — ${Ps[idx]}`:"Remplaçant";document.getElementById("mpk-s").value="";renderPick();document.getElementById("m-pick").classList.add("open");}
 function renderPick(){
-  const s=(document.getElementById("mpk-s")?.value||"").toLowerCase();const resolved=getEditable();const Ps=postes(curEV);
-  const kw=(curSlot<subsStart(curEV)?Ps[curSlot]||"":"").split(" ")[0].toLowerCase();
+  const s=(document.getElementById("mpk-s")?.value||"").toLowerCase();const resolved=getEditable();const Ps=postes(curEV,curTID);
+  const kw=(curSlot<subsStart(curEV,curTID)?Ps[curSlot]||"":"").split(" ")[0].toLowerCase();
   const baseLineup=curMode!=="base"?getBase(curEV,curTID).filter(Boolean):null;
   let ps=S.players.filter(p=>{if(resolved.map(String).includes(String(p.id)))return false;if(s&&!`${p.p} ${p.n}`.toLowerCase().includes(s))return false;if(baseLineup&&baseLineup.length>0&&!baseLineup.map(String).includes(String(p.id)))return false;return true;});
   ps.sort((a,b)=>{const am=a.pos.some(pp=>pp.toLowerCase().includes(kw));const bm=b.pos.some(pp=>pp.toLowerCase().includes(kw));if(am&&!bm)return -1;if(!am&&bm)return 1;return`${a.n}${a.p}`.localeCompare(`${b.n}${b.p}`)});
@@ -1067,16 +1168,16 @@ function renderPick(){
   }).join("");
 }
 function assignPick(pid){if(curSlot===null)return;setSlot(curSlot,pid);cm("m-pick");renderPool();renderSlots();curSlot=null;}
-function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
+function switchEV(view,btn){curEVview=view;document.querySelectorAll(".stab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");["liste","terrain","export","match","rapport"].forEach(v=>{const el=document.getElementById("ev-"+v);if(el)el.style.display=v===view?"block":"none";});if(view==="terrain")drawField();if(view==="export")drawExport();if(view==="rapport")renderRapport();if(view==="match"){if(curMID&&curMode!=="base"){var _sc=getMatches(curEV,curTID).find(function(m){return m.id===curMID;});if(_sc&&_sc.id!==_mActiveMatchId){clearInterval(_mTimer);_mRunning=false;_mActiveMatchId=_sc.id;_mActiveMatchAdv=_sc.adv&&String(_sc.adv).length>2?_sc.adv:"Match "+_sc.adv;var _smd=_mGetMatchData(curEV,_sc.id);_mSeconds=_smd.seconds||0;}}renderMatchTab();}}
 
 // FIELD SVG
 function drawField(){
   const svg=document.getElementById("field-svg");if(!svg)return;
-  const resolved=getEditable();const Ps=postes(curEV);const isS=isSeven(curEV);const xy=_getFieldXY(curEV);
+  const resolved=getEditable();const Ps=postes(curEV,curTID);const isS=isSeven(curEV);const xy=_getFieldXY(curEV,curTID);
   const c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
   const team=S.teams.find(t=>t.id===curTID);
-  const m=getMatches(curEV).find(m=>m.id===curMID);
-  const ss2=subsStart(curEV);
+  const m=getMatches(curEV,curTID).find(m=>m.id===curMID);
+  const ss2=subsStart(curEV,curTID);
 
   // ── Header haut : logo + titres + badge mode ──
   const logoEl=document.getElementById("terrain-logo");
@@ -1191,9 +1292,9 @@ function drawExport(){
   const el=document.getElementById("export-preview");if(!el||!curEV)return;
   const resolved=curMode==="base"?getBase(curEV,curTID):getResolved(curEV,curTID,curMID);
   const team=S.teams.find(t=>t.id===curTID);
-  const m=getMatches(curEV).find(m=>m.id===curMID);
+  const m=getMatches(curEV,curTID).find(m=>m.id===curMID);
   const c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
-  const isS=isSeven(curEV);const Ps=postes(curEV);const ss2=subsStart(curEV);
+  const isS=isSeven(curEV);const Ps=postes(curEV,curTID);const ss2=subsStart(curEV,curTID);
   const score=curMID&&curEV.scores?.[curMID];
   const scoreVal=score?.f!=null?`${score.f} - ${score.a}`:"À jouer";
   const typeLabel=TYPE_LABELS[curEV.type]||curEV.type;
@@ -1209,7 +1310,7 @@ function drawExport(){
   }
 
   const startHTML=Array.from({length:ss2},(_, i)=>playerCard(resolved[i],i,false)).join("");
-  const subHTML=Array.from({length:lineupSize(curEV)-ss2},(_,i)=>playerCard(resolved[i+ss2],i+ss2,true)).join("");
+  const subHTML=Array.from({length:lineupSize(curEV,curTID)-ss2},(_,i)=>playerCard(resolved[i+ss2],i+ss2,true)).join("");
   const coachHTML=coaches.length?`<div class="exp-coaches-row"><span class="exp-coaches-lbl">Staff :</span>${coaches.map(c=>`<span class="exp-coach-item">${c.role} · ${c.name}</span>`).join("<span style='color:rgba(255,255,255,.2);margin:0 4px'>|</span>")}</div>`:"";
 
   el.innerHTML=`
@@ -1243,8 +1344,8 @@ function drawExport(){
 
 function copyC(){
   const resolved=curMode==="base"?getBase(curEV,curTID):getResolved(curEV,curTID,curMID);
-  const team=S.teams.find(t=>t.id===curTID);const m=getMatches(curEV).find(m=>m.id===curMID);
-  const Ps=postes(curEV);const ss2=subsStart(curEV);
+  const team=S.teams.find(t=>t.id===curTID);const m=getMatches(curEV,curTID).find(m=>m.id===curMID);
+  const Ps=postes(curEV,curTID);const ss2=subsStart(curEV,curTID);
   const score=curMID&&curEV.scores?.[curMID];const sv2=score?.f!=null?` · Score: ${score.f}-${score.a}`:"";
   const mStr=curMode==="base"?"COMPO DE BASE":`vs ${m?.adv||"?"}${m?.phaseName?" ("+m.phaseName+")":""}${sv2}`;
   const lines=[`🏉 ${S.settings.name||"SAR×MOM M14"} — ${team?.label||""}`,`${curEV.name} · ${mStr} · ${fd(curEV.date)} · ${curEV.lieu}`,"","🟦 TITULAIRES"];
@@ -1385,7 +1486,7 @@ function _bilanComputeStats(teamFilter){
     if(teamFilter!=='all'){
       if(!(ev.teams||[]).includes(teamFilter))return;
     }
-    var ms=getMatches(ev);
+    var ms=teamFilter==='all'?getMatches(ev):getMatches(ev,teamFilter);
     var hasPlayedMatch=false;
     var evScores=[];
     var md2=(ev.match&&ev.match.byMatch)||{};
@@ -2236,14 +2337,14 @@ function _mTOFInit(md){
 function _mTOFGetTitulaires(){
   // Renvoie la liste des PIDs titulaires (postes 1..ss2) du match en cours, équipe courante
   if(!_mActiveMatchId||!curEV)return [];
-  var ss2=subsStart(curEV);
+  var ss2=subsStart(curEV,curTID);
   var resolved=getResolved(curEV,curTID,_mActiveMatchId);
   return resolved.slice(0,ss2).filter(Boolean).map(String);
 }
 
 function _mTOFGetSubs(){
   if(!_mActiveMatchId||!curEV)return [];
-  var ss2=subsStart(curEV);
+  var ss2=subsStart(curEV,curTID);
   var resolved=getResolved(curEV,curTID,_mActiveMatchId);
   return resolved.slice(ss2).filter(Boolean).map(String);
 }
@@ -2744,7 +2845,7 @@ function renderMatchTab(){
 
   // Sync direct avec curMID - pas de sélecteur
   if(curMID&&curEV){
-    var allM=getMatches(curEV)||[];
+    var allM=getMatches(curEV,curTID)||[];
     var cm=allM.find(function(m){return m.id===curMID;});
     if(cm&&cm.id!==_mActiveMatchId){
       clearInterval(_mTimer);_mRunning=false;
@@ -2930,7 +3031,7 @@ function _compSave(){
   var s=_evTeamSummary(curEV,curTID);
   // Vérification : matchs joués mais pas explicitement clôturés (touche "Fin" oubliée)
   var unfinalizedList=[];
-  var matches=getMatches(curEV)||[];
+  var matches=getMatches(curEV,curTID)||[];
   var byMatch=(curEV.match&&curEV.match.byMatch)||{};
   matches.forEach(function(m){
     var res=getResolved(curEV,curTID,m.id);
@@ -2980,7 +3081,7 @@ function renderRapport(){
   var el=document.getElementById("rapport-content");if(!el)return;
   if(!curEV){el.innerHTML='<p style="color:rgba(255,255,255,.4);text-align:center;padding:20px">Aucun evenement</p>';return;}
   var c1=S.settings.c1||"#1a3a6b",c2=S.settings.c2||"#f0c500";
-  var allMatches=getMatches(curEV)||[];
+  var allMatches=getMatches(curEV,curTID)||[];
   var byMatch=(curEV.match&&curEV.match.byMatch)||{};
   var cfg=(curEV.match&&curEV.match.config)||{periods:2,duration:20};
   var icons={essai:"🏉",transfo:"🥾",penalite:"🎯",drop:"💥",remplacement:"🔄",carton_jaune:"🟡",carton_rouge:"🔴",blessure:"🤕",avertissement:"⚠️"};
